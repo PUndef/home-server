@@ -42,40 +42,45 @@ LXC-контейнеров нет. Ранее был отдельный LXC по
 | Home Assistant             | haos17.0 (100)             | HA OS 17.0                                                                                |
 | MariaDB                    | nextcloud-vm (101)         | 10.11.14                                                                                  |
 
+
 **Бэкапы Nextcloud (nextcloud-vm):** раз в неделю по cron, воскресенье 3:00. Скрипт `/usr/local/bin/nextcloud-backup.sh`, лог `/var/log/nextcloud-backup.log`. Сжатие (tar.gz + gzip). Папка: `/backup/nextcloud`. Ротация: `-mtime +21` — хранятся бэкапы за последние ~3 недели (~3 набора: app_*.tar.gz, data_*.tar.gz, nextcloud-sqlbkp_*.bak.gz).
 
-**HTTPS Nextcloud:** **Let's Encrypt**. Домен cloud-pundef.mooo.com; сертификат в `/etc/letsencrypt/live/cloud-pundef.mooo.com/` (fullchain.pem, privkey.pem). Срок действия — ~3 месяца. Автопродление: certbot.timer (systemd), запуск дважды в день. В Nextcloud: overwriteprotocol https, overwrite.cli.url https://cloud-pundef.mooo.com.
+**HTTPS Nextcloud:** **Let's Encrypt**. Домен cloud-pundef.mooo.com; сертификат в `/etc/letsencrypt/live/cloud-pundef.mooo.com/` (fullchain.pem, privkey.pem). Срок действия — ~3 месяца. Автопродление: certbot.timer (systemd), запуск дважды в день. В Nextcloud: overwriteprotocol https, overwrite.cli.url [https://cloud-pundef.mooo.com](https://cloud-pundef.mooo.com).
 
 ---
 
 ## Сеть
 
 
-| Параметр                 | Значение                                                   |
-| ------------------------ | ---------------------------------------------------------- |
-| Домашняя подсеть (ASUS)  | 192.168.50.0/24 — Proxmox, ВМ, uplink OpenWrt-роутера      |
-| LAN за OpenWrt (Xiaomi)  | 192.168.1.0/24 — основной ПК подключён сюда               |
-| Хост (Proxmox)           | 192.168.50.9/24 (статично), на сегменте ASUS               |
-| Важные ВМ (статичные IP) | nextcloud-vm: 192.168.50.34; haos17.0: 192.168.50.51      |
+| Параметр                 | Значение                                                                                                                                                                            |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Домашняя подсеть (ASUS)  | 192.168.50.0/24 — Proxmox, ВМ, uplink OpenWrt-роутера                                                                                                                               |
+| LAN за OpenWrt (Xiaomi)  | 192.168.1.0/24 — основной ПК подключён сюда                                                                                                                                         |
+| Хост (Proxmox)           | 192.168.50.9/24 (статично), на сегменте ASUS                                                                                                                                        |
+| Важные ВМ (статичные IP) | nextcloud-vm: 192.168.50.34; haos17.0: 192.168.50.51                                                                                                                                |
 | Основной ПК пользователя | Windows 11; **за роутером Xiaomi/OpenWrt** (LAN `192.168.1.0/24`). Ранее был в LAN ASUS с адресом **192.168.50.61** — при необходимости обнови актуальный IP в DHCP/статике OpenWrt |
+| Рабочий MacBook          | `paul-mac`, DHCP reservation `192.168.1.198`; для корпоративных ресурсов применяется policy `workvpn` на OpenWrt                                                                    |
 
-**Топология:** провайдер → **ASUS RT-AX55** (`192.168.50.0/24`) → порт WAN **Xiaomi X3000T** (OpenWrt; пример WAN `192.168.50.20`) → LAN OpenWrt → ПК. Проброс портов и «белый» IP по-прежнему на стороне **ASUS**; VPN / pbr / zapret настроены на **OpenWrt**. Детали: [`router-openwrt-x3000t.md`](router-openwrt-x3000t.md).
+
+**Топология:** провайдер → **ASUS RT-AX55** (`192.168.50.0/24`) → порт WAN **Xiaomi X3000T** (OpenWrt; пример WAN `192.168.50.20`) → LAN OpenWrt → ПК. Проброс портов и «белый» IP по-прежнему на стороне **ASUS**; VPN / pbr / zapret настроены на **OpenWrt**. Детали: `[router-openwrt-x3000t.md](router-openwrt-x3000t.md)`.
 
 ---
 
 ## Роутер / проброс портов
 
-_Какие порты проброшены на какой внутренний IP (и порт). Нужно для советов по доступу извне, HTTPS, безопасности._
+*Какие порты проброшены на какой внутренний IP (и порт). Нужно для советов по доступу извне, HTTPS, безопасности.*
 
 **Upstream (NAT к провайдеру, проброс портов):** ASUS RT-AX55 — таблица ниже без изменений; цели в сегменте `192.168.50.0/24` (ВМ и ранее ПК на ASUS) доступны с WAN ASUS напрямую.
 
-**Второй роутер (OpenWrt):** Xiaomi **X3000T**, OpenWrt **24.10.6**; LuCI с LAN: [http://192.168.1.1/](http://192.168.1.1/) или [http://openwrt.lan/cgi-bin/luci/](http://openwrt.lan/cgi-bin/luci/); AmneziaWG (`awg1`), **podkop** + **sing-box**, **pbr**, **zapret** — см. [`router-openwrt-x3000t.md`](router-openwrt-x3000t.md). В репозитории: [`scripts/openwrt/`](scripts/openwrt/) (SSH-helper, watchdog для `podkop_subnets`).
+**Второй роутер (OpenWrt):** Xiaomi **X3000T**, OpenWrt **24.10.6**; LuCI с LAN: [http://192.168.1.1/](http://192.168.1.1/) или [http://openwrt.lan/cgi-bin/luci/](http://openwrt.lan/cgi-bin/luci/); AmneziaWG (`awg1`), **podkop** + **sing-box**, **pbr**, **zapret** — см. `[router-openwrt-x3000t.md](router-openwrt-x3000t.md)`. В репозитории: `[scripts/openwrt/](scripts/openwrt/)` (SSH-helper, watchdog для `podkop_subnets`).
 
-| Внешний порт | Внутренний IP:порт | Протокол | Сервис / примечание |
-|--------------|--------------------|----------|----------------------|
-| 80 | 192.168.50.34:80 | TCP | VM Nextcloud (HTTP) |
-| 443 | 192.168.50.34:443 | TCP | VM Nextcloud (HTTPS) |
-| 6881–6889 | 192.168.50.61 | TCP | BitTorrent — **цель была ПК на ASUS**; ПК теперь за OpenWrt: при необходимости проброс на актуальный IP ПК или отключение правила |
+
+| Внешний порт | Внутренний IP:порт | Протокол | Сервис / примечание                                                                                                               |
+| ------------ | ------------------ | -------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| 80           | 192.168.50.34:80   | TCP      | VM Nextcloud (HTTP)                                                                                                               |
+| 443          | 192.168.50.34:443  | TCP      | VM Nextcloud (HTTPS)                                                                                                              |
+| 6881–6889    | 192.168.50.61      | TCP      | BitTorrent — **цель была ПК на ASUS**; ПК теперь за OpenWrt: при необходимости проброс на актуальный IP ПК или отключение правила |
+
 
 > Если торрент-клиент только на ПК за Xiaomi, правило ASUS `6881–6889 → 192.168.50.61` может быть **неактуально**, пока не настроен двойной проброс (ASUS → OpenWrt → ПК) или пока торрент не перенесён на хост в `192.168.50.x`.
 
@@ -83,24 +88,28 @@ _Какие порты проброшены на какой внутренний
 
 ## Внешний (белый) IP
 
-| Параметр | Значение |
-|----------|----------|
-| Тип | статичный (куплен) |
-| Текущий белый IP (если знаешь) | 5.189.245.251 |
-| Домен(ы) на этот хост | cloud-pundef.mooo.com → Nextcloud / домашний сервер (FreeDNS) |
+
+| Параметр                       | Значение                                                      |
+| ------------------------------ | ------------------------------------------------------------- |
+| Тип                            | статичный (куплен)                                            |
+| Текущий белый IP (если знаешь) | 5.189.245.251                                                 |
+| Домен(ы) на этот хост          | cloud-pundef.mooo.com → Nextcloud / домашний сервер (FreeDNS) |
+
 
 ---
 
 ## Другие VPS / серверы
 
-_Серверы не на этом Proxmox: облачные VPS, VPN и т.д. — чтобы понимать, где что крутится и как связано._
+*Серверы не на этом Proxmox: облачные VPS, VPN и т.д. — чтобы понимать, где что крутится и как связано.*
 
-| Где / имя | IP или хост | Назначение | Примечание |
-|-----------|-------------|------------|------------|
-| fin-sweet-home-vps.mooo.com | 89.44.76.52 | Amnezia-WG (WireGuard) | FreeDNS; 3x-ui снят; сервер поднят с Windows-клиента Amnezia, несколько WG-клиентов |
-| sweet-home-vps.mooo.com | 45.154.35.222 | 3x-ui (панель), Hysteria (Blitz panel) | FreeDNS |
 
-**Детали sweet-home-vps (по выводу на сервере):** 3x-ui (панель) + Hysteria (Blitz panel). Хостнейм в системе customer55224. Ubuntu 22.04.5 LTS (minimal), 1 vCPU (Intel Xeon E5-2699A v4), 957 МБ RAM (свободно ~119 МБ — мало), диск 15 ГБ (~66% занято). Сеть: ens3 45.154.35.222/24, WireGuard wg0 10.0.0.1/24. Last login с 5.189.245.251.
+| Где / имя                   | IP или хост   | Назначение                             | Примечание                                                                          |
+| --------------------------- | ------------- | -------------------------------------- | ----------------------------------------------------------------------------------- |
+| fin-sweet-home-vps.mooo.com | 89.44.76.52   | Amnezia-WG (WireGuard)                 | FreeDNS; 3x-ui снят; сервер поднят с Windows-клиента Amnezia, несколько WG-клиентов |
+| sweet-home-vps.mooo.com     | 45.154.35.222 | 3x-ui (панель), Hysteria (Blitz panel) | FreeDNS                                                                             |
+
+
+**Детали sweet-home-vps (по выводу на сервере):** 3x-ui (панель) + Hysteria (Blitz panel). Хостнейм в системе customer55224. Ubuntu 22.04.5 LTS (minimal), 1 vCPU (Intel Xeon E5-2699A v4), 957 МБ RAM (свободно ~~119 МБ — мало), диск 15 ГБ (~~66% занято). Сеть: ens3 45.154.35.222/24, WireGuard wg0 10.0.0.1/24. Last login с 5.189.245.251.
 
 **Детали fin-sweet-home-vps:** Ubuntu 24.04 LTS, 1 vCPU (Intel Broadwell), 1.9 ГБ RAM, диск 15 ГБ, eth0 89.44.76.52/24. **3x-ui полностью удалён.** Вместо него — **Amnezia-WG**: сервер WireGuard развёрнут с приложения Amnezia на Windows, создано несколько клиентских профилей.
 
@@ -108,7 +117,8 @@ _Серверы не на этом Proxmox: облачные VPS, VPN и т.д. 
 
 ## Заметки
 
-- **Два роутера:** ASUS остаётся шлюзом к провайдеру и местом проброса портов; Xiaomi/OpenWrt — слой для LAN ПК (podkop/sing-box, pbr, awg1, zapret). Подробно: [`router-openwrt-x3000t.md`](router-openwrt-x3000t.md).
+- **Два роутера:** ASUS остаётся шлюзом к провайдеру и местом проброса портов; Xiaomi/OpenWrt — слой для LAN ПК (podkop/sing-box, pbr, awg1, zapret). Подробно: `[router-openwrt-x3000t.md](router-openwrt-x3000t.md)`.
+- **Корпоративный VPN на OpenWrt:** для `paul-mac` (`192.168.1.198`) включён split-routing через `workvpn` для зоны `kpb.lt` (домены + подсеть `10.0.160.0/22`) и принудительный DNS redirect этого клиента на роутерный `dnsmasq`.
 - **DNS:** централизованного DNS-фильтра на Proxmox нет; при необходимости — фильтрация на роутере или клиентские средства.
 - Один физический диск: все ВМ на LVM thin в одном пуле — при апгрейде/бэкапах учитывать отсутствие отдельного хранилища.
 - На хосте 4 ядра; nextcloud-vm занимает 4 vCPU — при пиковой нагрузке возможна конкуренция с haos17.0 (2 vCPU). При желании можно ограничить nextcloud-vm до 2–3 vCPU и смотреть по нагрузке.
