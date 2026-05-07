@@ -1,0 +1,19 @@
+#!/bin/sh
+# Stabilize VPN stack on wan/awg ifup events.
+# Re-add github routes via awg1 (used to fetch community lists) and restart
+# sing-box -> podkop -> zapret -> pbr in the right order so the routing stack
+# survives reboots, link flaps, and provider/wan reconnects.
+
+[ "$ACTION" = "ifup" ] || exit 0
+
+case "$INTERFACE" in
+  wan|awg1|awg2)
+    ip route replace 185.199.108.0/22 dev awg1 2>/dev/null
+    ip route replace 140.82.112.0/20 dev awg1 2>/dev/null
+    sleep 10
+    /etc/init.d/sing-box restart 2>/dev/null
+    /etc/init.d/podkop restart 2>/dev/null
+    /etc/init.d/zapret restart
+    /etc/init.d/pbr restart
+    ;;
+esac

@@ -72,7 +72,7 @@ LXC-контейнеров нет. Ранее был отдельный LXC по
 
 **Upstream (NAT к провайдеру, проброс портов):** ASUS RT-AX55 — таблица ниже без изменений; цели в сегменте `192.168.50.0/24` (ВМ и ранее ПК на ASUS) доступны с WAN ASUS напрямую.
 
-**Второй роутер (OpenWrt):** Xiaomi **X3000T**, OpenWrt **24.10.6**; LuCI с LAN: [http://192.168.1.1/](http://192.168.1.1/) или [http://openwrt.lan/cgi-bin/luci/](http://openwrt.lan/cgi-bin/luci/); AmneziaWG (`awg1`), **podkop** + **sing-box**, **pbr**, **zapret** — см. `[router-openwrt-x3000t.md](router-openwrt-x3000t.md)`. В репозитории: `[scripts/openwrt/](scripts/openwrt/)` (SSH-helper, watchdog для `podkop_subnets`).
+**Второй роутер (OpenWrt):** Xiaomi **X3000T**, OpenWrt **24.10.6**; LuCI с LAN: [http://192.168.1.1/](http://192.168.1.1/) или [http://openwrt.lan/cgi-bin/luci/](http://openwrt.lan/cgi-bin/luci/); два туннеля **AmneziaWG** — `awg1` (Fin) и `awg2` (Neth NL), **podkop** + **sing-box**, **pbr** (политики для AI/Spotify/workvpn), **zapret**, **OpenConnect** `vpn-workvpn` для corp — см. `[router-openwrt-x3000t.md](router-openwrt-x3000t.md)`. В репозитории: `[scripts/openwrt/](scripts/openwrt/)` (SSH-helper `openwrt_exec.py`, загрузчик файлов `upload.py`, health-check `check_stack.py`, watchdog для `podkop_subnets`, исходник hotplug `99-vpn-stack`).
 
 
 | Внешний порт | Внутренний IP:порт | Протокол | Сервис / примечание                                                                                                               |
@@ -103,21 +103,27 @@ LXC-контейнеров нет. Ранее был отдельный LXC по
 *Серверы не на этом Proxmox: облачные VPS, VPN и т.д. — чтобы понимать, где что крутится и как связано.*
 
 
-| Где / имя                   | IP или хост   | Назначение                             | Примечание                                                                          |
-| --------------------------- | ------------- | -------------------------------------- | ----------------------------------------------------------------------------------- |
-| fin-sweet-home-vps.mooo.com | 89.44.76.52   | Amnezia-WG (WireGuard)                 | FreeDNS; 3x-ui снят; сервер поднят с Windows-клиента Amnezia, несколько WG-клиентов |
-| sweet-home-vps.mooo.com     | 45.154.35.222 | 3x-ui (панель), Hysteria (Blitz panel) | FreeDNS                                                                             |
+| Где / имя                       | IP или хост   | Назначение                       | Роль на роутере                                       |
+| ------------------------------- | ------------- | -------------------------------- | ----------------------------------------------------- |
+| fin-sweet-home-vps.mooo.com     | 89.44.76.52   | Amnezia-WG (Finland)             | `awg1`: AI/Cursor pbr-policy + основной outbound подкопа |
+| sweet-home-vps.mooo.com (Neth)  | 45.154.35.222 | Amnezia-WG (Netherlands / Amsterdam) | `awg2`: pbr-policy «Spotify via awg2 (Neth NL)»     |
 
-
-**Детали sweet-home-vps (по выводу на сервере):** 3x-ui (панель) + Hysteria (Blitz panel). Хостнейм в системе customer55224. Ubuntu 22.04.5 LTS (minimal), 1 vCPU (Intel Xeon E5-2699A v4), 957 МБ RAM (свободно ~~119 МБ — мало), диск 15 ГБ (~~66% занято). Сеть: ens3 45.154.35.222/24, WireGuard wg0 10.0.0.1/24. Last login с 5.189.245.251.
 
 **Детали fin-sweet-home-vps:** Ubuntu 24.04 LTS, 1 vCPU (Intel Broadwell), 1.9 ГБ RAM, диск 15 ГБ, eth0 89.44.76.52/24. **3x-ui полностью удалён.** Вместо него — **Amnezia-WG**: сервер WireGuard развёрнут с приложения Amnezia на Windows, создано несколько клиентских профилей.
+
+**Детали sweet-home-vps (Neth):** Ubuntu 22.04.5 LTS, hostname `customer55224`, 1 vCPU (Intel Xeon E5-2699A v4), 957 МБ RAM, диск 15 ГБ, ens3 `45.154.35.222/24`. **Очищен 2026-05-07** от лишнего:
+
+- удалены `x-ui` (3x-ui) и весь стек `hysteria` / Blitz Panel (`hysteria-server`, `hysteria-auth`, `hysteria-caddy`, `hysteria-scheduler`, `hysteria-webpanel`);
+- удалены каталоги `/etc/x-ui`, `/usr/local/x-ui`, `/etc/hysteria`, `/var/lib/hysteria`;
+- освободилось ≈210 МБ RAM (было `free 80MiB → available 419MiB`, стало `free 297MiB → available 525MiB`) и ≈10% диска (было 69% → 59%).
+
+Сейчас на VPS работает только AmneziaWG-сервер, развёрнут с Windows-клиента Amnezia. Для управления через клиент Amnezia создан отдельный сервисный пользователь `amnadmin` с `NOPASSWD sudo` (нужно для неинтерактивных `sudo`-команд установщика). Клиентский профиль роутера: address `10.8.1.2/32`, peer endpoint `45.154.35.222:40698`. Подключён на роутере как `awg2` (см. `[router-openwrt-x3000t.md](router-openwrt-x3000t.md)`).
 
 ---
 
 ## Заметки
 
-- **Два роутера:** ASUS остаётся шлюзом к провайдеру и местом проброса портов; Xiaomi/OpenWrt — слой для LAN ПК (podkop/sing-box, pbr, awg1, zapret). Подробно: `[router-openwrt-x3000t.md](router-openwrt-x3000t.md)`.
+- **Два роутера:** ASUS остаётся шлюзом к провайдеру и местом проброса портов; Xiaomi/OpenWrt — слой для LAN ПК (podkop/sing-box, pbr с политиками AI→`awg1`, Spotify→`awg2`, corp→`vpn-workvpn`, zapret). Подробно: `[router-openwrt-x3000t.md](router-openwrt-x3000t.md)`.
 - **Корпоративный VPN на OpenWrt:** для `paul-mac` (`192.168.1.198`) включён split-routing через `workvpn` для зоны `kpb.lt` (домены + подсеть `10.0.160.0/22`) и принудительный DNS redirect этого клиента на роутерный `dnsmasq`.
 - **DNS:** централизованного DNS-фильтра на Proxmox нет; при необходимости — фильтрация на роутере или клиентские средства.
 - Один физический диск: все ВМ на LVM thin в одном пуле — при апгрейде/бэкапах учитывать отсутствие отдельного хранилища.

@@ -129,6 +129,34 @@ def main() -> int:
         "curl -4 -sS --connect-timeout 8 --max-time 15 --interface awg1 "
         "-o /dev/null https://1.1.1.1/cdn-cgi/trace"
     )
+    awg2_egress_probe = (
+        "out=$(curl -4 -sS --connect-timeout 8 --max-time 15 --interface awg2 "
+        "https://api.ipify.org); echo \"$out\"; "
+        # expected egress IP for Neth VPS
+        "[ \"$out\" = \"45.154.35.222\" ]"
+    )
+    spotify_resolves_real_ip_probe = (
+        # Spotify must NOT resolve to fake-IP 198.18.0.x (that means podkop intercepts DNS)
+        "ip=$(nslookup ap.spotify.com 192.168.1.1 | awk '/^Address: /{print $2}' | head -1); "
+        "echo \"ap.spotify.com -> $ip\"; "
+        "case \"$ip\" in 198.18.*) exit 1 ;; \"\") exit 1 ;; esac"
+    )
+    spotify_set_has_real_ip_probe = (
+        # warm up resolver and check that pbr_awg2 set has at least one non-fakeip
+        "for d in spotify.com ap.spotify.com accounts.spotify.com open.spotify.com scdn.co; do "
+        "nslookup \"$d\" 192.168.1.1 >/dev/null 2>&1; done; sleep 1; "
+        "elements=$(nft list set inet fw4 pbr_awg2_4_dst_ip_cfg076ff5 2>/dev/null); "
+        "echo \"$elements\" | grep -q 'elements = {' || exit 1; "
+        "echo \"$elements\" | grep -Eq '[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+' || exit 1; "
+        "! echo \"$elements\" | grep -Eq '198\\.18\\.[0-9]+\\.[0-9]+' "
+    )
+    spotify_via_awg2_http_probe = (
+        "out=$(curl -4 -L -sS --connect-timeout 10 --max-time 20 --interface awg2 "
+        "-o /dev/null -w 'code=%{http_code} ip=%{remote_ip}' https://accounts.spotify.com/ 2>&1); "
+        "echo \"$out\"; "
+        "case \"$out\" in *code=2*|*code=3*) exit 0 ;; esac; "
+        "exit 1"
+    )
     workvpn_gitlab_probe = (
         "ip=$(nslookup gitlab.kpb.lt 192.168.1.1 | awk '/^Address: / {ip=$2} END {print ip}'); "
         "[ -n \"$ip\" ] || exit 1; "
@@ -219,6 +247,36 @@ def main() -> int:
         ),
         (
             "routing",
+            "awg2-running",
+            "ifstatus awg2 | grep -q '\"up\": true'",
+            "awg2 (Neth) interface is up",
+        ),
+        (
+            "routing",
+            "pbr-awg2-rule",
+            "ip rule | grep -q 'fwmark 0x40000/0xff0000 lookup pbr_awg2'",
+            "pbr awg2 fwmark rule exists",
+        ),
+        (
+            "routing",
+            "pbr-awg2-table",
+            "ip route show table pbr_awg2 | grep -q 'default via .* dev awg2'",
+            "pbr_awg2 default route goes via awg2",
+        ),
+        (
+            "routing",
+            "spotify-policy-nft",
+            "nft list chain inet fw4 pbr_prerouting | grep -q 'Spotify via awg2'",
+            "Spotify policy chain is active",
+        ),
+        (
+            "routing",
+            "awg2-firewall-zone",
+            "uci show firewall | grep -q \"name='awg2'\" && uci show firewall | grep -q 'awg2-lan'",
+            "awg2 firewall zone and lan->awg2 forwarding exist",
+        ),
+        (
+            "routing",
             "workvpn-running",
             "ifstatus workvpn | grep -q '\"up\": true'",
             "workvpn interface is up",
@@ -273,9 +331,33 @@ def main() -> int:
         ),
         (
             "active-probes",
+            "awg2-egress-probe",
+            awg2_egress_probe,
+            "HTTPS egress via awg2 lands on Neth IP 45.154.35.222",
+        ),
+        (
+            "active-probes",
             "ai-targets-via-awg1",
             ai_targets_probe,
             "AI targets are reachable via awg1",
+        ),
+        (
+            "active-probes",
+            "spotify-dns-bypasses-podkop",
+            spotify_resolves_real_ip_probe,
+            "Spotify resolves to real IP, not podkop fake-IP 198.18.x",
+        ),
+        (
+            "active-probes",
+            "spotify-pbr-set-populated",
+            spotify_set_has_real_ip_probe,
+            "pbr_awg2 set has real Spotify IPs (no fake-IP)",
+        ),
+        (
+            "active-probes",
+            "spotify-via-awg2",
+            spotify_via_awg2_http_probe,
+            "accounts.spotify.com is reachable via awg2",
         ),
         (
             "active-probes",
