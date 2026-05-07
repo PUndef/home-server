@@ -1,11 +1,23 @@
 """Run a single shell command on OpenWrt over SSH (paramiko).
 
-Environment: OPENWRT_HOST, OPENWRT_USER, OPENWRT_KEY, OPENWRT_KEY_PASS.
+Environment: OPENWRT_HOST, OPENWRT_USER, OPENWRT_KEY.
 Documented in router-openwrt-x3000t.md (repo root).
 """
 import os
 import sys
 import paramiko
+
+
+def load_private_key(key_path: str) -> paramiko.PKey:
+    last_error: Exception | None = None
+    key_classes = (paramiko.Ed25519Key, paramiko.RSAKey, paramiko.ECDSAKey)
+    for key_cls in key_classes:
+        try:
+            return key_cls.from_private_key_file(key_path)
+        except paramiko.SSHException as exc:
+            last_error = exc
+
+    raise last_error or paramiko.SSHException("Unsupported private key type")
 
 
 def main() -> int:
@@ -15,13 +27,12 @@ def main() -> int:
 
     host = os.environ.get("OPENWRT_HOST", "192.168.1.1")
     user = os.environ.get("OPENWRT_USER", "root")
-    key_path = os.environ.get("OPENWRT_KEY", r"C:\Users\PUndef-PC\.ssh\openwrt_ax300t")
-    key_pass = os.environ.get("OPENWRT_KEY_PASS", "")
+    key_path = os.environ.get("OPENWRT_KEY", r"C:\Users\PUndef-PC\.ssh\openwrt_ax300t_nopass")
     cmd = " ".join(sys.argv[1:])
 
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    key = paramiko.Ed25519Key.from_private_key_file(key_path, password=key_pass)
+    key = load_private_key(key_path)
     client.connect(host, username=user, pkey=key, timeout=10)
 
     try:
