@@ -23,10 +23,10 @@
 ## Виртуальные машины / LXC
 
 
-| Имя          | ОС / тип                 | Назначение             | vCPU | RAM  | Диск                    | Сеть / примечания    |
-| ------------ | ------------------------ | ---------------------- | ---- | ---- | ----------------------- | -------------------- |
-| haos17.0     | VM (Home Assistant OS)   | Home Assistant         | 2    | 6 ГБ | 64 ГБ (virtio, discard) | vmbr0, 192.168.50.51 |
-| nextcloud-vm | VM, Debian 12 (Bookworm) | Nextcloud + ONLYOFFICE | 4    | 6 ГБ | 50 ГБ (virtio, discard) | vmbr0, 192.168.50.34 |
+| Имя          | ОС / тип                 | Назначение             | vCPU | RAM  | Диск                     | Сеть / примечания    |
+| ------------ | ------------------------ | ---------------------- | ---- | ---- | ------------------------ | -------------------- |
+| haos17.0     | VM (Home Assistant OS)   | Home Assistant         | 2    | 6 ГБ | 64 ГБ (virtio, discard)  | vmbr0, 192.168.50.51 |
+| nextcloud-vm | VM, Debian 12 (Bookworm) | Nextcloud + ONLYOFFICE | 4    | 6 ГБ | 100 ГБ (virtio, discard) | vmbr0, 192.168.50.34 |
 
 
 LXC-контейнеров нет. Ранее был отдельный LXC под DNS-фильтрацию — снят и удалён в Proxmox; в **ASUS** в DHCP на старый адрес DNS не указывается.
@@ -36,17 +36,20 @@ LXC-контейнеров нет. Ранее был отдельный LXC по
 ## Сервисы (где что крутится)
 
 
-| Сервис                     | Где запущен (ВМ/LXC)       | Версия / примечания                                                                       |
-| -------------------------- | -------------------------- | ----------------------------------------------------------------------------------------- |
-| Nextcloud                  | nextcloud-vm (101)         | 33.0.0; PHP 8.3.30, OPcache                                                               |
-| ONLYOFFICE Document Server | nextcloud-vm (101), Docker | образ `onlyoffice/documentserver`, контейнер onlyoffice-documentserver, 127.0.0.1:9980→80 |
-| Home Assistant             | haos17.0 (100)             | HA OS 17.0                                                                                |
-| MariaDB                    | nextcloud-vm (101)         | 10.11.14                                                                                  |
+| Сервис                     | Где запущен (ВМ/LXC)       | Версия / примечания                                                                                              |
+| -------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Nextcloud                  | nextcloud-vm (101)         | `33.0.0` (build `33.0.0.16`); PHP `8.4.18`, OPcache; Apache `2.4.66`. `occ` в `/var/www/nextcloud/`.              |
+| ONLYOFFICE Document Server | nextcloud-vm (101), Docker | образ `onlyoffice/documentserver`, контейнер `onlyoffice-documentserver`, `127.0.0.1:9980→80`; Docker `29.3.0`.  |
+| Home Assistant             | haos17.0 (100)             | HA OS `17.2`; ядро `6.12.77-haos`; data на `/dev/sda8` (`/mnt/data`, 62 ГБ, занято ~14 ГБ).                      |
+| MariaDB                    | nextcloud-vm (101)         | `10.11.14-MariaDB-0+deb12u2` (Debian 12).                                                                        |
+
+
+> Полную свежую сводку (хост + конфиги ВМ + всё внутри них) можно собрать одной командой: `python scripts/proxmox/check_vms.py`. Перед правкой этой таблицы — стоит сравниться с её выводом.
 
 
 **Бэкапы Nextcloud (nextcloud-vm):** раз в неделю по cron, воскресенье 3:00. Скрипт `/usr/local/bin/nextcloud-backup.sh`, лог `/var/log/nextcloud-backup.log`. Сжатие (tar.gz + gzip). Папка: `/backup/nextcloud`. Ротация: `-mtime +21` — хранятся бэкапы за последние ~3 недели (~3 набора: app_*.tar.gz, data_*.tar.gz, nextcloud-sqlbkp_*.bak.gz).
 
-**HTTPS Nextcloud:** **Let's Encrypt**. Домен cloud-pundef.mooo.com; сертификат в `/etc/letsencrypt/live/cloud-pundef.mooo.com/` (fullchain.pem, privkey.pem). Срок действия — ~3 месяца. Автопродление: certbot.timer (systemd), запуск дважды в день. В Nextcloud: overwriteprotocol https, overwrite.cli.url [https://cloud-pundef.mooo.com](https://cloud-pundef.mooo.com).
+**HTTPS Nextcloud:** **Let's Encrypt**. Домен cloud-pundef.mooo.com; сертификат в `/etc/letsencrypt/live/cloud-pundef.mooo.com/` (fullchain.pem, privkey.pem). Срок действия — ~3 месяца. Автопродление: certbot.timer (systemd), запуск дважды в день. В Nextcloud: overwriteprotocol https, overwrite.cli.url [https://cloud-pundef.mooo.com](https://cloud-pundef.mooo.com). После миграции 2026-05-10: следующий тик `certbot.timer` отрабатывает штатно (последний запуск был сразу после switch-over).
 
 ---
 
