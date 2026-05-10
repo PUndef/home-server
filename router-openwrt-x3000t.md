@@ -11,9 +11,12 @@
 
 ## Топология
 
-Провайдер → **ASUS RT-AX55** (`192.168.50.0/24`) → WAN **Xiaomi/OpenWrt** (пример WAN `192.168.50.20/24`) → LAN `192.168.1.0/24` → ПК/телефоны.
+Провайдер → **WAN Xiaomi/OpenWrt** (DHCP, белый IP `5.189.245.251`) → две firewall zone на X3000T:
 
-Проброс портов и белый IP — на **ASUS**. Разделение трафика, VPN, DPI — на **OpenWrt**. Общий контекст дома: `[hardware-and-env.md](hardware-and-env.md)`.
+- `lan` `192.168.1.0/24` — клиенты (ПК, Mac, телефоны), порты `lan3 lan4` X3000T + WiFi. Здесь работает вся машинерия: pbr / podkop / sing-box / zapret / awg1 / awg2 / workvpn.
+- `srv` `192.168.50.0/24` — Proxmox + ВМ, отдельный физический порт `lan2` X3000T. Forwarding только `srv→wan` и `lan→srv`. **Никаких** туннелей и DPI: zapret bypass-нут по `ct original ip saddr 192.168.50.0/24 return`.
+
+Проброс портов, белый IP, DDNS, NAT — теперь на OpenWrt (был ASUS RT-AX55 до 2026-05-10; ASUS снят). История миграции: `[migration-asus-to-openwrt.md](migration-asus-to-openwrt.md)`. Общий контекст дома: `[hardware-and-env.md](hardware-and-env.md)`.
 
 ---
 
@@ -34,6 +37,7 @@
 Обычный трафик              → WAN → ASUS → провайдер
 Автообход блокировок        → podkop + sing-box (tproxy, fakeip, community lists)
 AI / Cursor домены          → pbr policy «AI Tools via awg1 (global)» → awg1 (Fin)
+Mangalib (geo/RU блокировки)→ pbr policy «Mangalib via awg1» → awg1 (Fin)
 Spotify (NL-аккаунт)        → pbr policy «Spotify via awg2 (Neth NL)» → awg2 (Neth)
 Корпоративные домены        → pbr policy «paul-mac kpb via workvpn» → vpn-workvpn
 DPI                         → zapret / nfqws на WAN-потоках (mark не пересекается с pbr)
@@ -74,7 +78,7 @@ graph TD
   PKT --> MARK{mangle prerouting:\nкто первым ставит mark?}
 
   MARK -->|dst в pbr_awg2 set\n_real Spotify IPs_| MK_AWG2[mark 0x00040000]
-  MARK -->|dst в pbr_awg1 set\n_AI / Cursor IPs_| MK_AWG1[mark 0x00020000]
+  MARK -->|dst в pbr_awg1 set\n_AI/Cursor + Mangalib IPs_| MK_AWG1[mark 0x00020000]
   MARK -->|src=192.168.1.198 +\ndst=*.kpb.lt / 10.0.160.0/22| MK_WORK[mark 0x00030000]
   MARK -->|dst в podkop_subnets\nили 198.18.0.0/15| MK_PD[mark 0x00100000]
   MARK -->|без правил| MK_NONE[нет mark]
@@ -101,11 +105,13 @@ graph TD
   ZQ --> OUT_WAN
 ```
 
+
+
 Ключевые свойства схемы:
 
 - **Default всегда `wan`.** Сами VPN-туннели поднимаются с `defaultroute=0`, чтобы не ломать остальной интернет.
-- **`pbr` и `podkop` смотрят на разные mark-биты** (`0x00ff0000` против `0x0f000000`), не пересекаются.
-- **`zapret` появляется ТОЛЬКО на WAN-ветке** (`oifname @wanif`); для пакетов в `awg1`/`awg2`/`workvpn` он не работает.
+- `**pbr` и `podkop` смотрят на разные mark-биты** (`0x00ff0000` против `0x0f000000`), не пересекаются.
+- `**zapret` появляется ТОЛЬКО на WAN-ветке** (`oifname @wanif`); для пакетов в `awg1`/`awg2`/`workvpn` он не работает.
 - **DNS-обход подкопа для Spotify-доменов** обязателен: иначе клиент получает fake-IP `198.18.0.x`, который перехватывает `podkop` → выйдет через `awg1`, а не `awg2`.
 
 ---
@@ -113,15 +119,15 @@ graph TD
 ## Текущие правила маршрутизации
 
 
-| Priority | Условие                               | Таблица       | Что значит                                                      |
-| -------- | ------------------------------------- | ------------- | --------------------------------------------------------------- |
-| `105`    | `fwmark 0x100000/0x100000`            | `podkop`      | подкоп tproxy / sing-box (главный обход)                        |
-| `29997`  | `fwmark 0x40000/0xff0000`             | `pbr_awg2`    | pbr-policy «Spotify via awg2 (Neth NL)»                         |
-| `29998`  | `fwmark 0x30000/0xff0000`             | `pbr_workvpn` | pbr-policy «paul-mac kpb via workvpn»                           |
-| `29999`  | `fwmark 0x20000/0xff0000`             | `pbr_awg1`    | pbr-policy «AI Tools via awg1 (global)»                         |
-| `29998`  | `lookup main suppress_prefixlength 1` | `main`        | local/специфичные маршруты, default подавлен                    |
-| `30000`  | `fwmark 0x10000/0xff0000`             | `pbr_wan`     | pbr-uplink, явно вернуть в WAN при необходимости                |
-| `32766`  | без mark                              | `main`        | default через `wan`                                             |
+| Priority | Условие                               | Таблица       | Что значит                                       |
+| -------- | ------------------------------------- | ------------- | ------------------------------------------------ |
+| `105`    | `fwmark 0x100000/0x100000`            | `podkop`      | подкоп tproxy / sing-box (главный обход)         |
+| `29997`  | `fwmark 0x40000/0xff0000`             | `pbr_awg2`    | pbr-policy «Spotify via awg2 (Neth NL)»          |
+| `29998`  | `fwmark 0x30000/0xff0000`             | `pbr_workvpn` | pbr-policy «paul-mac kpb via workvpn»            |
+| `29999`  | `fwmark 0x20000/0xff0000`             | `pbr_awg1`    | pbr-policy «AI Tools via awg1 (global)»          |
+| `29998`  | `lookup main suppress_prefixlength 1` | `main`        | local/специфичные маршруты, default подавлен     |
+| `30000`  | `fwmark 0x10000/0xff0000`             | `pbr_wan`     | pbr-uplink, явно вернуть в WAN при необходимости |
+| `32766`  | без mark                              | `main`        | default через `wan`                              |
 
 
 Содержимое таблиц:
@@ -224,27 +230,45 @@ nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.240 return commen
 ## Mark-и (диапазоны не должны пересекаться)
 
 
-| Компонент          | Mark / ct mark              | Где используется                                   | Зачем                                       |
-| ------------------ | --------------------------- | -------------------------------------------------- | ------------------------------------------- |
-| `pbr` (awg1)       | `0x00020000/0xff0000`       | `ip rule 29999`, table `pbr_awg1`                  | AI / Cursor → awg1 (Fin)                    |
-| `pbr` (workvpn)    | `0x00030000/0xff0000`       | `ip rule 29998`, table `pbr_workvpn`               | corp `*.kpb.lt` для paul-mac                |
-| `pbr` (awg2)       | `0x00040000/0xff0000`       | `ip rule 29997`, table `pbr_awg2`                  | Spotify → awg2 (Neth NL)                    |
-| `pbr` (uplink)     | `0x00010000/0xff0000`       | `ip rule 30000`, table `pbr_wan`                   | принудительный return в WAN                 |
-| `podkop`           | `0x00100000`                | `PodkopTable mangle/proxy`, `ip rule priority 105` | tproxy в sing-box                           |
-| `zapret` / `nfqws` | `0x20000000`, `0x40000000`  | `table inet zapret`, conntrack                     | пометить nfqws-обработку, не зацикливать    |
+| Компонент          | Mark / ct mark             | Где используется                                   | Зачем                                    |
+| ------------------ | -------------------------- | -------------------------------------------------- | ---------------------------------------- |
+| `pbr` (awg1)       | `0x00020000/0xff0000`      | `ip rule 29999`, table `pbr_awg1`                  | AI / Cursor → awg1 (Fin)                 |
+| `pbr` (workvpn)    | `0x00030000/0xff0000`      | `ip rule 29998`, table `pbr_workvpn`               | corp `*.kpb.lt` для paul-mac             |
+| `pbr` (awg2)       | `0x00040000/0xff0000`      | `ip rule 29997`, table `pbr_awg2`                  | Spotify → awg2 (Neth NL)                 |
+| `pbr` (uplink)     | `0x00010000/0xff0000`      | `ip rule 30000`, table `pbr_wan`                   | принудительный return в WAN              |
+| `podkop`           | `0x00100000`               | `PodkopTable mangle/proxy`, `ip rule priority 105` | tproxy в sing-box                        |
+| `zapret` / `nfqws` | `0x20000000`, `0x40000000` | `table inet zapret`, conntrack                     | пометить nfqws-обработку, не зацикливать |
+
 
 ---
 
 ## Интерфейсы и адреса
 
 
-| Интерфейс     | Роль                | Параметры                                                                    |
-| ------------- | ------------------- | ---------------------------------------------------------------------------- |
-| `wan`         | Uplink к ASUS       | `192.168.50.20/24`, шлюз `192.168.50.1`                                      |
-| `br-lan`      | LAN                 | `192.168.1.1/24`, DHCP `192.168.1.100-249`                                   |
-| `awg1`        | AmneziaWG → Fin     | `10.8.1.10/32`, endpoint `89.44.76.52:45007`, `defaultroute=0`               |
-| `awg2`        | AmneziaWG → Neth NL | `10.8.1.2/32`,  endpoint `45.154.35.222:40698`, `defaultroute=0`             |
-| `vpn-workvpn` | OpenConnect → corp  | `10.0.161.32/32`, hostname `oc-lux.kpb.lol`                                  |
+| Интерфейс     | Роль                | Параметры                                                                                              |
+| ------------- | ------------------- | ------------------------------------------------------------------------------------------------------ |
+| `wan`         | Uplink к провайдеру | `5.189.245.251/26` (DHCP), шлюз `5.189.245.193`. Белый IP, DDNS `cloud-pundef.mooo.com`.               |
+| `br-lan`      | LAN (клиенты)       | `192.168.1.1/24`, ports `lan3 lan4` + WiFi, DHCP `192.168.1.100-249`.                                  |
+| `srv` (lan2)  | Серверный сегмент   | `192.168.50.1/24`, отдельный физический порт `lan2`, DHCP `192.168.50.100-199`, DNS `8.8.8.8/1.1.1.1`. |
+| `awg1`        | AmneziaWG → Fin     | `10.8.1.10/32`, endpoint `89.44.76.52:45007`, `defaultroute=0`                                         |
+| `awg2`        | AmneziaWG → Neth NL | `10.8.1.2/32`, endpoint `45.154.35.222:40698`, `defaultroute=0`                                        |
+| `vpn-workvpn` | OpenConnect → corp  | `10.0.161.32/32`, hostname `oc-lux.kpb.lol`                                                            |
+
+
+### Серверный сегмент `srv` (отдельная firewall zone)
+
+`srv` физически — это порт `lan2` X3000T, исключённый из `br-lan`. К нему подключён Proxmox-хост (через `vmbr0 → nic0 → lan2`). За хостом на этом сегменте живут ВМ `nextcloud-vm` и `haos17`.
+
+Ключевые свойства:
+
+- **DHCP-резервации `infinite`** под MAC ВМ:
+  - `nextcloud-vm` MAC `02:CC:61:7E:E7:7B` → `192.168.50.34`;
+  - `haos17` MAC `02:DF:3B:CA:E9:AC` → `192.168.50.51`.
+- **DNS для srv** выдаётся не через роутерный dnsmasq, а напрямую: `dhcp.srv.dhcp_option='6,8.8.8.8,1.1.1.1'`. Это намеренно — иначе Nextcloud резолвил бы community-домены через sing-box и получал fake-IP `198.18.x`.
+- **Firewall zone `srv`**: `input REJECT, output ACCEPT, forward REJECT`, плюс rule `Allow-DHCP-DNS-srv` (53/67/68 udp). Forwarding только `srv→wan` и `lan→srv`. **НЕТ** `srv→awg1/awg2/workvpn` — ВМ всегда идут чистым WAN.
+- **Hairpin**: `dnsmasq.@dnsmasq[0].address='/cloud-pundef.mooo.com/192.168.50.34'` — клиенты `lan` резолвят домен сразу в локальный IP, без NAT loopback.
+- **Port-forwards** `wan: 80 → srv:192.168.50.34:80` и `wan: 443 → srv:192.168.50.34:443` (DNAT с `wan` в `srv`).
+- **zapret bypass для srv**: в `[scripts/openwrt/custom.bypass_devices.sh](scripts/openwrt/custom.bypass_devices.sh)` добавлены `ct original ip saddr 192.168.50.0/24 return` (postnat) и зеркальное правило в `prenat`. Источник применяется автоматически через `INIT_FW_POST_UP_HOOK=/opt/zapret/custom.bypass_devices.sh` в `/opt/zapret/config`.
 
 
 Проверки:
@@ -269,11 +293,12 @@ awg show awg2
 Активные политики:
 
 
-| # | Имя                              | Интерфейс | src         | dest_addr (кратко)                                                                                                  |
-| - | -------------------------------- | --------- | ----------- | ------------------------------------------------------------------------------------------------------------------- |
-| 0 | `AI Tools via awg1 (global)`     | `awg1`    | —           | домены Cursor, OpenAI, Anthropic, Claude, Groq, Google Generative API                                               |
-| 1 | `paul-mac kpb via workvpn`       | `workvpn` | `192.168.1.198` | `kpb.lt`, `*.kpb.lt`, `gitlab.kpb.lt`, `10.0.160.0/22`                                                          |
-| 2 | `Spotify via awg2 (Neth NL)`     | `awg2`    | —           | `spotify.com`, `www.spotify.com`, `open.spotify.com`, `accounts.spotify.com`, `ap.spotify.com`, `scdn.co`, `spotifycdn.com`, `spotifycdn.net`, плюс CNAME-таргеты `dual-gslb.spotify.com`, `single-gslb.spotify.com`, `cdn-gslb.spotify.com`, `edge-web.dual-gslb.spotify.com` |
+| #   | Имя                          | Интерфейс | src             | dest_addr (кратко)                                                                                                                                                                                                                                                             |
+| --- | ---------------------------- | --------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 0   | `AI Tools via awg1 (global)` | `awg1`    | —               | домены Cursor, OpenAI, Anthropic, Claude, Groq, Google Generative API                                                                                                                                                                                                          |
+| 1   | `paul-mac kpb via workvpn`   | `workvpn` | `192.168.1.198` | `kpb.lt`, `*.kpb.lt`, `gitlab.kpb.lt`, `10.0.160.0/22`                                                                                                                                                                                                                         |
+| 2   | `Spotify via awg2 (Neth NL)` | `awg2`    | —               | `spotify.com`, `www.spotify.com`, `open.spotify.com`, `accounts.spotify.com`, `ap.spotify.com`, `scdn.co`, `spotifycdn.com`, `spotifycdn.net`, плюс CNAME-таргеты `dual-gslb.spotify.com`, `single-gslb.spotify.com`, `cdn-gslb.spotify.com`, `edge-web.dual-gslb.spotify.com` |
+| 3   | `Mangalib via awg1`          | `awg1`    | —               | `mangalib.me`, `lib.social`, `ranobelib.me`, `imglib.org` — резерв под точечные RU-блокировки тайтлов и API; делит mark `0x00020000` и таблицу `pbr_awg1` с AI-policy                                                                                                          |
 
 
 Полный список:
@@ -340,12 +365,12 @@ uci show firewall | grep -E 'zone|forwarding'
 ```
 
 
-| Zone   | Networks            | input  | output  | forward | masq | forwarding from `lan` |
-| ------ | ------------------- | ------ | ------- | ------- | ---- | --------------------- |
-| `lan`  | `lan`               | ACCEPT | ACCEPT  | ACCEPT  | —    | —                     |
-| `wan`  | `wan`, `wan6`, `workvpn` | REJECT | ACCEPT  | REJECT  | 1    | да (стандарт)         |
-| `awg1` | `awg1`              | REJECT | ACCEPT  | REJECT  | 1    | `awg1-lan`            |
-| `awg2` | `awg2`              | REJECT | ACCEPT  | REJECT  | 1    | `awg2-lan`            |
+| Zone   | Networks                 | input  | output | forward | masq | forwarding from `lan` |
+| ------ | ------------------------ | ------ | ------ | ------- | ---- | --------------------- |
+| `lan`  | `lan`                    | ACCEPT | ACCEPT | ACCEPT  | —    | —                     |
+| `wan`  | `wan`, `wan6`, `workvpn` | REJECT | ACCEPT | REJECT  | 1    | да (стандарт)         |
+| `awg1` | `awg1`                   | REJECT | ACCEPT | REJECT  | 1    | `awg1-lan`            |
+| `awg2` | `awg2`                   | REJECT | ACCEPT | REJECT  | 1    | `awg2-lan`            |
 
 
 `workvpn` намеренно сидит в zone `wan` — этого достаточно для NAT/forward в туннель, отдельная zone не нужна.
@@ -383,6 +408,7 @@ nft list set inet PodkopTable podkop_subnets
 Файл: `/etc/hotplug.d/iface/99-vpn-stack` (исполняемый, исходник `[scripts/openwrt/99-vpn-stack](scripts/openwrt/99-vpn-stack)`).
 
 На `ifup` для `wan`, `awg1` или `awg2`:
+
 1. перепрописать github-маршруты через `awg1`;
 2. пауза 10s;
 3. перезапустить `sing-box → podkop → zapret → pbr` в этом порядке.
@@ -419,14 +445,16 @@ nft list table inet zapret
 Путь в проекте: `[scripts/openwrt/](scripts/openwrt/)`.
 
 
-| Файл                                                                             | Назначение                                                                                                                                                                                                                              |
-| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `[scripts/openwrt/openwrt_exec.py](scripts/openwrt/openwrt_exec.py)`             | Выполнить одну команду на роутере по SSH с ключом без passphrase (`OPENWRT_HOST`, `OPENWRT_USER`, `OPENWRT_KEY`).                                                                                                                       |
-| `[scripts/openwrt/upload.py](scripts/openwrt/upload.py)`                         | Залить локальный файл на роутер по SSH (без SFTP — через `base64 -d`). Используется для обновления `99-vpn-stack` и других конфигов.                                                                                                    |
-| `[scripts/openwrt/check_stack.py](scripts/openwrt/check_stack.py)`               | Health-check всего стека (`pbr`/`podkop`/`sing-box`/`zapret` + `awg1`/`awg2`/`workvpn` + DNS bypass + AI/Spotify/gitlab активные пробы).                                                                                                |
-| `[scripts/openwrt/trace_traffic.py](scripts/openwrt/trace_traffic.py)`           | Трассировка пути конкретного домена/IP через pbr/podkop/zapret.                                                                                                                                                                         |
-| `[scripts/openwrt/podkop-subnets-watchdog.sh](scripts/openwrt/podkop-subnets-watchdog.sh)` | Если `podkop_subnets` пуст — запустить `podkop list_update`. Cron: `*/15 * * * *`.                                                                                                                                                      |
-| `[scripts/openwrt/99-vpn-stack](scripts/openwrt/99-vpn-stack)`                   | Исходник hotplug-скрипта `/etc/hotplug.d/iface/99-vpn-stack`.                                                                                                                                                                           |
+| Файл                                                                                                 | Назначение                                                                                                                                                                          |
+| ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `[scripts/openwrt/openwrt_exec.py](scripts/openwrt/openwrt_exec.py)`                                 | Выполнить одну команду на роутере по SSH с ключом без passphrase (`OPENWRT_HOST`, `OPENWRT_USER`, `OPENWRT_KEY`).                                                                   |
+| `[scripts/openwrt/upload.py](scripts/openwrt/upload.py)`                                             | Залить локальный файл на роутер по SSH (без SFTP — через `base64 -d`). Используется для обновления `99-vpn-stack` и других конфигов.                                                |
+| `[scripts/openwrt/check_stack.py](scripts/openwrt/check_stack.py)`                                   | Health-check всего стека (`pbr`/`podkop`/`sing-box`/`zapret` + `awg1`/`awg2`/`workvpn` + DNS bypass + AI/Spotify/gitlab активные пробы).                                            |
+| `[scripts/openwrt/trace_traffic.py](scripts/openwrt/trace_traffic.py)`                               | Трассировка пути конкретного домена/IP через pbr/podkop/zapret.                                                                                                                     |
+| `[scripts/openwrt/podkop-subnets-watchdog.sh](scripts/openwrt/podkop-subnets-watchdog.sh)`           | Если `podkop_subnets` пуст — запустить `podkop list_update`. Cron: `*/15 * * * *`.                                                                                                  |
+| `[scripts/openwrt/99-vpn-stack](scripts/openwrt/99-vpn-stack)`                                       | Исходник hotplug-скрипта `/etc/hotplug.d/iface/99-vpn-stack`.                                                                                                                       |
+| `[scripts/openwrt/custom.bypass_devices.sh](scripts/openwrt/custom.bypass_devices.sh)`               | Источник `/opt/zapret/custom.bypass_devices.sh`: per-IP bypass для `192.168.1.147` (Redmi-Note-9-Pro) и per-subnet bypass для серверного сегмента `192.168.50.0/24`.                |
+| `[scripts/openwrt/migration-activate-srv.sh](scripts/openwrt/migration-activate-srv.sh)`             | Активатор миграции "ASUS off, OpenWrt main" (см. `[migration-asus-to-openwrt.md](migration-asus-to-openwrt.md)`). Поднимает `srv`, перезапускает стек, пере-привинчивает маршруты.  |
 
 
 Пример с ПК (PowerShell, дефолтный ключ `C:\Users\PUndef-PC\.ssh\openwrt_ax300t_nopass`):

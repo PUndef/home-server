@@ -7,14 +7,15 @@
 ## Хост (Proxmox)
 
 
-| Параметр           | Значение                                                                               |
-| ------------------ | -------------------------------------------------------------------------------------- |
-| **Имя хоста**      | pundef                                                                                 |
-| **CPU**            | Intel N150, 4 ядра / 4 потока (1 thread per core)                                      |
-| **RAM**            | 15 ГБ всего; под ВМ отдано ~12 ГБ (100: 6 ГБ, 101: 6 ГБ), доступно ~2.8 ГБ             |
-| **Диски**          | Один диск 476.9 ГБ (sda), LVM: root 96 ГБ (ext4), thin pool pve-data для ВМ; swap 8 ГБ |
-| **Версия Proxmox** | 9.1.1 (kernel 6.17.2-1-pve)                                                            |
-| **Сеть**           | vmbr0 — 192.168.50.9/24; nic0 (UP), wlp2s0 (DOWN)                                      |
+| Параметр           | Значение                                                                                                                                  |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **Имя хоста**      | pundef                                                                                                                                    |
+| **CPU**            | Intel N150, 4 ядра / 4 потока (1 thread per core)                                                                                         |
+| **RAM**            | 15 ГБ всего; под ВМ отдано ~12 ГБ (100: 6 ГБ, 101: 6 ГБ), доступно ~2.8 ГБ                                                                |
+| **Диски**          | Один диск 476.9 ГБ (sda), LVM: root 96 ГБ (ext4), thin pool pve-data для ВМ; swap 8 ГБ                                                    |
+| **Версия Proxmox** | 9.1.1 (kernel 6.17.2-1-pve)                                                                                                               |
+| **Сеть**           | vmbr0 — 192.168.50.9/24 (статика, gateway 192.168.50.1 — теперь это `srv` X3000T); nic0 (UP) подключён в LAN2 X3000T (срв-сегмент)        |
+| **DNS хоста**      | `/etc/resolv.conf` правится руками: `1.1.1.1`, `8.8.8.8` (намеренно в обход dnsmasq роутера, чтобы apt/certbot не зависели от sing-box).  |
 
 
 ---
@@ -52,17 +53,23 @@ LXC-контейнеров нет. Ранее был отдельный LXC по
 ## Сеть
 
 
-| Параметр                 | Значение                                                                                                                                                                            |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Домашняя подсеть (ASUS)  | 192.168.50.0/24 — Proxmox, ВМ, uplink OpenWrt-роутера                                                                                                                               |
-| LAN за OpenWrt (Xiaomi)  | 192.168.1.0/24 — основной ПК подключён сюда                                                                                                                                         |
-| Хост (Proxmox)           | 192.168.50.9/24 (статично), на сегменте ASUS                                                                                                                                        |
-| Важные ВМ (статичные IP) | nextcloud-vm: 192.168.50.34; haos17.0: 192.168.50.51                                                                                                                                |
-| Основной ПК пользователя | Windows 11; **за роутером Xiaomi/OpenWrt** (LAN `192.168.1.0/24`). Ранее был в LAN ASUS с адресом **192.168.50.61** — при необходимости обнови актуальный IP в DHCP/статике OpenWrt |
-| Рабочий MacBook          | `paul-mac`, DHCP reservation `192.168.1.198`; для корпоративных ресурсов применяется policy `workvpn` на OpenWrt                                                                    |
+| Параметр                 | Значение                                                                                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Серверный сегмент `srv`  | 192.168.50.0/24 — Proxmox + ВМ. Шлюз `192.168.50.1` (порт `lan2` X3000T). DHCP с upstream DNS `8.8.8.8 / 1.1.1.1` (мимо подкопа).                 |
+| Клиентский сегмент `lan` | 192.168.1.0/24 — ПК, Mac, телефоны. Шлюз `192.168.1.1` (порты `lan3 lan4` X3000T + WiFi). pbr / podkop / zapret / awg1 / awg2 / workvpn — здесь.  |
+| Хост Proxmox             | 192.168.50.9/24 (статика), gateway `192.168.50.1` = X3000T. DNS: `1.1.1.1`, `8.8.8.8`.                                                            |
+| ВМ (DHCP-резервация)     | nextcloud-vm `192.168.50.34` (MAC `02:CC:61:7E:E7:7B`), haos17 `192.168.50.51` (MAC `02:DF:3B:CA:E9:AC`). leasetime `infinite`.                   |
+| Основной ПК пользователя | Windows 11; за X3000T в `lan`.                                                                                                                    |
+| Рабочий MacBook          | `paul-mac`, DHCP reservation `192.168.1.198`; для корпоративных ресурсов применяется policy `workvpn` на OpenWrt.                                 |
 
 
-**Топология:** провайдер → **ASUS RT-AX55** (`192.168.50.0/24`) → порт WAN **Xiaomi X3000T** (OpenWrt; пример WAN `192.168.50.20`) → LAN OpenWrt → ПК. Проброс портов и «белый» IP по-прежнему на стороне **ASUS**; VPN / pbr / zapret настроены на **OpenWrt**. Детали: `[router-openwrt-x3000t.md](router-openwrt-x3000t.md)`.
+**Топология:** провайдер → **WAN Xiaomi X3000T** (OpenWrt 24.10.6, DHCP, белый IP `5.189.245.251`) → две зоны:
+- `lan` `192.168.1.0/24` — клиентский трафик, поверх него вся VPN/DPI-машинерия (pbr / podkop / sing-box / zapret / awg1 / awg2 / workvpn);
+- `srv` `192.168.50.0/24` — Proxmox + ВМ, **изолированно** от туннелей и DPI: forwarding только `srv→wan` и `lan→srv`, без `srv→awg1/awg2/workvpn`. zapret отдельно `bypass`-нут для подсети `192.168.50.0/24` через `[scripts/openwrt/custom.bypass_devices.sh](scripts/openwrt/custom.bypass_devices.sh)`.
+
+ASUS RT-AX55 выведен из эксплуатации (выключен, не нужен). История миграции: `[migration-asus-to-openwrt.md](migration-asus-to-openwrt.md)`.
+
+Детали роутера: `[router-openwrt-x3000t.md](router-openwrt-x3000t.md)`.
 
 ---
 
@@ -70,19 +77,20 @@ LXC-контейнеров нет. Ранее был отдельный LXC по
 
 *Какие порты проброшены на какой внутренний IP (и порт). Нужно для советов по доступу извне, HTTPS, безопасности.*
 
-**Upstream (NAT к провайдеру, проброс портов):** ASUS RT-AX55 — таблица ниже без изменений; цели в сегменте `192.168.50.0/24` (ВМ и ранее ПК на ASUS) доступны с WAN ASUS напрямую.
+**Uplink и NAT** теперь на OpenWrt X3000T (был ASUS до 2026-05-10). Белый IP `5.189.245.251` приходит провайдером по DHCP прямо на WAN X3000T. Обновление DDNS `cloud-pundef.mooo.com` (FreeDNS) — `ddns-scripts` на роутере, lookup через `8.8.8.8`, IP-source = HTTP-чек `https://checkip.amazonaws.com/`.
 
-**Второй роутер (OpenWrt):** Xiaomi **X3000T**, OpenWrt **24.10.6**; LuCI с LAN: [http://192.168.1.1/](http://192.168.1.1/) или [http://openwrt.lan/cgi-bin/luci/](http://openwrt.lan/cgi-bin/luci/); два туннеля **AmneziaWG** — `awg1` (Fin) и `awg2` (Neth NL), **podkop** + **sing-box**, **pbr** (политики для AI/Spotify/workvpn), **zapret**, **OpenConnect** `vpn-workvpn` для corp — см. `[router-openwrt-x3000t.md](router-openwrt-x3000t.md)`. В репозитории: `[scripts/openwrt/](scripts/openwrt/)` (SSH-helper `openwrt_exec.py`, загрузчик файлов `upload.py`, health-check `check_stack.py`, watchdog для `podkop_subnets`, исходник hotplug `99-vpn-stack`).
-
-
-| Внешний порт | Внутренний IP:порт | Протокол | Сервис / примечание                                                                                                               |
-| ------------ | ------------------ | -------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| 80           | 192.168.50.34:80   | TCP      | VM Nextcloud (HTTP)                                                                                                               |
-| 443          | 192.168.50.34:443  | TCP      | VM Nextcloud (HTTPS)                                                                                                              |
-| 6881–6889    | 192.168.50.61      | TCP      | BitTorrent — **цель была ПК на ASUS**; ПК теперь за OpenWrt: при необходимости проброс на актуальный IP ПК или отключение правила |
+**Роутер:** Xiaomi **X3000T**, OpenWrt **24.10.6**; LuCI с LAN: [http://192.168.1.1/](http://192.168.1.1/) или [http://openwrt.lan/cgi-bin/luci/](http://openwrt.lan/cgi-bin/luci/); два туннеля **AmneziaWG** — `awg1` (Fin) и `awg2` (Neth NL), **podkop** + **sing-box**, **pbr** (политики для AI/Spotify/workvpn), **zapret**, **OpenConnect** `vpn-workvpn` для corp — см. `[router-openwrt-x3000t.md](router-openwrt-x3000t.md)`. В репозитории: `[scripts/openwrt/](scripts/openwrt/)` (SSH-helper `openwrt_exec.py`, загрузчик файлов `upload.py`, health-check `check_stack.py`, watchdog для `podkop_subnets`, исходник hotplug `99-vpn-stack`, источник zapret-bypass `custom.bypass_devices.sh`, активатор миграции `migration-activate-srv.sh`).
 
 
-> Если торрент-клиент только на ПК за Xiaomi, правило ASUS `6881–6889 → 192.168.50.61` может быть **неактуально**, пока не настроен двойной проброс (ASUS → OpenWrt → ПК) или пока торрент не перенесён на хост в `192.168.50.x`.
+| Внешний порт | Внутренний IP:порт | Протокол | Сервис / примечание                                                              |
+| ------------ | ------------------ | -------- | -------------------------------------------------------------------------------- |
+| 80           | 192.168.50.34:80   | TCP      | VM Nextcloud (HTTP, ACME http-01 для Let's Encrypt). DNAT `wan→srv` на X3000T.   |
+| 443          | 192.168.50.34:443  | TCP      | VM Nextcloud (HTTPS). DNAT `wan→srv` на X3000T.                                  |
+
+
+> Hairpin-доступа извне-петлёй внутри LAN **нет** — клиенты резолвят `cloud-pundef.mooo.com` сразу в локальный IP благодаря split-horizon DNS (`dnsmasq.@dnsmasq[0].address='/cloud-pundef.mooo.com/192.168.50.34'`), и идут через `lan→srv` напрямую, без NAT loopback.
+
+> Старое правило ASUS `6881–6889 → 192.168.50.61` (BitTorrent) **снято** при миграции, на OpenWrt не переносилось: целевого ПК на этом адресе давно нет.
 
 ---
 
@@ -123,9 +131,10 @@ LXC-контейнеров нет. Ранее был отдельный LXC по
 
 ## Заметки
 
-- **Два роутера:** ASUS остаётся шлюзом к провайдеру и местом проброса портов; Xiaomi/OpenWrt — слой для LAN ПК (podkop/sing-box, pbr с политиками AI→`awg1`, Spotify→`awg2`, corp→`vpn-workvpn`, zapret). Подробно: `[router-openwrt-x3000t.md](router-openwrt-x3000t.md)`.
+- **Один роутер:** OpenWrt X3000T теперь основной — uplink к провайдеру, NAT, проброс портов, DDNS, плюс вся VPN/DPI-машинерия (pbr с политиками AI→`awg1`, Spotify→`awg2`, corp→`vpn-workvpn`, podkop/sing-box, zapret). ASUS RT-AX55 выведен из эксплуатации 2026-05-10. Подробно: `[router-openwrt-x3000t.md](router-openwrt-x3000t.md)`. История миграции: `[migration-asus-to-openwrt.md](migration-asus-to-openwrt.md)`.
+- **Изоляция серверного сегмента:** `srv` (`192.168.50.0/24`) и `lan` (`192.168.1.0/24`) — две независимые firewall zone на X3000T. ВМ намеренно не имеют forwarding в `awg1/awg2/workvpn` и закрыты от zapret через `ct original ip saddr 192.168.50.0/24 return` (`[scripts/openwrt/custom.bypass_devices.sh](scripts/openwrt/custom.bypass_devices.sh)`). DNS у ВМ — `8.8.8.8 / 1.1.1.1` (через `dhcp_option='6,...'`), мимо dnsmasq роутера; иначе Nextcloud получал бы fake-IP `198.18.x` от sing-box.
 - **Корпоративный VPN на OpenWrt:** для `paul-mac` (`192.168.1.198`) включён split-routing через `workvpn` для зоны `kpb.lt` (домены + подсеть `10.0.160.0/22`) и принудительный DNS redirect этого клиента на роутерный `dnsmasq`.
-- **DNS:** централизованного DNS-фильтра на Proxmox нет; при необходимости — фильтрация на роутере или клиентские средства.
+- **DNS:** централизованного DNS-фильтра на Proxmox нет; при необходимости — фильтрация на роутере или клиентские средства. Хост Proxmox смотрит на `1.1.1.1 / 8.8.8.8` напрямую (см. `/etc/resolv.conf`), не через роутерный dnsmasq.
 - Один физический диск: все ВМ на LVM thin в одном пуле — при апгрейде/бэкапах учитывать отсутствие отдельного хранилища.
 - На хосте 4 ядра; nextcloud-vm занимает 4 vCPU — при пиковой нагрузке возможна конкуренция с haos17.0 (2 vCPU). При желании можно ограничить nextcloud-vm до 2–3 vCPU и смотреть по нагрузке.
 - haos17.0: по Proxmox память ~81% (≈4.9 ГБ из 6 ГБ) — при добавлении интеграций/надстроек следить за RAM.
