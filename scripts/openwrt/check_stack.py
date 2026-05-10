@@ -189,6 +189,44 @@ def main() -> int:
         "[ \"$ok\" = 1 ] || exit 1; "
         "done"
     )
+    nextcloud_https_direct_probe = (
+        "out=$(curl -4 -k -sS --connect-timeout 8 --max-time 15 "
+        "-o /dev/null -w 'code=%{http_code} remote=%{remote_ip}' "
+        "https://192.168.50.34/ 2>&1); "
+        "echo \"$out\"; "
+        "case \"$out\" in *code=2*|*code=3*) exit 0 ;; esac; "
+        "exit 1"
+    )
+    nextcloud_https_via_domain_probe = (
+        "ip=$(nslookup cloud-pundef.mooo.com 127.0.0.1 | awk '/^Address: /{print $2}' | head -1); "
+        "echo \"cloud-pundef.mooo.com -> $ip\"; "
+        "[ \"$ip\" = \"192.168.50.34\" ] || exit 1; "
+        "out=$(curl -4 -k -sS --connect-timeout 8 --max-time 15 "
+        "-o /dev/null -w 'code=%{http_code} remote=%{remote_ip}' "
+        "https://cloud-pundef.mooo.com/ 2>&1); "
+        "echo \"$out\"; "
+        "case \"$out\" in *code=2*|*code=3*) exit 0 ;; esac; "
+        "exit 1"
+    )
+    # BusyBox nc has no -z/-w, so probe via curl instead. Any HTTP code != 000
+    # means TCP handshake + reply succeeded; we don't care which 2xx/3xx/4xx it is.
+    haos_tcp_probe = (
+        "code=$(curl -k -sS -o /dev/null -m 5 -w '%{http_code}' "
+        "http://192.168.50.51:8123/); echo \"haos-8123 code=$code\"; "
+        "[ \"$code\" != \"000\" ]"
+    )
+    proxmox_tcp_probe = (
+        "code=$(curl -k -sS -o /dev/null -m 5 -w '%{http_code}' "
+        "https://192.168.50.9:8006/); echo \"pve-8006 code=$code\"; "
+        "[ \"$code\" != \"000\" ]"
+    )
+    vm_isolation_probe = (
+        # ensure srv -> any tunnel forwarding chain does not exist in the live ruleset
+        "leaks=$(nft list chain inet fw4 forward_srv 2>/dev/null "
+        "| grep -E 'accept_to_(awg1|awg2|workvpn)'); "
+        "if [ -n \"$leaks\" ]; then echo \"LEAK: $leaks\"; exit 1; fi; "
+        "echo no-tunnel-forwardings-from-srv"
+    )
 
     checks = [
         (
@@ -370,6 +408,65 @@ def main() -> int:
             "workvpn-gitlab-via-tunnel",
             workvpn_gitlab_probe,
             "gitlab.kpb.lt is reachable via workvpn",
+        ),
+        (
+            "vm-services",
+            "srv-zone-up",
+            "ifstatus srv | grep -q '\"up\": true' && ip -br a show dev lan2 | grep -q ' UP '",
+            "srv interface (lan2) is up",
+        ),
+        (
+            "vm-services",
+            "srv-vms-leased",
+            "grep -q '192.168.50.34 nextcloud-vm' /tmp/dhcp.leases "
+            "&& grep -q '192.168.50.51 haos17' /tmp/dhcp.leases",
+            "VM static leases (nextcloud-vm, haos17) are active",
+        ),
+        (
+            "vm-services",
+            "vm-isolation-from-tunnels",
+            vm_isolation_probe,
+            "no srv -> awg1/awg2/workvpn forwarding (VMs are tunnel-isolated)",
+        ),
+        (
+            "vm-services",
+            "split-horizon-cloud-pundef",
+            "nslookup cloud-pundef.mooo.com 127.0.0.1 "
+            "| awk '/^Address: /{print $2}' | grep -qx 192.168.50.34",
+            "router DNS resolves cloud-pundef.mooo.com -> 192.168.50.34",
+        ),
+        (
+            "vm-services",
+            "nextcloud-port-forward-rules",
+            "nft list chain inet fw4 dstnat_wan 2>/dev/null "
+            "| grep -q 'Nextcloud-HTTP' "
+            "&& nft list chain inet fw4 dstnat_wan "
+            "| grep -q 'Nextcloud-HTTPS'",
+            "wan -> 192.168.50.34 DNAT rules exist for 80 and 443",
+        ),
+        (
+            "vm-services",
+            "proxmox-host-pveui-tcp",
+            proxmox_tcp_probe,
+            "Proxmox web UI tcp/8006 reachable on 192.168.50.9",
+        ),
+        (
+            "vm-services",
+            "nextcloud-https-direct",
+            nextcloud_https_direct_probe,
+            "https://192.168.50.34/ answers (lan -> srv forwarding works)",
+        ),
+        (
+            "vm-services",
+            "nextcloud-https-by-domain",
+            nextcloud_https_via_domain_probe,
+            "https://cloud-pundef.mooo.com/ resolves to local IP and answers",
+        ),
+        (
+            "vm-services",
+            "haos-webui-tcp",
+            haos_tcp_probe,
+            "Home Assistant web UI tcp/8123 reachable on 192.168.50.51",
         ),
     ]
 
