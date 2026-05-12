@@ -340,13 +340,13 @@ def main() -> int:
         (
             "zapret-bypass",
             "zapret-bypass-postnat",
-            "nft list chain inet zapret postnat | grep -q 'zapret-ct-bypass-147'",
+            "nft list chain inet zapret postnat | grep -q 'zapret-ct-bypass-157'",
             "device bypass postnat rule exists",
         ),
         (
             "zapret-bypass",
             "zapret-bypass-prenat",
-            "nft list chain inet zapret prenat | grep -q 'zapret-ct-bypass-147-pre'",
+            "nft list chain inet zapret prenat | grep -q 'zapret-ct-bypass-157-pre'",
             "device bypass prenat rule exists",
         ),
         (

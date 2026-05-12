@@ -54,7 +54,7 @@ Default route               → всегда WAN, не в туннели
 - **podkop / sing-box** — основной автообход. Перехватывает трафик в community-листы и `198.18.0.0/15` через `tproxy → 127.0.0.1:1602` и выпускает наружу через `bind_interface=awg1`.
 - **AmneziaWG `awg1`** — туннель в Fin VPS (`89.44.76.52`).
 - **AmneziaWG `awg2`** — туннель в Neth VPS (`45.154.35.222`, NL/Amsterdam). Используется только под Spotify-policy.
-- **OpenConnect `vpn-workvpn`** — корпоративный VPN, поднимается с парой `username/password`, маршрут только для `paul-mac` и `*.kpb.lt`.
+- **OpenConnect `vpn-workvpn`** — корпоративный VPN, поднимается с парой `username/password`, маршрут только для `paul-mac` (DHCP-резервация `26:C5:4C:20:C5:AD → 192.168.1.198`) и `*.kpb.lt`.
 - **zapret / nfqws** — модификация первых пакетов TCP/UDP уже выбранных WAN-потоков; маршрут не выбирает.
 
 ---
@@ -194,13 +194,13 @@ Endpoints VPN-серверов (`89.44.76.52`, `45.154.35.222`) обязател
 
 ```sh
 chain postnat {
-    ct original ip saddr 192.168.1.147 return            # bypass для Redmi-Note-9-Pro
+    ct original ip saddr 192.168.1.157 return            # bypass для Redmi-Note-9-Pro
     oifname @wanif udp ... queue flags bypass to 200
     oifname @wanif tcp dport ... ct original packets 1-9 ... queue flags bypass to 200
 }
 
 chain prenat {
-    ct reply ip daddr 192.168.1.147 return
+    ct reply ip daddr 192.168.1.157 return
     iifname @wanif tcp sport ... ct reply packets 1-3 ... queue flags bypass to 200
 }
 ```
@@ -213,10 +213,12 @@ chain prenat {
 
 ### Per-device bypass для zapret
 
-Сейчас bypass включён для `192.168.1.147` (`Redmi-Note-9-Pro`). Стабильность:
+Сейчас bypass включён для `192.168.1.157` (`Redmi-Note-9-Pro`, реальный device-MAC `18:87:40:44:CD:51` после отключения Wi-Fi MAC randomization на телефоне; IP закреплён DHCP-резервацией). Стабильность:
 
 - hook `INIT_FW_POST_UP_HOOK=/opt/zapret/custom.bypass_devices.sh` в `/opt/zapret/config`;
-- скрипт `/opt/zapret/custom.bypass_devices.sh` после каждого `zapret restart` досыпает правила `ct original/reply ... return`.
+- скрипт `/opt/zapret/custom.bypass_devices.sh` (исходник: `[scripts/openwrt/custom.bypass_devices.sh](scripts/openwrt/custom.bypass_devices.sh)`) после каждого `zapret restart` досыпает правила `ct original/reply ... return`.
+
+Если телефон когда-то снова окажется на другом IP (например, опять включится MAC randomization), DHCP даст ему адрес из общего пула, и старый bypass на `.157` не сработает. В этом случае надо либо вернуть пин по реальному MAC в `dhcp.@host`, либо обновить скрипт.
 
 Добавить ещё устройство (пример `192.168.1.240`):
 
@@ -453,7 +455,7 @@ nft list table inet zapret
 | `[scripts/openwrt/trace_traffic.py](scripts/openwrt/trace_traffic.py)`                               | Трассировка пути конкретного домена/IP через pbr/podkop/zapret.                                                                                                                     |
 | `[scripts/openwrt/podkop-subnets-watchdog.sh](scripts/openwrt/podkop-subnets-watchdog.sh)`           | Если `podkop_subnets` пуст — запустить `podkop list_update`. Cron: `*/15 * * * *`.                                                                                                  |
 | `[scripts/openwrt/99-vpn-stack](scripts/openwrt/99-vpn-stack)`                                       | Исходник hotplug-скрипта `/etc/hotplug.d/iface/99-vpn-stack`.                                                                                                                       |
-| `[scripts/openwrt/custom.bypass_devices.sh](scripts/openwrt/custom.bypass_devices.sh)`               | Источник `/opt/zapret/custom.bypass_devices.sh`: per-IP bypass для `192.168.1.147` (Redmi-Note-9-Pro) и per-subnet bypass для серверного сегмента `192.168.50.0/24`.                |
+| `[scripts/openwrt/custom.bypass_devices.sh](scripts/openwrt/custom.bypass_devices.sh)`               | Источник `/opt/zapret/custom.bypass_devices.sh`: per-IP bypass для `192.168.1.157` (Redmi-Note-9-Pro, MAC `18:87:40:44:CD:51`) и per-subnet bypass для серверного сегмента `192.168.50.0/24`. |
 | `[scripts/openwrt/migration-activate-srv.sh](scripts/openwrt/migration-activate-srv.sh)`             | Активатор миграции "ASUS off, OpenWrt main" (см. `[migration-asus-to-openwrt.md](migration-asus-to-openwrt.md)`). Поднимает `srv`, перезапускает стек, пере-привинчивает маршруты.  |
 
 
