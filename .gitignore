@@ -2,3 +2,7 @@ __pycache__/
 *.pyc
 
 backups/
+
+# Local/throwaway scripts under scripts/openwrt/ (diagnostics, one-off probes).
+# Convention: prefix with underscore to keep them out of the repo.
+scripts/openwrt/_*

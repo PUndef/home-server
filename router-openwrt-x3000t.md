@@ -38,7 +38,7 @@
 Автообход блокировок        → podkop + sing-box (tproxy, fakeip, community lists)
 AI / Cursor домены          → pbr policy «AI Tools via awg1 (global)» → awg1 (Fin)
 Mangalib (geo/RU блокировки)→ pbr policy «Mangalib via awg1» → awg1 (Fin)
-Spotify (NL-аккаунт)        → pbr policy «Spotify via awg2 (Neth NL)» → awg2 (Neth)
+Spotify                     → подкоп → sing-box → awg1 (Fin); SNI proxy сдох 2026-05-20, см. ниже
 Корпоративные домены        → pbr policy «paul-mac kpb via workvpn» → vpn-workvpn
 DPI                         → zapret / nfqws на WAN-потоках (mark не пересекается с pbr)
 Default route               → всегда WAN, не в туннели
@@ -53,7 +53,7 @@ Default route               → всегда WAN, не в туннели
 - **pbr** — выбор маршрута по `dst_addr` (через `nftset`-сеты) и/или `src_addr`. Раздаёт mark, ставит `ip rule` в свои таблицы.
 - **podkop / sing-box** — основной автообход. Перехватывает трафик в community-листы и `198.18.0.0/15` через `tproxy → 127.0.0.1:1602` и выпускает наружу через `bind_interface=awg1`.
 - **AmneziaWG `awg1`** — туннель в Fin VPS (`89.44.76.52`).
-- **AmneziaWG `awg2`** — туннель в Neth VPS (`45.154.35.222`, NL/Amsterdam). Используется только под Spotify-policy.
+- **AmneziaWG `awg2`** — туннель в Neth VPS (`45.154.35.222`, NL/Amsterdam). Backup VPN; в pbr на 2026-05-13 не используется (Spotify-policy убрана, см. ниже). Доступен через `--interface awg2` для ручных сценариев.
 - **OpenConnect `vpn-workvpn`** — корпоративный VPN, поднимается с парой `username/password`, маршрут только для `paul-mac` (DHCP-резервация `26:C5:4C:20:C5:AD → 192.168.1.198`) и `*.kpb.lt`.
 - **zapret / nfqws** — модификация первых пакетов TCP/UDP уже выбранных WAN-потоков; маршрут не выбирает.
 
@@ -122,7 +122,7 @@ graph TD
 | Priority | Условие                               | Таблица       | Что значит                                       |
 | -------- | ------------------------------------- | ------------- | ------------------------------------------------ |
 | `105`    | `fwmark 0x100000/0x100000`            | `podkop`      | подкоп tproxy / sing-box (главный обход)         |
-| `29997`  | `fwmark 0x40000/0xff0000`             | `pbr_awg2`    | pbr-policy «Spotify via awg2 (Neth NL)»          |
+| `29997`  | `fwmark 0x40000/0xff0000`             | `pbr_awg2`    | резерв под awg2-policy (сейчас policy нет)       |
 | `29998`  | `fwmark 0x30000/0xff0000`             | `pbr_workvpn` | pbr-policy «paul-mac kpb via workvpn»            |
 | `29999`  | `fwmark 0x20000/0xff0000`             | `pbr_awg1`    | pbr-policy «AI Tools via awg1 (global)»          |
 | `29998`  | `lookup main suppress_prefixlength 1` | `main`        | local/специфичные маршруты, default подавлен     |
@@ -173,12 +173,11 @@ Endpoints VPN-серверов (`89.44.76.52`, `45.154.35.222`) обязател
 3. `pbr_prerouting` сматчил `dst @set` → mark `0x00020000`.
 4. `ip rule 29999` → `table pbr_awg1` → `default via 10.8.1.10 dev awg1` → Fin.
 
-### Spotify (NL-аккаунт)
+### Spotify
 
-1. dnsmasq имеет per-domain server `=/spotify.com/8.8.8.8` (и для CDN). Запрос идёт **мимо** подкопа, возвращается реальный IP.
-2. `dnsmasq nftset` hook добавляет IP в `pbr_awg2_4_dst_ip_cfg076ff5`. Покрыты CNAME-таргеты `dual-gslb.spotify.com`, `single-gslb.spotify.com`, `cdn-gslb.spotify.com`, `edge-web.dual-gslb.spotify.com`.
-3. `pbr_prerouting` сматчил `dst @set` → mark `0x00040000`.
-4. `ip rule 29997` → `table pbr_awg2` → `default via 10.8.1.2 dev awg2` → Neth NL.
+1. **Сейчас (с 2026-05-20):** Spotify-пины из `/etc/hosts` сняты (закомментированы), все Spotify-домены резолвятся подкопом → fakeip `198.18.x.x` → tproxy → sing-box → `awg1` (Fin). Поскольку Premium-аккаунт нигерийский, плеер может показывать `country does not match profile` — это ожидаемо и фиксится только сменой страны профиля через NG-IP. До смены страны это всё равно лучше, чем висим: клиент быстро отдаёт понятную ошибку вместо таймаута.
+2. **2026-05-13 — 2026-05-20:** Spotify шёл через SNI proxy `45.155.204.190` (FI), пины в `/etc/hosts`. Сломалось 2026-05-20: proxy перестал отвечать (`ping 100% loss`, `TCP/443 timeout`), клиент висел. Поэтому пины убрали. Откат: раскомментировать строки `#Spotify` в [scripts/openwrt/etc-hosts](scripts/openwrt/etc-hosts), залить, `dnsmasq restart` — но только когда proxy оживёт (или появится альтернативный IP).
+3. **Историческая попытка через NL** (`awg2 + pbr-policy + dnsmasq bypass`) была собрана и снесена 2026-05-13: любой европейский egress (FI/NL) одинаково триггерит "country does not match profile", независимо от того, NL это или FI. Чинить нужно на стороне аккаунта (сменить страну профиля через NG-IP). awg2-туннель оставлен как backup VPN.
 
 ### Корпоративные ресурсы `*.kpb.lt` для `paul-mac`
 
@@ -299,8 +298,7 @@ awg show awg2
 | --- | ---------------------------- | --------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 0   | `AI Tools via awg1 (global)` | `awg1`    | —               | домены Cursor, OpenAI, Anthropic, Claude, Groq, Google Generative API                                                                                                                                                                                                          |
 | 1   | `paul-mac kpb via workvpn`   | `workvpn` | `192.168.1.198` | `kpb.lt`, `*.kpb.lt`, `gitlab.kpb.lt`, `10.0.160.0/22`                                                                                                                                                                                                                         |
-| 2   | `Spotify via awg2 (Neth NL)` | `awg2`    | —               | `spotify.com`, `www.spotify.com`, `open.spotify.com`, `accounts.spotify.com`, `ap.spotify.com`, `scdn.co`, `spotifycdn.com`, `spotifycdn.net`, плюс CNAME-таргеты `dual-gslb.spotify.com`, `single-gslb.spotify.com`, `cdn-gslb.spotify.com`, `edge-web.dual-gslb.spotify.com` |
-| 3   | `Mangalib via awg1`          | `awg1`    | —               | `mangalib.me`, `lib.social`, `ranobelib.me`, `imglib.org` — резерв под точечные RU-блокировки тайтлов и API; делит mark `0x00020000` и таблицу `pbr_awg1` с AI-policy                                                                                                          |
+| 2   | `Mangalib via awg1`          | `awg1`    | —               | `mangalib.me`, `lib.social`, `ranobelib.me`, `imglib.org` — резерв под точечные RU-блокировки тайтлов и API; делит mark `0x00020000` и таблицу `pbr_awg1` с AI-policy                                                                                                          |
 
 
 Полный список:
@@ -352,6 +350,47 @@ uci commit dhcp
 ```sh
 nslookup ap.spotify.com 192.168.1.1   # должен быть НЕ 198.18.0.x
 nft list set inet fw4 pbr_awg2_4_dst_ip_cfg076ff5
+```
+
+---
+
+## SNI proxy via /etc/hosts
+
+В `/etc/hosts` на роутере жёстко прибит набор AI/Telegram доменов на внешний SNI-proxy `45.155.204.190` (происхождение неизвестное, унаследовано из старой конфигурации). Источник в репо: `[scripts/openwrt/etc-hosts](scripts/openwrt/etc-hosts)`.
+
+> **WARNING (2026-05-20):** SNI proxy `45.155.204.190` сейчас не отвечает (`ping 100% loss`, `TCP/443 timeout 6s+`). Spotify-пины уже убраны (см. секцию «Spotify» выше). **Все остальные домены ниже по-прежнему запинены на этот мёртвый IP** — Cursor/Claude/OpenAI/Gemini/Grok/Copilot/ElevenLabs/DeepL/Trae/Windsurf/Manus/Notion/AIStudio/TelegramWeb. Они пока кажутся живыми только за счёт уже установленных TCP-сессий. Как только клиент полезет за новым коннектом — будет таймаут. План B: либо найти новый рабочий SNI-proxy IP и заменить, либо снять оставшиеся пины и пустить через подкоп → awg1 (Fin), как уже сделано со Spotify (но проверить страну/блок на стороне сервиса).
+
+Как это работает:
+
+- dnsmasq для перечисленных доменов отдаёт `45.155.204.190` (`aa`, `TTL 0`) — раньше любого upstream и подкопа;
+- клиент идёт TLS-handshake'ом с правильным SNI (например `claude.ai`) на этот IP;
+- внешний прокси по SNI проксирует к настоящему origin без MITM сертификата.
+
+Плюсы: домены работают без обхода через VPN, не зависят от sing-box / awg1. Минусы: чужой IP, может в любой момент перестать работать или начать MITM-ить — поэтому полагаться на него как на «навсегда» нельзя. **2026-05-20 это и случилось со Spotify.**
+
+Важный нюанс: если домен есть и в `/etc/hosts`, и в community-list подкопа, — `/etc/hosts` побеждает (резолв заканчивается на 45.155.204.190 → не fakeip → подкоп не интерсептит → SNI-proxy единственный путь). Поэтому unpinning Spotify-доменов автоматически вернул их в подкоп.
+
+Twitch (`usher.ttvnw.net`, `gql.twitch.tv`) специально **исключён** из `/etc/hosts` 2026-05-12: SNI proxy не пропускает Twitch CDN (`Connection reset`), поэтому Twitch ходит через подкоп → sing-box → `awg1` (Fin) и видео работает.
+
+Обновление `/etc/hosts`:
+
+```powershell
+python d:\repositories\home-server\scripts\openwrt\upload.py `
+  d:\repositories\home-server\scripts\openwrt\etc-hosts /etc/hosts
+```
+
+```sh
+/etc/init.d/dnsmasq restart
+```
+
+Откат:
+
+```sh
+# полный откат файла к состоянию до Twitch-unpin
+cp /etc/hosts.bak.twitch /etc/hosts && /etc/init.d/dnsmasq restart
+
+# откат конкретно Spotify-unpin от 2026-05-20 (только если оживёт SNI proxy):
+cp /etc/hosts.bak.spotify-unpin-2026-05-20 /etc/hosts && /etc/init.d/dnsmasq restart
 ```
 
 ---
@@ -456,6 +495,7 @@ nft list table inet zapret
 | `[scripts/openwrt/podkop-subnets-watchdog.sh](scripts/openwrt/podkop-subnets-watchdog.sh)`           | Если `podkop_subnets` пуст — запустить `podkop list_update`. Cron: `*/15 * * * *`.                                                                                                  |
 | `[scripts/openwrt/99-vpn-stack](scripts/openwrt/99-vpn-stack)`                                       | Исходник hotplug-скрипта `/etc/hotplug.d/iface/99-vpn-stack`.                                                                                                                       |
 | `[scripts/openwrt/custom.bypass_devices.sh](scripts/openwrt/custom.bypass_devices.sh)`               | Источник `/opt/zapret/custom.bypass_devices.sh`: per-IP bypass для `192.168.1.157` (Redmi-Note-9-Pro, MAC `18:87:40:44:CD:51`) и per-subnet bypass для серверного сегмента `192.168.50.0/24`. |
+| `[scripts/openwrt/etc-hosts](scripts/openwrt/etc-hosts)`                                             | Источник `/etc/hosts` на роутере: SNI-proxy mappings для AI/Spotify/Telegram через `45.155.204.190` (см. ниже «SNI proxy via /etc/hosts»). Twitch специально без override. |
 | `[scripts/openwrt/migration-activate-srv.sh](scripts/openwrt/migration-activate-srv.sh)`             | Активатор миграции "ASUS off, OpenWrt main" (см. `[migration-asus-to-openwrt.md](migration-asus-to-openwrt.md)`). Поднимает `srv`, перезапускает стек, пере-привинчивает маршруты.  |
 
 
