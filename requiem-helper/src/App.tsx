@@ -87,7 +87,7 @@ function RequiemIcon({ className, mod }: { className?: string; mod: string }) {
       className={cn("size-7 rounded-sm object-contain invert", className)}
       draggable={false}
       loading="lazy"
-      src={`/requiems/${mod}.webp`}
+      src={`${import.meta.env.BASE_URL}requiems/${mod}.webp`}
     />
   );
 }
