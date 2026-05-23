@@ -39,6 +39,7 @@
 | `patch-pmbootstrap-bootsize.sh` | Снимает hardcoded sanity-check `boot_size >= 512` MiB в `pmbootstrap 3.10.1` — у joyeuse Android `boot` partition всего 128 MiB, а раздел `cache` (на который мы **не** прошиваем) — 384 MiB. Без патча `pmbootstrap install` падает. |
 | `setup-ssh-key.sh` | Генерирует выделенный ed25519-ключ `~/.ssh/phoneserver_nopass`, копирует на телефон. После этого пароль `changemenow` больше не нужен. |
 | `resize-root.sh` | Расширяет ext4 на `/dev/sda18` до полного размера userdata-партиции (~103 GiB). pmbootstrap по умолчанию делает root ~650 MiB. |
+| `harden-basics.sh` | Однократно: ставит `chrony` (NTP) в default runlevel, меняет пароль `pmos` с initial `changemenow` на твой, выключает парольный SSH (ключ-only). После запуска все остальные скрипты надо вызывать с `SUDO_PASS=...` (новый пароль) в env. |
 
 ---
 

@@ -68,11 +68,11 @@
 | Приоритет | Задача | Комментарий |
 |---|---|---|
 | **высокий** | **Charge limit** | Постоянная зарядка 100% убьёт батарею. Точное API зависит от драйвера; начать с `/sys/class/power_supply/battery/charge_control_limit`. Либо железный таймер на розетке. |
-| **высокий** | **NTP при boot** | `apk add chrony; rc-update add chronyd default`. После reboot системные часы откатываются в 1975 (нет RTC battery). |
+| ~~высокий~~ ✅ | **NTP при boot** | Готово: `chrony` + `chrony-openrc` в default runlevel. После reboot системные часы синхронизируются за секунды. См. `[scripts/phoneserver/harden-basics.sh](scripts/phoneserver/harden-basics.sh)`. |
 | **средний** | **Wi-Fi** (`ath10k_snoc` / WCN3990) | Нужно либо: (1) включить `regulatory.db` в initramfs через `/etc/mkinitfs/files.d/`, либо (2) разобраться с qcom_remoteproc + QMI bring-up на SM7125. Альтернатива — USB-Ethernet адаптер. |
 | **средний** | **Интеграция в `srv`-сегмент** | После появления Wi-Fi/Ethernet — DHCP-резервация на OpenWrt X3000T на `192.168.50.60` (по аналогии с `nextcloud-vm` / `haos17.0` в [`hardware-and-env.md`](hardware-and-env.md)). DNS дать `1.1.1.1 / 8.8.8.8` через `dhcp_option='6,...'`. |
-| низкий | Отключить парольный SSH | `PasswordAuthentication no` в `/etc/ssh/sshd_config`, перезапустить `sshd`. После того как SSH-ключ доказан рабочим. |
-| низкий | Поменять пароль `pmos` с `changemenow` | Сейчас sudo на скриптах ходит с этим паролем; при смене обновить env-переменную `SUDO_PASS` в скриптах. |
+| ~~низкий~~ ✅ | Отключить парольный SSH | Готово через `harden-basics.sh`: `PasswordAuthentication no` и `ChallengeResponseAuthentication no` в `/etc/ssh/sshd_config`, ключ-only login. |
+| ~~низкий~~ ✅ | Поменять пароль `pmos` с `changemenow` | Готово через `harden-basics.sh`. Новый пароль — у владельца устройства, не в репо. Скрипты используют env-переменную `SUDO_PASS` (или `OLD_PASS`/`NEW_PASS` в `harden-basics.sh`). |
 | низкий | Расширить `scripts/openwrt/check_stack.py` | Добавить пробу `phoneserver` ping + ssh (по аналогии с `vm-services`). |
 | низкий | Запись в [`hardware-and-env.md`](hardware-and-env.md) | Когда телефон получит постоянный IP в `srv`-сегменте. |
 
