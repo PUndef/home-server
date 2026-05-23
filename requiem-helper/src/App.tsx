@@ -144,15 +144,19 @@ function App() {
   const [draftAttempt, setDraftAttempt] = useState<Attempt | null>(null);
   const recommendation = useMemo(() => recommend(state), [state]);
   const analysis = useMemo(() => analyzeAttempts(state.attempts), [state.attempts]);
-  const isSolved = analysis.fixed.every(Boolean);
+  const solvedAttempt = useMemo(
+    () => state.attempts.find((attempt) => attempt.results.every((result) => result === "correct")) ?? null,
+    [state.attempts],
+  );
+  const isSolved = Boolean(solvedAttempt) || analysis.fixed.every(Boolean);
   const resolvedAttemptMods = useMemo(
     () =>
-      recommendation.sequence.map((mod, index) => {
+      (solvedAttempt?.mods ?? recommendation.sequence).map((mod, index) => {
         if (mod === "любой") return state.trialMods[index] || "";
         if ((ALL_REQUIEMS as readonly string[]).includes(mod)) return mod as SlotMod;
         return "";
       }) as Attempt["mods"],
-    [recommendation.sequence, state.trialMods],
+    [recommendation.sequence, solvedAttempt, state.trialMods],
   );
   const canStartAttempt = !isSolved && resolvedAttemptMods.every(Boolean);
   const canCommitDraft = draftAttempt
@@ -223,26 +227,14 @@ function App() {
     setDraftAttempt(null);
   }
 
-  function clearKnown() {
+  function resetAll() {
     setConfirmAction({
-      title: "Сбросить открытые слова?",
-      description: "Будут очищены выбранные murmur Requiem и временные filler-моды. История попыток останется.",
-      confirmLabel: "Reset",
+      title: "Reset all progress?",
+      description: "Будут очищены открытые Requiem, filler-моды, черновик и вся история попыток.",
+      confirmLabel: "Reset all",
       onConfirm: () => {
         setDraftAttempt(null);
-        setState((current) => ({ ...current, known: [], trialMods: ["", "", ""] }));
-      },
-    });
-  }
-
-  function clearAttempts() {
-    setConfirmAction({
-      title: "Очистить историю попыток?",
-      description: "Все записанные Mercy/stab-попытки будут удалены. Открытые Requiem останутся.",
-      confirmLabel: "Clear",
-      onConfirm: () => {
-        setDraftAttempt(null);
-        setState((current) => ({ ...current, attempts: [] }));
+        setState((current) => ({ ...current, known: [], trialMods: ["", "", ""], attempts: [] }));
       },
     });
   }
@@ -406,8 +398,7 @@ function App() {
         <div className="rounded-md border border-emerald-300/70 bg-emerald-300/10 p-4 text-sm">
           <p className="font-medium text-emerald-200">Sequence solved</p>
           <p className="mt-1 text-muted-foreground">
-            Все три слота подтверждены. Новые попытки больше не нужны: используй найденную комбинацию для финального
-            Mercy.
+            Все три слота уже приняты игрой. Если один из них закрыт через Oull, третий murmur добивать не нужно.
           </p>
         </div>
       ) : !draftAttempt ? (
@@ -578,7 +569,7 @@ function App() {
           <div className="flex flex-wrap gap-2">
             {[0, 1, 2].map((slot) => {
               const fixed = analysis.fixed[slot];
-              const recommended = recommendation.sequence[slot];
+              const recommended = solvedAttempt?.mods[slot] ?? recommendation.sequence[slot];
               const displayed = fixed || (recommended === "любой" ? state.trialMods[slot] || "?" : recommended);
 
               return (
@@ -599,17 +590,14 @@ function App() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button onClick={clearKnown} size="xs" type="button" variant="outline">
-            Reset
-          </Button>
           <Button
-            disabled={!state.attempts.length && !draftAttempt}
-            onClick={clearAttempts}
+            disabled={!state.known.length && !state.attempts.length && !draftAttempt}
+            onClick={resetAll}
             size="xs"
             type="button"
             variant="destructive"
           >
-            Clear attempts
+            Reset all
           </Button>
         </div>
         {attemptHistory}
@@ -652,7 +640,7 @@ function App() {
     });
   }
 
-  if ((second && state.attempts.length > 1) || third) {
+  if (!isSolved && ((second && state.attempts.length > 1) || third)) {
     roadmapSteps.push({
       title: third ? `3-е слово открыто: ${third}` : "Набить третий Requiem",
       text: third
@@ -662,17 +650,17 @@ function App() {
     });
   }
 
-  if (third) {
+  if (third || isSolved) {
     roadmapSteps.push({
       title: isSolved ? "Комбинация найдена" : "Добрать финальный порядок",
       text: isSolved
-        ? "Все три слота подтверждены зелёным результатом. Новые попытки не нужны."
+        ? "Все три слота уже дали зелёный результат. Если в комбинации есть Oull, третий Requiem можно не открывать."
         : "Теперь больше не угадываем слова, а только переставляем известные Requiem по красным и белым результатам.",
       content: (
         <div className="space-y-4">
           {sequencePanel}
           {attemptWorkspace}
-          {reasonPanel}
+          {!isSolved && reasonPanel}
         </div>
       ),
     });
