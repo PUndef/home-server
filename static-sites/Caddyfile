@@ -1,0 +1,51 @@
+{
+	auto_https off
+}
+
+# Local hostname - serves requiem-helper SPA from root.
+http://requiem.home {
+	root * /srv/static-sites/requiem
+	try_files {path} /index.html
+	encode zstd gzip
+	file_server
+}
+
+# Path-based edge: requests come either directly via IP, or are
+# proxied from Nextcloud Apache as https://apps-pundef.mooo.com/<path>/.
+# Each app = one handle_path block; root falls back to a redirect.
+http://apps-pundef.mooo.com, http://192.168.50.35, http://localhost {
+	# Hub uploads / agent payloads can grow; keep some headroom.
+	request_body {
+		max_size 10MB
+	}
+
+	redir /requiem /requiem/ 301
+	redir /beszel /beszel/ 301
+
+	handle_path /requiem/* {
+		root * /srv/static-sites/requiem
+		try_files {path} /index.html
+		encode zstd gzip
+		file_server
+	}
+
+	# Beszel hub is served on 127.0.0.1:8090 with APP_URL pointing at
+	# /beszel; handle_path strips the prefix so the hub sees /api, /static
+	# and /assets at the root. Long read_timeout for hub <-> agent SSH and
+	# UI websockets.
+	handle_path /beszel/* {
+		reverse_proxy 127.0.0.1:8090 {
+			transport http {
+				read_timeout 360s
+			}
+		}
+	}
+
+	handle / {
+		redir /requiem/ 302
+	}
+
+	handle {
+		respond "404 - unknown app" 404
+	}
+}
