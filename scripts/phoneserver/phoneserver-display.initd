@@ -1,0 +1,13 @@
+#!/sbin/openrc-run
+
+name="phoneserver-display"
+description="Phoneserver status on built-in LCD (tty1)"
+
+command="/opt/phoneserver/phone-display-loop.sh"
+command_background="yes"
+pidfile="/run/${RC_SVCNAME}.pid"
+
+depend() {
+    need local
+    after modules
+}
