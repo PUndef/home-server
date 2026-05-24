@@ -10,7 +10,6 @@ scripts/openwrt/_*
 # Secrets and local env (never commit per-system Beszel TOKENs here).
 *.env.local
 scripts/proxmox/morphic.env.local
-scripts/vps/install-beszel-neth-console.sh
 
 # Cursor agent session artifacts.
 agent-tools/
