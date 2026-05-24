@@ -1,0 +1,104 @@
+{
+  "groups": [
+    "Public HTTPS",
+    "srv (Proxmox / VMs)",
+    "LAN",
+    "VPS"
+  ],
+  "monitors": [
+    {
+      "group": "Public HTTPS",
+      "type": "http",
+      "name": "Nextcloud",
+      "url": "https://cloud-pundef.mooo.com/",
+      "interval": 60,
+      "maxretries": 3
+    },
+    {
+      "group": "Public HTTPS",
+      "type": "http",
+      "name": "Beszel hub",
+      "url": "https://apps-pundef.mooo.com/beszel/api/health",
+      "interval": 60
+    },
+    {
+      "group": "Public HTTPS",
+      "type": "http",
+      "name": "Requiem (static)",
+      "url": "https://apps-pundef.mooo.com/requiem/",
+      "interval": 120
+    },
+    {
+      "group": "srv (Proxmox / VMs)",
+      "type": "ping",
+      "name": "Proxmox",
+      "hostname": "192.168.50.9",
+      "interval": 60
+    },
+    {
+      "group": "srv (Proxmox / VMs)",
+      "type": "port",
+      "name": "Proxmox UI :8006",
+      "hostname": "192.168.50.9",
+      "port": 8006,
+      "interval": 120
+    },
+    {
+      "group": "srv (Proxmox / VMs)",
+      "type": "ping",
+      "name": "nextcloud-vm",
+      "hostname": "192.168.50.34",
+      "interval": 60
+    },
+    {
+      "group": "srv (Proxmox / VMs)",
+      "type": "http",
+      "name": "Nextcloud (LAN)",
+      "url": "http://192.168.50.34/",
+      "interval": 120
+    },
+    {
+      "group": "srv (Proxmox / VMs)",
+      "type": "ping",
+      "name": "Home Assistant",
+      "hostname": "192.168.50.51",
+      "interval": 60
+    },
+    {
+      "group": "srv (Proxmox / VMs)",
+      "type": "http",
+      "name": "Home Assistant UI",
+      "url": "http://192.168.50.51:8123/",
+      "interval": 120
+    },
+    {
+      "group": "srv (Proxmox / VMs)",
+      "type": "ping",
+      "name": "static-sites LXC",
+      "hostname": "192.168.50.35",
+      "interval": 120
+    },
+    {
+      "group": "LAN",
+      "type": "ping",
+      "name": "OpenWrt router",
+      "hostname": "192.168.1.1",
+      "interval": 60
+    },
+    {
+      "group": "VPS",
+      "type": "ping",
+      "name": "fin-sweet-home-vps",
+      "hostname": "89.44.76.52",
+      "interval": 120
+    },
+    {
+      "group": "VPS",
+      "type": "port",
+      "name": "sweet-home-vps (NL)",
+      "hostname": "45.154.35.222",
+      "port": 22,
+      "interval": 120
+    }
+  ]
+}

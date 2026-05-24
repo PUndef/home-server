@@ -11,12 +11,15 @@ ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
 ip route
 echo
 echo "=== fixes ==="
-# kill default via WSL
+# kill default via USB (WSL gadget / link-local)
 sudo ip route del default via 172.16.42.2 dev usb0 2>&1 || true
-# drop secondary address
+sudo ip route del default dev usb0 scope link 2>&1 || true
+# drop stale secondary address if present
 sudo ip addr del 192.168.1.117/24 dev wlan0 2>&1 || true
-# drop the duplicate default
-sudo ip route del default via 192.168.1.1 dev wlan0 metric 3004 2>&1 || true
+# ensure wlan0 default exists after USB cleanup
+if ! ip route show default | grep -q "dev wlan0"; then
+    sudo rc-service dhcpcd restart 2>&1 || sudo ip route add default via 192.168.1.1 dev wlan0 metric 3004
+fi
 echo
 echo "=== routes after ==="
 ip route

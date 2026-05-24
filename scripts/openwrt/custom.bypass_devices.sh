@@ -5,11 +5,11 @@
 #
 # Each rule is added only if not already present so re-runs are idempotent.
 
-# Phone: Redmi-Note-9-Pro (real device MAC 18:87:40:44:cd:51, DHCP-pinned to .157).
-nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-157 || \
-    nft insert rule inet zapret postnat ct original ip saddr 192.168.1.157 return comment zapret-ct-bypass-157
-nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-157-pre || \
-    nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.157 return comment zapret-ct-bypass-157-pre
+# phoneserver: postmarketOS on Redmi joyeuse (wlan0 MAC 02:00:89:de:af:ce, DHCP .116).
+nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-116 || \
+    nft insert rule inet zapret postnat ct original ip saddr 192.168.1.116 return comment zapret-ct-bypass-116
+nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-116-pre || \
+    nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.116 return comment zapret-ct-bypass-116-pre
 
 # Whole srv subnet (Proxmox host + VMs): keep DPI off the server traffic.
 # Effective only when traffic with saddr 192.168.50.x actually hits zapret postnat

@@ -23,12 +23,13 @@ rm -f /etc/init.d/phoneserver-display
 rm -f /etc/conf.d/phoneserver-display
 rm -f /opt/phoneserver/phone-display-loop.sh
 rm -f /opt/phoneserver/term-status-lcd.sh
-# Leave backlight on (do not force 0 — screen stays black until manual wake)
+# Clear status text from LCD; keep backlight on (do not set brightness to 0)
 if [ -w /sys/class/backlight/backlight/brightness ]; then
     max=$(cat /sys/class/backlight/backlight/max_brightness 2>/dev/null || echo 4095)
     echo "$max" > /sys/class/backlight/backlight/brightness 2>/dev/null \
         || echo 4000 > /sys/class/backlight/backlight/brightness
 fi
+printf '\033[2J\033[H' > /dev/tty1 2>/dev/null || true
 echo "phoneserver-display removed"
 REMOTE
 echo "done"

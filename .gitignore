@@ -10,5 +10,5 @@ scripts/openwrt/_*
 # Secrets and local env (never commit tokens or local overrides here).
 *.env.local
 
-# Cursor agent session artifacts.
-agent-tools/
+# Python venvs (local tooling)
+scripts/phoneserver/.venv-kuma/

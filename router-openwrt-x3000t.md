@@ -212,7 +212,7 @@ chain prenat {
 
 ### Per-device bypass для zapret
 
-Сейчас bypass включён для `192.168.1.157` (`Redmi-Note-9-Pro`, реальный device-MAC `18:87:40:44:CD:51` после отключения Wi-Fi MAC randomization на телефоне; IP закреплён DHCP-резервацией). Стабильность:
+Сейчас bypass включён для **`192.168.1.116`** (`phoneserver`, postmarketOS; wlan0 MAC `02:00:89:de:af:ce`, DHCP-резервация `scripts/openwrt/reserve-phoneserver-dhcp.sh`). Ранее был Android `Redmi-Note-9-Pro` на `.157` (MAC `18:87:40:44:CD:51`). Стабильность:
 
 - hook `INIT_FW_POST_UP_HOOK=/opt/zapret/custom.bypass_devices.sh` в `/opt/zapret/config`;
 - скрипт `/opt/zapret/custom.bypass_devices.sh` (исходник: `[scripts/openwrt/custom.bypass_devices.sh](scripts/openwrt/custom.bypass_devices.sh)`) после каждого `zapret restart` досыпает правила `ct original/reply ... return`.

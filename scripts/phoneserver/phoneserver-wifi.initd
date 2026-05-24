@@ -1,0 +1,128 @@
+#!/sbin/openrc-run
+# phoneserver-wifi — bring up wlan0 on boot with retries (Qualcomm ath10k + no RTC).
+# Installed by scripts/phoneserver/phoneserver-wifi-install.sh
+
+name="phoneserver-wifi"
+description="Phoneserver Wi-Fi bring-up (retry wpa + dhcp)"
+
+: "${WIFI_IFACE:=wlan0}"
+: "${WIFI_RETRIES:=18}"
+: "${WIFI_RETRY_DELAY:=5}"
+: "${WIFI_SSID_EXPECT:=DECO_HOME}"
+
+depend() {
+	need localmount
+	use wpa_supplicant dhcpcd chronyd logger
+	after hexagonrpcd-adsp-sensorspd udev-postmount modules bootmisc wpa_supplicant
+	before beszel-agent uptime-kuma
+	provide phoneserver-wifi
+}
+
+_wifi_state() {
+	wpa_cli -i "${WIFI_IFACE}" status 2>/dev/null | sed -n 's/^wpa_state=//p'
+}
+
+_wifi_has_ipv4() {
+	ip -4 -o addr show dev "${WIFI_IFACE}" 2>/dev/null | grep -q 'inet '
+}
+
+_sync_time() {
+	if command -v chronyc >/dev/null 2>&1; then
+		rc-service chronyd status >/dev/null 2>&1 || rc-service chronyd start
+		sleep 2
+		chronyc -a makestep >/dev/null 2>&1 || true
+	fi
+}
+
+_pin_dns() {
+	if [ ! -f /etc/resolv.conf.head ]; then
+		cat >/etc/resolv.conf.head <<'EOF'
+nameserver 1.1.1.1
+nameserver 8.8.8.8
+EOF
+	fi
+	if ! grep -q '^nohook resolv.conf' /etc/dhcpcd.conf 2>/dev/null; then
+		echo 'nohook resolv.conf' >>/etc/dhcpcd.conf
+	fi
+	printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' >/etc/resolv.conf
+}
+
+_pin_homelab_hosts() {
+	# Public DNS for *.mooo.com still points at a stale VPS; LAN Apache is 192.168.50.34.
+	if ! grep -q 'cloud-pundef.mooo.com' /etc/hosts 2>/dev/null; then
+		cat >>/etc/hosts <<'EOF'
+
+# homelab LAN (phoneserver) — see scripts/phoneserver/fix-kuma-monitors-phone.sh
+192.168.50.34 cloud-pundef.mooo.com apps-pundef.mooo.com
+EOF
+	fi
+}
+
+_fix_routes() {
+	ip route del default dev usb0 scope link 2>/dev/null || true
+	ip route del default via 172.16.42.2 dev usb0 2>/dev/null || true
+	if ! ip route show default 2>/dev/null | grep -q "dev ${WIFI_IFACE}"; then
+		rc-service dhcpcd restart
+		sleep 3
+	fi
+}
+
+start_pre() {
+	checkpath -d -m 0755 /var/log
+	checkpath -f -m 0644 -o root:root /var/log/phoneserver-wifi.log
+}
+
+start() {
+	if [ ! -f /etc/wpa_supplicant/wpa_supplicant.conf ]; then
+		eerror "missing /etc/wpa_supplicant/wpa_supplicant.conf — run wifi-connect.sh first"
+		return 1
+	fi
+
+	ln -sf wpa_supplicant.conf "/etc/wpa_supplicant/wpa_supplicant-${WIFI_IFACE}.conf" 2>/dev/null || true
+	rc-update add wpa_supplicant default 2>/dev/null || true
+	rc-update add dhcpcd default 2>/dev/null || true
+	rc-update add chronyd default 2>/dev/null || true
+
+	rfkill unblock wlan 2>/dev/null || true
+	ip link set "${WIFI_IFACE}" up 2>/dev/null || true
+
+	i=1
+	while [ "${i}" -le "${WIFI_RETRIES}" ]; do
+		state="$(_wifi_state)"
+		if [ "${state}" = "COMPLETED" ] && _wifi_has_ipv4; then
+			break
+		fi
+
+		einfo "wifi attempt ${i}/${WIFI_RETRIES} (state=${state:-down})"
+		rc-service wpa_supplicant restart 2>/dev/null || \
+			wpa_supplicant -B -i "${WIFI_IFACE}" -c /etc/wpa_supplicant/wpa_supplicant.conf -D nl80211
+		sleep "${WIFI_RETRY_DELAY}"
+
+		state="$(_wifi_state)"
+		if [ "${state}" = "COMPLETED" ]; then
+			rc-service dhcpcd restart 2>/dev/null || dhcpcd -t 30 -L "${WIFI_IFACE}"
+			sleep 3
+			_wifi_has_ipv4 && break
+		fi
+		i=$((i + 1))
+	done
+
+	if ! _wifi_has_ipv4; then
+		eerror "wlan0 did not get IPv4 after ${WIFI_RETRIES} attempts"
+		return 1
+	fi
+
+	_sync_time
+	_pin_dns
+	_pin_homelab_hosts
+	_fix_routes
+
+	ssid="$(wpa_cli -i "${WIFI_IFACE}" status 2>/dev/null | sed -n 's/^ssid=//p')"
+	ip_addr="$(ip -4 -o addr show dev "${WIFI_IFACE}" | awk '{print $4}' | head -1)"
+	ewarn "wifi up: ssid=${ssid:-?} ip=${ip_addr:-?}"
+	return 0
+}
+
+stop() {
+	:
+}
