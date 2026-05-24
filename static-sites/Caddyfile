@@ -21,6 +21,24 @@ http://apps-pundef.mooo.com, http://192.168.50.35, http://localhost {
 
 	redir /requiem /requiem/ 301
 	redir /beszel /beszel/ 301
+	redir /chat /chat/ 301
+
+	# phoneserver llama-server (lan). UI is static below; inference stays on the phone.
+	handle /chat/llm/* {
+		uri strip_prefix /chat/llm
+		reverse_proxy http://192.168.1.116:8080 {
+			transport http {
+				read_timeout 360s
+			}
+		}
+	}
+
+	handle_path /chat/* {
+		root * /srv/static-sites/chat
+		try_files {path} /index.html
+		encode zstd gzip
+		file_server
+	}
 
 	handle_path /requiem/* {
 		root * /srv/static-sites/requiem
