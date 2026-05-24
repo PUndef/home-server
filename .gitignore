@@ -7,9 +7,8 @@ backups/
 # Convention: prefix with underscore to keep them out of the repo.
 scripts/openwrt/_*
 
-# Secrets and local env (never commit per-system Beszel TOKENs here).
+# Secrets and local env (never commit tokens or local overrides here).
 *.env.local
-scripts/proxmox/morphic.env.local
 
 # Cursor agent session artifacts.
 agent-tools/
