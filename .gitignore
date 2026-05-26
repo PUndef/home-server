@@ -12,3 +12,7 @@ scripts/openwrt/_*
 
 # Python venvs (local tooling)
 scripts/phoneserver/.venv-kuma/
+
+# Abandoned duplicate / generated frontend artifacts
+wf-farm-helper/
+**/public/drops.html
