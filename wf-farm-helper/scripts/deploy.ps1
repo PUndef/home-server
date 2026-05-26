@@ -1,9 +1,9 @@
 param(
     [string]$HostName = "192.168.50.35",
     [string]$User = "deploy",
-    [string]$RemotePath = "/srv/static-sites/relics",
+    [string]$RemotePath = "/srv/static-sites/wf-farm",
     [string]$KeyPath = "$env:USERPROFILE\.ssh\proxmox_pundef_nopass",
-    [string]$Url = "http://192.168.50.35/relics/",
+    [string]$Url = "http://192.168.50.35/wf-farm/",
     [switch]$SkipBuild
 )
 
@@ -36,7 +36,7 @@ if ($KeyPath) {
 }
 
 if (-not $SkipBuild) {
-    Write-Host "Building relics-helper..."
+    Write-Host "Building wf-farm-helper..."
     Push-Location $projectRoot
     try {
         Invoke-Native npm ci
@@ -52,7 +52,7 @@ if (-not (Test-Path $distPath)) {
     throw "Build output was not found: $distPath"
 }
 
-$tmpArchive = Join-Path $env:TEMP ("relics-dist-{0}.tgz" -f ([guid]::NewGuid().ToString("N")))
+$tmpArchive = Join-Path $env:TEMP ("wf-farm-dist-{0}.tgz" -f ([guid]::NewGuid().ToString("N")))
 $remoteArchive = "/tmp/$(Split-Path $tmpArchive -Leaf)"
 
 try {

@@ -20,7 +20,7 @@ http://apps-pundef.mooo.com, http://192.168.50.35, http://localhost {
 	}
 
 	redir /requiem /requiem/ 301
-	redir /relics /relics/ 301
+	redir /wf-farm /wf-farm/ 301
 	redir /beszel /beszel/ 301
 
 	handle_path /requiem/* {
@@ -30,8 +30,8 @@ http://apps-pundef.mooo.com, http://192.168.50.35, http://localhost {
 		file_server
 	}
 
-	handle_path /relics/* {
-		root * /srv/static-sites/relics
+	handle_path /wf-farm/* {
+		root * /srv/static-sites/wf-farm
 		try_files {path} /index.html
 		encode zstd gzip
 		file_server
