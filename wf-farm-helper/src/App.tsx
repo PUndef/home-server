@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { IconRefresh } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -82,13 +82,13 @@ export default function App() {
       const result = await loadDropsDataset(force);
       setDataset(result.dataset);
       const parts = [
-        result.dataset.lastUpdate ? `╨┤╨░╨╜╨╜╤ï╨╡ ╨╛╤é ${result.dataset.lastUpdate}` : "╨┤╨░╤é╨░ ╨╛╨▒╨╜╨╛╨▓╨╗╨╡╨╜╨╕╤Å ╨╜╨╡ ╨╜╨░╨╣╨┤╨╡╨╜╨░",
-        `${result.dataset.sources.length} ╨╕╤ü╤é╨╛╤ç╨╜╨╕╨║╨╛╨▓`,
+        result.dataset.lastUpdate ? `данные от ${result.dataset.lastUpdate}` : "дата обновления не найдена",
+        `${result.dataset.sources.length} источников`,
       ];
-      if (result.usedStaleCache) parts.push("╨╛╤ä╨╗╨░╨╣╨╜-╨║╤ì╤ê");
-      setStatus(parts.join(" ┬╖ "));
+      if (result.usedStaleCache) parts.push("офлайн-кэш");
+      setStatus(parts.join(" · "));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "╨₧╤ê╨╕╨▒╨║╨░ ╨╖╨░╨│╤Ç╤â╨╖╨║╨╕");
+      setError(err instanceof Error ? err.message : "Ошибка загрузки");
     } finally {
       setLoading(false);
     }
@@ -119,8 +119,8 @@ export default function App() {
         </Badge>
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">WF Farm Helper</h1>
         <p className="mx-auto mt-3 max-w-2xl text-base text-muted-foreground">
-          ╨ƒ╨╛╨╕╤ü╨║ ╨▓╤ï╨│╨╛╨┤╨╜╤ï╤à ╨╝╨╕╤ü╤ü╨╕╨╣ ╨┐╨╛ ╨╛╤ä╨╕╤å╨╕╨░╨╗╤î╨╜╨╛╨╝╤â ╤ü╨┐╨╕╤ü╨║╤â ╨┤╤Ç╨╛╨┐╨╛╨▓. ╨á╨░╨╜╨╢╨╕╤Ç╨╛╨▓╨░╨╜╨╕╨╡ ╨┐╨╛ ╤ê╨░╨╜╤ü╤â, ╨║╨╛╨╗╨╕╤ç╨╡╤ü╤é╨▓╤â ╨╕
-          ╨╛╤å╨╡╨╜╨╛╤ç╨╜╨╛╨╝╤â ╨▓╤Ç╨╡╨╝╨╡╨╜╨╕ ΓÇö ╨┤╨░╨╜╨╜╤ï╨╡ ╨╛╨▒╨╜╨╛╨▓╨╗╤Å╤Ä╤é╤ü╤Å ╤ü CDN ╨┐╤Ç╨╕ ╨║╨░╨╢╨┤╨╛╨╝ ╨╛╤é╨║╤Ç╤ï╤é╨╕╨╕.
+          Поиск выгодных миссий по официальному списку дропов. Ранжирование по шансу, количеству и
+          оценочному времени — данные обновляются с CDN при каждом открытии.
         </p>
       </header>
 
@@ -128,22 +128,22 @@ export default function App() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>╨º╤é╨╛ ╤ä╨░╤Ç╨╝╨╕╤é╤î?</CardTitle>
+              <CardTitle>Что фармить?</CardTitle>
               <CardDescription>
-                ╨á╨╡╤ü╤â╤Ç╤ü, ╨╝╨╛╨┤, ╤Ç╨╡╨╗╨╕╨║ ╨╕╨╗╨╕ ╤ç╨╡╤Ç╤é╤æ╨╢ ΓÇö ╨╜╨░╨┐╤Ç╨╕╨╝╨╡╤Ç polymer, nitain, serration.
+                Ресурс, мод, релик или чертёж — например polymer, nitain, serration.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <input
                   className="h-9 flex-1 rounded-md border bg-input/20 px-3 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-                  placeholder="╨¥╨░╨╖╨▓╨░╨╜╨╕╨╡ ╨┤╤Ç╨╛╨┐╨░..."
+                  placeholder="Название дропа..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
                 <Button disabled={loading} type="button" variant="outline" onClick={() => void refresh(true)}>
                   <IconRefresh className={cn(loading && "animate-spin")} />
-                  ╨₧╨▒╨╜╨╛╨▓╨╕╤é╤î
+                  Обновить
                 </Button>
               </div>
 
@@ -158,27 +158,27 @@ export default function App() {
               )}
 
               <fieldset className="rounded-md border bg-input/20 p-3">
-                <legend className="px-1 text-xs font-medium text-muted-foreground">╨ñ╨╕╨╗╤î╤é╤Ç╤ï</legend>
+                <legend className="px-1 text-xs font-medium text-muted-foreground">Фильтры</legend>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <FilterToggle
                     checked={filters.missionsOnly}
-                    label="╨ó╨╛╨╗╤î╨║╨╛ ╨╝╨╕╤ü╤ü╨╕╨╕ / ╨▒╨░╤â╨╜╤é╨╕"
+                    label="Только миссии / баунти"
                     onChange={(missionsOnly) => setFilters((f) => ({ ...f, missionsOnly }))}
                   />
                   <FilterToggle
                     checked={filters.hideEvents}
-                    label="╨í╨║╤Ç╤ï╤é╤î Event"
+                    label="Скрыть Event"
                     onChange={(hideEvents) => setFilters((f) => ({ ...f, hideEvents }))}
                   />
                   <FilterToggle
                     checked={filters.hideConclave}
-                    label="╨í╨║╤Ç╤ï╤é╤î Conclave"
+                    label="Скрыть Conclave"
                     onChange={(hideConclave) => setFilters((f) => ({ ...f, hideConclave }))}
                   />
                 </div>
               </fieldset>
 
-              {loading && <p className="text-sm text-muted-foreground">╨ù╨░╨│╤Ç╤â╨╖╨║╨░ ╨╕ ╤Ç╨░╨╖╨▒╨╛╤Ç ╤é╨░╨▒╨╗╨╕╤åΓÇª</p>}
+              {loading && <p className="text-sm text-muted-foreground">Загрузка и разбор таблиц…</p>}
               {error && <p className="text-sm text-destructive">{error}</p>}
             </CardContent>
           </Card>
@@ -186,28 +186,28 @@ export default function App() {
           {query.trim().length >= 2 && !loading && (
             <Card>
               <CardHeader>
-                <CardTitle>╨á╨╡╨╖╤â╨╗╤î╤é╨░╤é╤ï ({matches.length})</CardTitle>
+                <CardTitle>Результаты ({matches.length})</CardTitle>
                 <CardDescription>
-                  ╨í╨╛╤Ç╤é╨╕╤Ç╨╛╨▓╨║╨░: ╨╛╨╢╨╕╨┤╨░╨╡╨╝╤ï╨╣ ╨┤╤Ç╨╛╨┐ ╨╖╨░ ╨┐╤Ç╨╛╨│╨╛╨╜ ├╖ ╨╝╨╕╨╜╤â╤é╤ï. ╨Æ╤ï╤ê╨╡ ╤Ç╨╡╨╣╤é╨╕╨╜╨│ ΓÇö ╨▓╤ï╨│╨╛╨┤╨╜╨╡╨╡ ╨┐╤Ç╨╕ ╤é╨╛╨╝ ╨╢╨╡ ╨▓╤Ç╨╡╨╝╨╡╨╜╨╕.
+                  Сортировка: ожидаемый дроп за прогон ÷ минуты. Выше рейтинг — выгоднее при том же времени.
                 </CardDescription>
               </CardHeader>
               <CardContent className="overflow-x-auto">
                 {matches.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    ╨¥╨╕╤ç╨╡╨│╨╛ ╨╜╨╡ ╨╜╨░╨╣╨┤╨╡╨╜╨╛. ╨ƒ╨╛╨┐╤Ç╨╛╨▒╤â╨╣╤é╨╡ ╨┤╤Ç╤â╨│╨╛╨╡ ╨╕╨╝╤Å ╨╕╨╗╨╕ ╤ü╨╜╨╕╨╝╨╕╤é╨╡ ╤ä╨╕╨╗╤î╤é╤Ç╤ï.
+                    Ничего не найдено. Попробуйте другое имя или снимите фильтры.
                   </p>
                 ) : (
                   <table className="w-full min-w-[720px] border-collapse text-left text-sm">
                     <thead>
                       <tr className="border-b border-border text-muted-foreground">
                         <th className="py-2 pr-3 font-medium">#</th>
-                        <th className="py-2 pr-3 font-medium">╨¢╨╛╨║╨░╤å╨╕╤Å</th>
-                        <th className="py-2 pr-3 font-medium">╨ó╨╕╨┐</th>
-                        <th className="py-2 pr-3 font-medium">╨ö╤Ç╨╛╨┐</th>
-                        <th className="py-2 pr-3 font-medium">╨¿╨░╨╜╤ü</th>
-                        <th className="py-2 pr-3 font-medium">~╨╝╨╕╨╜</th>
-                        <th className="py-2 pr-3 font-medium">╨ó╨╡╨╝╨┐</th>
-                        <th className="py-2 font-medium">╨á╨╡╨╣╤é╨╕╨╜╨│</th>
+                        <th className="py-2 pr-3 font-medium">Локация</th>
+                        <th className="py-2 pr-3 font-medium">Тип</th>
+                        <th className="py-2 pr-3 font-medium">Дроп</th>
+                        <th className="py-2 pr-3 font-medium">Шанс</th>
+                        <th className="py-2 pr-3 font-medium">~мин</th>
+                        <th className="py-2 pr-3 font-medium">Темп</th>
+                        <th className="py-2 font-medium">Рейтинг</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -221,7 +221,7 @@ export default function App() {
                           <td className="py-2.5 pr-3">
                             <div>{match.source.missionType ?? match.source.section}</div>
                             {match.drop.rotation && (
-                              <span className="text-xs text-muted-foreground">╤Ç╨╛╤é╨░╤å╨╕╤Å {match.drop.rotation}</span>
+                              <span className="text-xs text-muted-foreground">ротация {match.drop.rotation}</span>
                             )}
                           </td>
                           <td className="py-2.5 pr-3">{match.drop.item}</td>
@@ -240,7 +240,7 @@ export default function App() {
                   </table>
                 )}
                 {matches.length > 80 && (
-                  <p className="mt-3 text-xs text-muted-foreground">╨ƒ╨╛╨║╨░╨╖╨░╨╜╤ï ╨┐╨╡╤Ç╨▓╤ï╨╡ 80 ╨╕╨╖ {matches.length}.</p>
+                  <p className="mt-3 text-xs text-muted-foreground">Показаны первые 80 из {matches.length}.</p>
                 )}
               </CardContent>
             </Card>
@@ -249,12 +249,12 @@ export default function App() {
 
         <Card size="sm" className="lg:sticky lg:top-6">
           <CardHeader>
-            <CardTitle>╨í╤é╨░╤é╤â╤ü</CardTitle>
+            <CardTitle>Статус</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
-            {status ? <p>{status}</p> : <p>╨¥╨╡╤é ╨┤╨░╨╜╨╜╤ï╤à</p>}
+            {status ? <p>{status}</p> : <p>Нет данных</p>}
             <p className="text-xs leading-relaxed">
-              ╨ÿ╤ü╤é╨╛╤ç╨╜╨╕╨║:{" "}
+              Источник:{" "}
               <a
                 className="text-primary underline-offset-4 hover:underline"
                 href="https://warframe-web-assets.nyc3.cdn.digitaloceanspaces.com/uploads/cms/hnfvc0o3jnfvc873njb03enrf56.html"
@@ -263,7 +263,7 @@ export default function App() {
               >
                 Warframe PC Drops
               </a>
-              . ╨₧╤å╨╡╨╜╨║╨╕ ╨▓╤Ç╨╡╨╝╨╡╨╜╨╕ ╨╝╨╕╤ü╤ü╨╕╨╣ ╨┐╤Ç╨╕╨▒╨╗╨╕╨╖╨╕╤é╨╡╨╗╤î╨╜╤ï╨╡.
+              . Оценки времени миссий приблизительные.
             </p>
           </CardContent>
         </Card>
