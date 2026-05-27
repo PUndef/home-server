@@ -334,20 +334,45 @@ def main() -> int:
         (
             "routing",
             "workvpn-policy-nft",
-            "nft list chain inet fw4 pbr_prerouting | grep -q 'paul-mac kpb via workvpn'",
-            "workvpn policy chain is active",
+            "nft list chain inet fw4 pbr_prerouting | grep -q 'paul-mac kpb via workvpn' "
+            "&& nft list chain inet fw4 pbr_prerouting | grep -q 'pundef-pc kpb via workvpn'",
+            "workvpn policies for paul-mac and pundef-pc are active",
         ),
         (
             "zapret-bypass",
-            "zapret-bypass-postnat",
-            "nft list chain inet zapret postnat | grep -q 'zapret-ct-bypass-157'",
-            "device bypass postnat rule exists",
+            "zapret-bypass-phoneserver-postnat",
+            "nft list chain inet zapret postnat | grep -q 'zapret-ct-bypass-116'",
+            "phoneserver bypass postnat rule exists (.116)",
         ),
         (
             "zapret-bypass",
-            "zapret-bypass-prenat",
-            "nft list chain inet zapret prenat | grep -q 'zapret-ct-bypass-157-pre'",
-            "device bypass prenat rule exists",
+            "zapret-bypass-phoneserver-prenat",
+            "nft list chain inet zapret prenat | grep -q 'zapret-ct-bypass-116-pre'",
+            "phoneserver bypass prenat rule exists (.116)",
+        ),
+        (
+            "zapret-bypass",
+            "zapret-bypass-pundef-pc-postnat",
+            "nft list chain inet zapret postnat | grep -q 'zapret-ct-bypass-133'",
+            "pundef-pc bypass postnat rule exists (.133)",
+        ),
+        (
+            "zapret-bypass",
+            "zapret-bypass-pundef-pc-prenat",
+            "nft list chain inet zapret prenat | grep -q 'zapret-ct-bypass-133-pre'",
+            "pundef-pc bypass prenat rule exists (.133)",
+        ),
+        (
+            "zapret-bypass",
+            "zapret-bypass-srv-postnat",
+            "nft list chain inet zapret postnat | grep -q 'zapret-ct-bypass-srv'",
+            "srv subnet bypass postnat rule exists (192.168.50.0/24)",
+        ),
+        (
+            "zapret-bypass",
+            "zapret-bypass-srv-prenat",
+            "nft list chain inet zapret prenat | grep -q 'zapret-ct-bypass-srv-pre'",
+            "srv subnet bypass prenat rule exists (192.168.50.0/24)",
         ),
         (
             "active-probes",
