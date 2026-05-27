@@ -43,6 +43,7 @@ home-server/
 |--------|---------|
 | Сводка по ВМ/LXC | `python scripts/proxmox/check_vms.py` |
 | Health-check роутера | `python start.py check_stack` |
+| Runbook: роутер не уронил srv | [`docs/network/router-resilience.md`](docs/network/router-resilience.md) |
 | Деплой static-sites | `.\static-sites\deploy.ps1` |
 | Применить Caddyfile | `.\scripts\static-sites\apply-caddyfile.ps1` |
 | Деплой одного app | `.\static-sites\requiem\scripts\deploy.ps1` |

@@ -33,6 +33,13 @@ class ScriptSpec:
 
 SCRIPTS = [
     ScriptSpec(
+        name="check_vms",
+        relative_path="scripts/proxmox/check_vms.py",
+        description="Proxmox host + VM/LXC inventory and health summary.",
+        usage="python start.py check_vms",
+        example="python start.py check_vms",
+    ),
+    ScriptSpec(
         name="check_stack",
         relative_path="scripts/openwrt/check_stack.py",
         description="OpenWrt routing stack health check via SSH.",

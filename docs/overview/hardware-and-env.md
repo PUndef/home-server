@@ -88,7 +88,8 @@
 - `lan` `192.168.1.0/24` — клиентский трафик, поверх него вся VPN/DPI-машинерия (pbr / podkop / sing-box / zapret / awg1 / awg2 / workvpn);
 - `srv` `192.168.50.0/24` — Proxmox + ВМ + LXC, **изолированно** от туннелей и DPI: forwarding только `srv→wan` и `lan→srv`, без `srv→awg1/awg2/workvpn`. zapret отдельно `bypass`-нут для подсети `192.168.50.0/24` через [`scripts/openwrt/custom.bypass_devices.sh`](../../scripts/openwrt/custom.bypass_devices.sh).
 
-Детали роутера: [`router-openwrt-x3000t.md`](../network/router-openwrt-x3000t.md).
+Детали роутера: [`router-openwrt-x3000t.md`](../network/router-openwrt-x3000t.md).  
+**Отказоустойчивость и recovery после reboot:** [`router-resilience.md`](../network/router-resilience.md).
 
 ---
 
