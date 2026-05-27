@@ -11,6 +11,7 @@ static-sites/
 ├── README.md           # этот файл
 ├── Caddyfile           # маршрутизация на LXC (источник правды)
 ├── deploy.ps1          # деплой одного или всех приложений
+├── shared/             # общий код (@shared alias во всех apps)
 ├── warframe/           # разводящая страница (карточки)
 ├── requiem/            # Requiem Helper
 └── wf-farm/            # WF Farm Helper
@@ -65,7 +66,7 @@ npm run dev
 ## Конвенции
 
 - **Vite `base: "./"`** — один `dist` работает и с корня hostname (`requiem.home`), и под префиксом (`/requiem/`).
-- **Ссылки между приложениями** — `static-sites/shared/site-urls.ts` (копия в каждом app: `src/lib/site-urls.ts`). На `apps-pundef.mooo.com` и по IP — path `/warframe/`, `/requiem/`, `/wf-farm/`; на LAN vhost `*.home` — полные URL `http://warframe.home/` и т.д.
+- **Ссылки между приложениями** — канон `static-sites/shared/site-urls.ts`, импорт через `@shared/site-urls` (alias в Vite/tsconfig). Breadcrumb — одинаковый компонент в requiem/wf-farm, тоже тянет `@shared/site-urls`.
 - **UI** — shadcn, пресет `radix-mira` / `stone` (см. `components.json` в каждом приложении).
 - **Deploy** — `npm ci && npm run build`, tar + scp на `deploy@192.168.50.35`, распаковка в `/srv/static-sites/<name>/`.
 - **Новое приложение** — каталог `static-sites/<name>/`, блок в `Caddyfile` (`handle_path` + опционально `*.home` vhost), split-horizon DNS на OpenWrt, строка в таблице выше.

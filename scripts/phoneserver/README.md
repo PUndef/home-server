@@ -14,9 +14,10 @@
 
 - `pmbootstrap` 3.x установлен в WSL и инициализирован
 - public-ключ для phoneserver лежит в `~/.ssh/phoneserver_nopass{,.pub}` (создаётся через `setup-ssh-key.sh`)
-- IP телефона по USB-сети — `172.16.42.1`, по Wi-Fi — `192.168.1.116` (или DHCP-резерв на OpenWrt)
+- IP и хост по умолчанию — из [`hosts.yaml`](hosts.yaml) (`default_host` → `lan_ip`); переопределение: `PHONE_HOST=joyeuse`, `PHONE_IP=...`
+- `phone-defaults.sh` подставляет `PHONE_IP` / `SSH_KEY` в `status.sh`, `wifi-reconnect.sh` и др.
+- USB fallback — `172.16.42.1`; Wi-Fi/LAN — `192.168.1.116` (DHCP-резерв OpenWrt)
 - USB-устройство при необходимости проброшено в WSL через `usbipd attach --wsl --busid <id>` (из PowerShell **от админа**)
-- по умолчанию все скрипты идут на `${PHONE_IP:-172.16.42.1}` (по USB); для Wi-Fi/LAN — `PHONE_IP=192.168.1.116 ./script.sh`
 
 ### При обычной работе
 

@@ -1,5 +1,5 @@
 import { IconChevronRight, IconHome } from "@tabler/icons-react";
-import { siteUrl } from "@/lib/site-urls";
+import { siteUrl } from "@shared/site-urls";
 
 export function WarframeBreadcrumb({ current }: { current: string }) {
   return (

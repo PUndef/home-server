@@ -5,7 +5,7 @@
 # locale=C.UTF-8, no SSH keys to copy from host yet, do not rebuild stale
 # packages locally during install).
 #
-# Run under: bash scripts/phoneserver/pmbootstrap-init.exp
+# Run under: bash scripts/phoneserver/install/pmbootstrap-init.exp
 # Requires: NO_COLOR=1 and TERM=dumb internally so prompts don't include
 # escape codes that confuse pattern matching.
 set timeout 1200

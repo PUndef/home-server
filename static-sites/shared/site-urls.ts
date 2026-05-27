@@ -1,6 +1,5 @@
 /**
- * Static-sites URL routing. Keep this file in sync across apps:
- * static-sites/shared/site-urls.ts -> copy to each app's src/lib/site-urls.ts
+ * Static-sites URL routing — single source for all Vite apps via @shared alias.
  */
 
 export const SITE_URLS = {

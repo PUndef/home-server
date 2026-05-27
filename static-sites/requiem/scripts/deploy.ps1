@@ -37,7 +37,6 @@ if ($KeyPath) {
 
 if (-not $SkipBuild) {
     Write-Host "Building requiem..."
-    & (Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path "scripts\sync-shared.ps1") -ProjectRoot $projectRoot
     Push-Location $projectRoot
     try {
         Invoke-Native npm ci

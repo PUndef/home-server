@@ -1,7 +1,7 @@
 # Phoneserver — повседневная эксплуатация
 
 > **Статус:** living reference  
-> **Связано:** `[pmos-setup.md](pmos-setup.md)`, `[scripts/phoneserver/README.md](../../scripts/phoneserver/README.md)`
+> **Связано:** [pmos-setup.md](pmos-setup.md), [scripts/phoneserver/README.md](../../scripts/phoneserver/README.md)
 
 Phoneserver — узел в сегменте `lan` (`192.168.1.116`), не в `srv`. Его падение **не роняет** Proxmox, но отключает Uptime Kuma и часть мониторинга.
 
@@ -13,8 +13,8 @@ Phoneserver — узел в сегменте `lan` (`192.168.1.116`), не в `s
 # SSH по Wi-Fi:
 ssh -i ~/.ssh/phoneserver_nopass pmos@192.168.1.116
 
-# Сводка:
-PHONE_IP=192.168.1.116 ./scripts/phoneserver/status.sh
+# Сводка (PHONE_IP из hosts.yaml по умолчанию):
+./scripts/phoneserver/status.sh
 
 # Health homelab с роутера (включая lease phoneserver):
 python start.py check_stack
@@ -33,9 +33,9 @@ python start.py check_stack
 
 ## Смена IP / новый телефон
 
-Инвентарь: `[scripts/phoneserver/hosts.yaml](../../scripts/phoneserver/hosts.yaml)`. Для другого codename — новая секция в yaml + установка через `[install/](../../scripts/phoneserver/install/README.md)`.
+Инвентарь: [scripts/phoneserver/hosts.yaml](../../scripts/phoneserver/hosts.yaml). Для другого codename — новая секция в yaml + `PHONE_HOST=<id>` или установка через [install/](../../scripts/phoneserver/install/README.md).
 
-После смены IP на OpenWrt: `[reserve-phoneserver-dhcp.sh](../../scripts/openwrt/reserve-phoneserver-dhcp.sh)` и обновить zapret bypass IP в `[custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh)` + `check_stack` → `zapret-bypass-phoneserver-*`.
+После смены IP на OpenWrt: [reserve-phoneserver-dhcp.sh](../../scripts/openwrt/reserve-phoneserver-dhcp.sh) и обновить zapret bypass IP в [custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh) + `check_stack` → `zapret-bypass-phoneserver-*`.
 
 ---
 
@@ -49,4 +49,4 @@ python start.py check_stack
 | Wi-Fi                 | Нет SSH/Kuma; инфра на `srv` не затронута                |
 
 
-Полный runbook по отказоустойчивости **роутера и srv**: `[router-resilience.md](../network/router-resilience.md)`.
+Полный runbook по отказоустойчивости **роутера и srv**: [router-resilience.md](../network/router-resilience.md).
