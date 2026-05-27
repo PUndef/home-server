@@ -17,6 +17,7 @@
 | Документ | Статус | Описание |
 |----------|--------|----------|
 | [network/router-openwrt-x3000t.md](network/router-openwrt-x3000t.md) | living reference | OpenWrt X3000T: pbr, podkop, zapret, awg, workvpn, DNS |
+| [network/router-resilience.md](network/router-resilience.md) | living reference | Отказоустойчивость: критический путь srv, протокол правок, recovery после reboot |
 | [network/incidents/zapret-bypass-pundef-pc-2026-05-27.md](network/incidents/zapret-bypass-pundef-pc-2026-05-27.md) | incident | Bypass zapret для `pundef-pc` (Cursor Remote SSH) |
 
 Скрипты: [`scripts/openwrt/`](../scripts/openwrt/)
@@ -52,6 +53,7 @@ Edge-конфиг: [`nextcloud-vm/apache/`](../nextcloud-vm/apache/)
 | Документ | Статус | Описание |
 |----------|--------|----------|
 | [phoneserver/pmos-setup.md](phoneserver/pmos-setup.md) | living reference | postmarketOS на Redmi Note 9 Pro |
+| [phoneserver/operations.md](phoneserver/operations.md) | living reference | Повседневная эксплуатация, reboot, смена IP |
 
 Скрипты: [`scripts/phoneserver/README.md`](../scripts/phoneserver/README.md)
 

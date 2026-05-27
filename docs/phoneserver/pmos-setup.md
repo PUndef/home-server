@@ -43,12 +43,12 @@
 ### Базовая настройка (v25.06)
 
 1. **SSH-ключ от WSL** положен в `pmos@phoneserver:~/.ssh/authorized_keys`.
-2. **Реальный sudo вместо doas-sudo-shim** + `/etc/sudoers.d/pmos-nopasswd` (см. `[enable-passwordless-doas.sh](scripts/phoneserver/enable-passwordless-doas.sh)`). По умолчанию в pmOS v25.06 стоит `doas + doas-sudo-shim`, в котором нет `sudo -S` — это ломает скрипты с `echo $pass | sudo -S`. Замена на настоящий `sudo` + NOPASSWD убирает проблему.
+2. **Реальный sudo вместо doas-sudo-shim** + `/etc/sudoers.d/pmos-nopasswd` (см. [`enable-passwordless-doas.sh`](../../scripts/phoneserver/install/enable-passwordless-doas.sh)). По умолчанию в pmOS v25.06 стоит `doas + doas-sudo-shim`, в котором нет `sudo -S` — это ломает скрипты с `echo $pass | sudo -S`. Замена на настоящий `sudo` + NOPASSWD убирает проблему.
 3. `**resize2fs /dev/sda18`** — root до 103 GiB.
 4. **Wi-Fi**: `wpa_supplicant` + `wireless-regdb` + `dhcpcd`, ассоциация с DECO_HOME (5 GHz). Получили DHCP-leased IP `192.168.1.116`, статичный default route, lease 12 ч.
 5. **DNS pinned**: `/etc/resolv.conf` → `1.1.1.1, 8.8.8.8`; `nohook resolv.conf` в `/etc/dhcpcd.conf` чтобы dhcpcd при ренью не возвращал dnsmasq роутера (с sing-box подкопом).
 6. `**chrony`** + `chrony-openrc` в default runlevel — время синхронизируется при загрузке.
-7. `**internet sharing` через WSL** (`MASQUERADE` на eth0) сейчас уже **не нужен** — phoneserver сам в LAN-сети. Скрипт `[wsl-share-internet.sh](scripts/phoneserver/wsl-share-internet.sh)` остаётся на случай если Wi-Fi выпадет.
+7. **Internet sharing через WSL** (`MASQUERADE` на eth0) сейчас уже **не нужен** — phoneserver сам в LAN-сети. Скрипт [`wsl-share-internet.sh`](../../scripts/phoneserver/wsl-share-internet.sh) остаётся на случай если Wi-Fi выпадет.
 
 ### Архитектурные решения, не очевидные из pmaports
 

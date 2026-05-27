@@ -159,7 +159,7 @@ curl.exe -fsS -o NUL -w "HTTP %{http_code}`n" http://192.168.50.35/requiem/
 
 **Цель.** Поставить hub как нативный systemd-сервис без Docker (LXC unprivileged + nesting=1 принципиально позволяет, но Docker для hub'а — лишняя прослойка). Бинарь — Go, статически слинкованный, ~12 МБ; данные — SQLite (PocketBase) в `/opt/beszel/pb_data/`.
 
-**Установочный скрипт.** Логика зафиксирована в [`scripts/proxmox/beszel-hub-install.sh`](scripts/proxmox/beszel-hub-install.sh):
+**Установочный скрипт.** Логика зафиксирована в [`scripts/proxmox/beszel-hub-install.sh`](../../scripts/proxmox/beszel-hub-install.sh):
 
 - создаёт системного юзера `beszel` (без shell, без home);
 - кладёт каталоги `/opt/beszel/` и `/opt/beszel/pb_data/` под этим юзером;
@@ -308,7 +308,7 @@ RewriteRule ^/(.*) "ws://192.168.50.35/$1" [P,L]
 
 Обычный HTTP-трафик идёт через `ProxyPass / http://192.168.50.35/` ниже.
 
-**Helper.** Файлы в гостевые ВМ заливаем без SSH через QEMU guest agent. Helper [`scripts/proxmox/apply-vm-file.sh`](scripts/proxmox/apply-vm-file.sh): берёт локальный файл с Proxmox-хоста, base64-кодирует, через `qm guest exec --timeout 30 -- bash -c "printf '%s' '<b64>' | base64 -d > <path>"` пишет в гостевой fs, опционально выполняет post-cmd.
+**Helper.** Файлы в гостевые ВМ заливаем без SSH через QEMU guest agent. Helper [`scripts/proxmox/apply-vm-file.sh`](../../scripts/proxmox/apply-vm-file.sh): берёт локальный файл с Proxmox-хоста, base64-кодирует, через `qm guest exec --timeout 30 -- bash -c "printf '%s' '<b64>' | base64 -d > <path>"` пишет в гостевой fs, опционально выполняет post-cmd.
 
 **Сделать.**
 
@@ -380,7 +380,7 @@ curl.exe -sS -o NUL -w "WS via apache HTTP %{http_code}`n" `
 
 **Цель.** Поставить нативный (не-Docker) Beszel-агент в LXC 102, чтобы хаб видел сам себя как «систему».
 
-**Установочный скрипт.** Универсальный для всех Linux-узлов с systemd: [`scripts/proxmox/beszel-agent-install.sh`](scripts/proxmox/beszel-agent-install.sh).
+**Установочный скрипт.** Универсальный для всех Linux-узлов с systemd: [`scripts/proxmox/beszel-agent-install.sh`](../../scripts/proxmox/beszel-agent-install.sh).
 
 - читает `/tmp/beszel-agent.env` (если есть) или env-окружение для `KEY` / `TOKEN` / `HUB_URL` / `LISTEN`;
 - создаёт системного пользователя `beszel-agent`;
@@ -635,7 +635,7 @@ wsl bash scripts/phoneserver/install-beszel-agent.sh "<uuid-из-ui>"
 .\scripts\phoneserver\install-beszel-agent.ps1 -Token "<uuid-из-ui>"
 ```
 
-Скрипты: [`install-beszel-agent.ps1`](scripts/phoneserver/install-beszel-agent.ps1) (оркестратор), [`beszel-agent-install.sh`](scripts/phoneserver/beszel-agent-install.sh) (OpenRC на телефоне). Tarball: `beszel-agent_linux_arm64.tar.gz` v0.18.7. **`HUB_URL` по умолчанию внутренний** `http://192.168.50.35/beszel` (без hairpin через публичный домен).
+Скрипты: [`install-beszel-agent.ps1`](../../scripts/phoneserver/install-beszel-agent.ps1) (оркестратор), [`beszel-agent-install.sh`](../../scripts/phoneserver/beszel-agent-install.sh) (OpenRC на телефоне). Tarball: `beszel-agent_linux_arm64.tar.gz` v0.18.7. **`HUB_URL` по умолчанию внутренний** `http://192.168.50.35/beszel` (без hairpin через публичный домен).
 
 **Проверить.**
 
@@ -643,7 +643,7 @@ wsl bash scripts/phoneserver/install-beszel-agent.sh "<uuid-из-ui>"
 - На телефоне: `sudo tail -20 /var/log/beszel-agent.log` → `WebSocket connected`.
 - `sudo rc-service beszel-agent status` → started.
 
-**Батарея в UI.** Beszel 0.18.x **не показывает %**, если в sysfs `status=Unknown` (так отдаёт `qcom_qg` на joyeuse). Обход: [`scripts/phoneserver/beszel-battery-status-fix.sh`](scripts/phoneserver/beszel-battery-status-fix.sh) — bind-mount `Charging`/`Discharging` по `tcpm-source …/online` перед стартом агента. Установка: `wsl bash scripts/phoneserver/install-beszel-battery-fix.sh`. Проверка: `cat /sys/class/power_supply/qcom_qg/status` → не `Unknown`.
+**Батарея в UI.** Beszel 0.18.x **не показывает %**, если в sysfs `status=Unknown` (так отдаёт `qcom_qg` на joyeuse). Обход: [`scripts/phoneserver/beszel-battery-status-fix.sh`](../../scripts/phoneserver/beszel-battery-status-fix.sh) — bind-mount `Charging`/`Discharging` по `tcpm-source …/online` перед стартом агента. Установка: `wsl bash scripts/phoneserver/install-beszel-battery-fix.sh`. Проверка: `cat /sys/class/power_supply/qcom_qg/status` → не `Unknown`.
 
 ---
 
@@ -704,7 +704,7 @@ $env:VPS_HOST='45.154.35.222'; $env:VPS_USER='pundef'
 
 **Предусловие.** В UI Hub уже созданы системы `fin-sweet-home-vps` и `sweet-home-vps` с per-system TOKEN (см. таблицу в Шаге 10a). Шаг 10a выполнен (SSH-ключ работает).
 
-**Оркестратор.** [`scripts/vps/install-beszel-agent.ps1`](scripts/vps/install-beszel-agent.ps1) — заливает env + установщики, на VPS вызывает [`scripts/vps/beszel-agent-install-vps.sh`](scripts/vps/beszel-agent-install-vps.sh) (wrapper: curl tarball + общий [`scripts/proxmox/beszel-agent-install.sh`](scripts/proxmox/beszel-agent-install.sh)).
+**Оркестратор.** [`scripts/vps/install-beszel-agent.ps1`](../../scripts/vps/install-beszel-agent.ps1) — заливает env + установщики, на VPS вызывает [`scripts/vps/beszel-agent-install-vps.sh`](../../scripts/vps/beszel-agent-install-vps.sh) (wrapper: curl tarball + общий [`scripts/proxmox/beszel-agent-install.sh`](../../scripts/proxmox/beszel-agent-install.sh)).
 
 **Сделать.**
 

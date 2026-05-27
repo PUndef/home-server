@@ -1,0 +1,13 @@
+# Phoneserver inventory. Override per host via PHONE_IP / env when running scripts.
+default_host: joyeuse
+
+hosts:
+  joyeuse:
+    codename: joyeuse
+    device: xiaomi-miatoll
+    kernel: joyeuse_tianma
+    pmaports_channel: v25.06
+    lan_ip: 192.168.1.116
+    usb_ip: 172.16.42.1
+    ssh_user: pmos
+    ssh_key: phoneserver_nopass
