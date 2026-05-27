@@ -2,8 +2,8 @@
 # Flip USB-C port from source (default on this mainline build) to sink so
 # the phone can be charged via the cable instead of trying to power the host.
 
-PHONE_IP=${PHONE_IP:-172.16.42.1}
-SSH_KEY=${SSH_KEY:-$HOME/.ssh/phoneserver_nopass}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PHONE_DEFAULT=usb source "${SCRIPT_DIR}/../phone-defaults.sh"
 SUDO_PASS=${SUDO_PASS:-changemenow}
 
 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \

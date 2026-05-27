@@ -5,9 +5,11 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=phone-defaults.sh
+source "${SCRIPT_DIR}/phone-defaults.sh"
+
 TOKEN="${1:-${BESZEL_PHONESERVER_TOKEN:-}}"
-PHONE_IP="${PHONE_IP:-192.168.1.116}"
-SSH_KEY="${SSH_KEY:-$HOME/.ssh/phoneserver_nopass}"
 HUB_KEY='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH9I03DG8DciIm5AklgrMF1GMQoIlYibQxKWbzzdFv3W'
 HUB_URL="${HUB_URL:-http://192.168.50.35/beszel}"
 BESZEL_VERSION="${BESZEL_VERSION:-v0.18.7}"

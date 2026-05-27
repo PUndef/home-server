@@ -2,9 +2,10 @@
 # Install sysfs status workaround for Beszel battery on phoneserver.
 set -euo pipefail
 
-PHONE_IP="${PHONE_IP:-192.168.1.116}"
-SSH_KEY="${SSH_KEY:-$HOME/.ssh/phoneserver_nopass}"
-REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=phone-defaults.sh
+source "${SCRIPT_DIR}/phone-defaults.sh"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 SSH=(ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}")
 SCP=(scp -o StrictHostKeyChecking=no -i "${SSH_KEY}")
 REMOTE="pmos@${PHONE_IP}"

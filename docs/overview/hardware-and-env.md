@@ -101,7 +101,7 @@
 
 **Роутер:** Xiaomi **X3000T**, OpenWrt **24.10.6**; LuCI с LAN: [http://192.168.1.1/](http://192.168.1.1/) или [http://openwrt.lan/cgi-bin/luci/](http://openwrt.lan/cgi-bin/luci/); два туннеля **AmneziaWG** — `awg1` (Fin) и `awg2` (Neth NL), **podkop** + **sing-box**, **pbr** (политики для AI/Spotify/workvpn), **zapret**, **OpenConnect** `vpn-workvpn` для corp — см. [`router-openwrt-x3000t.md`](../network/router-openwrt-x3000t.md). В репозитории: [`scripts/openwrt/`](../../scripts/openwrt/) (SSH-helper `openwrt_exec.py`, загрузчик `upload.py`, health-check `check_stack.py`, watchdog для `podkop_subnets`, hotplug `99-vpn-stack`, zapret-bypass `custom.bypass_devices.sh`).
 
-**Helper для Proxmox/ВМ:** `[scripts/proxmox/](../../scripts/proxmox/)` — `proxmox_exec.py` (одна команда на хосте по SSH, по образцу `openwrt_exec.py`) и `upload.py` (заливка файлов без SFTP). Аутентификация: ключ `%USERPROFILE%/.ssh/proxmox_pundef_nopass` (без passphrase, ed25519), public part в `~/.ssh/authorized_keys` пользователя `root@pundef`. Через эти helpers удобно ходить и в гостей: `proxmox_exec.py "qm guest exec 101 -- curl -s ifconfig.me"`.
+**Helper для Proxmox/ВМ:** [scripts/proxmox/](../../scripts/proxmox/) — `proxmox_exec.py` (одна команда на хосте по SSH, по образцу `openwrt_exec.py`) и `upload.py` (заливка файлов без SFTP). Аутентификация: ключ `%USERPROFILE%/.ssh/proxmox_pundef_nopass` (без passphrase, ed25519), public part в `~/.ssh/authorized_keys` пользователя `root@pundef`. Через эти helpers удобно ходить и в гостей: `proxmox_exec.py "qm guest exec 101 -- curl -s ifconfig.me"`.
 
 
 | Внешний порт | Внутренний IP:порт | Протокол | Сервис / примечание                                                            |
@@ -145,14 +145,14 @@
 - удалены каталоги `/etc/x-ui`, `/usr/local/x-ui`, `/etc/hysteria`, `/var/lib/hysteria`;
 - освободилось ≈210 МБ RAM (было `free 80MiB → available 419MiB`, стало `free 297MiB → available 525MiB`) и ≈10% диска (было 69% → 59%).
 
-Сейчас на VPS работает только AmneziaWG-сервер, развёрнут с Windows-клиента Amnezia. Для управления через клиент Amnezia создан отдельный сервисный пользователь `amnadmin` с `NOPASSWD sudo` (нужно для неинтерактивных `sudo`-команд установщика). Клиентский профиль роутера: address `10.8.1.2/32`, peer endpoint `45.154.35.222:40698`. Подключён на роутере как `awg2` (см. `[router-openwrt-x3000t.md](../network/router-openwrt-x3000t.md)`).
+Сейчас на VPS работает только AmneziaWG-сервер, развёрнут с Windows-клиента Amnezia. Для управления через клиент Amnezia создан отдельный сервисный пользователь `amnadmin` с `NOPASSWD sudo` (нужно для неинтерактивных `sudo`-команд установщика). Клиентский профиль роутера: address `10.8.1.2/32`, peer endpoint `45.154.35.222:40698`. Подключён на роутере как `awg2` (см. [router-openwrt-x3000t.md](../network/router-openwrt-x3000t.md)).
 
 ---
 
 ## Заметки
 
 - **Роутер:** OpenWrt X3000T — uplink к провайдеру, NAT, проброс портов, DDNS, VPN/DPI-машинерия (pbr: AI→`awg1`, Spotify→`awg2`, corp→`vpn-workvpn`, podkop/sing-box, zapret). Подробно: [`router-openwrt-x3000t.md`](../network/router-openwrt-x3000t.md).
-- **Изоляция серверного сегмента:** `srv` (`192.168.50.0/24`) и `lan` (`192.168.1.0/24`) — две независимые firewall zone на X3000T. ВМ намеренно не имеют forwarding в `awg1/awg2/workvpn` и закрыты от zapret через `ct original ip saddr 192.168.50.0/24 return` (`[scripts/openwrt/custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh)`). DNS у ВМ — `8.8.8.8 / 1.1.1.1` (через `dhcp_option='6,...'`), мимо dnsmasq роутера; иначе Nextcloud получал бы fake-IP `198.18.x` от sing-box.
+- **Изоляция серверного сегмента:** `srv` (`192.168.50.0/24`) и `lan` (`192.168.1.0/24`) — две независимые firewall zone на X3000T. ВМ намеренно не имеют forwarding в `awg1/awg2/workvpn` и закрыты от zapret через `ct original ip saddr 192.168.50.0/24 return` ([scripts/openwrt/custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh)). DNS у ВМ — `8.8.8.8 / 1.1.1.1` (через `dhcp_option='6,...'`), мимо dnsmasq роутера; иначе Nextcloud получал бы fake-IP `198.18.x` от sing-box.
 - **Корпоративный VPN на OpenWrt:** split-routing через `workvpn` для зоны `kpb.lt` (домены + подсети `10.0.160.0/22`, `10.0.17.0/24`) на клиентах `paul-mac` (`192.168.1.198`) и `pundef-pc` (`192.168.1.133`, Win + WSL). На Mac — принудительный DNS redirect на роутерный `dnsmasq`. `xiaomi-13t-pro` (`.204`) — только DHCP-пин, corp-policy снята.
 - **DNS:** централизованного DNS-фильтра на Proxmox нет; при необходимости — фильтрация на роутере или клиентские средства. Хост Proxmox смотрит на `1.1.1.1 / 8.8.8.8` напрямую (см. `/etc/resolv.conf`), не через роутерный dnsmasq.
 - Один физический диск: все ВМ на LVM thin в одном пуле — при апгрейде/бэкапах учитывать отсутствие отдельного хранилища.

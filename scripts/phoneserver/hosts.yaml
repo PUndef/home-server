@@ -1,4 +1,4 @@
-# Phoneserver inventory. Override per host via PHONE_IP / env when running scripts.
+# Phoneserver inventory. Override per host via PHONE_HOST / PHONE_IP / PHONE_DEFAULT=usb|lan.
 default_host: joyeuse
 
 hosts:

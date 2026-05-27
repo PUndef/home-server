@@ -15,7 +15,7 @@
 - `pmbootstrap` 3.x установлен в WSL и инициализирован
 - public-ключ для phoneserver лежит в `~/.ssh/phoneserver_nopass{,.pub}` (создаётся через `setup-ssh-key.sh`)
 - IP и хост по умолчанию — из [`hosts.yaml`](hosts.yaml) (`default_host` → `lan_ip`); переопределение: `PHONE_HOST=joyeuse`, `PHONE_IP=...`
-- `phone-defaults.sh` подставляет `PHONE_IP` / `SSH_KEY` в `status.sh`, `wifi-reconnect.sh` и др.
+- `phone-defaults.sh` подставляет `PHONE_IP` / `SSH_KEY` во все shell-скрипты; `PHONE_DEFAULT=usb` для install/diag по USB
 - USB fallback — `172.16.42.1`; Wi-Fi/LAN — `192.168.1.116` (DHCP-резерв OpenWrt)
 - USB-устройство при необходимости проброшено в WSL через `usbipd attach --wsl --busid <id>` (из PowerShell **от админа**)
 
@@ -84,10 +84,10 @@ ssh -i ~/.ssh/phoneserver_nopass pmos@192.168.1.116
 ssh -i ~/.ssh/phoneserver_nopass pmos@172.16.42.1
 
 # Снять статус:
-PHONE_IP=192.168.1.116 ./status.sh
+./status.sh
 
 # Если phone сменил IP / переустановили pmOS:
-PHONE_IP=192.168.1.116 ./setup-ssh-key.sh
+./setup-ssh-key.sh
 ```
 
 ---

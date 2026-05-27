@@ -2,7 +2,7 @@
 
 Второй физический узел домашней инфраструктуры — Xiaomi Redmi Note 9 Pro Global (codename `**joyeuse**`, SoC SM7125 / Snapdragon 720G), переделанный под headless-сервер на postmarketOS. Изначальная мотивация — UPS «из коробки» (батарея 5020 mAh), 8-ядерный ARM, 6 ГБ RAM и 128 ГБ UFS, потребление 2–5 Вт в idle.
 
-Рабочие скрипты для повседневной эксплуатации и переустановки — `[scripts/phoneserver/](../../scripts/phoneserver/README.md)`.
+Рабочие скрипты для повседневной эксплуатации и переустановки — [scripts/phoneserver/](../../scripts/phoneserver/README.md).
 
 ---
 
@@ -75,7 +75,7 @@
 | низкий      | **Отключить парольный SSH**                                       | Сейчас SSH работает по ключу. Стоит явно поставить `PasswordAuthentication no` в `/etc/ssh/sshd_config` после того как пароль будет сменён с `changemenow`.                                                                                                                                                           |
 | низкий      | **Поменять пароль `pmos`** с `changemenow`                        | После v25.06-переустановки пароль снова дефолтный. SSH-логин — только по ключу, но sudo-пароль (на случай восстановления) поменять стоит.                                                                                                                                                                             |
 | низкий      | Расширить `scripts/openwrt/check_stack.py`                        | Добавить пробу `phoneserver` ping + ssh (по аналогии с `vm-services`).                                                                                                                                                                                                                                                |
-| низкий      | Запись в `[hardware-and-env.md](../overview/hardware-and-env.md)` | Обновить когда телефон получит постоянный IP в `srv`-сегменте.                                                                                                                                                                                                                                                        |
+| низкий      | Запись в [hardware-and-env.md](../overview/hardware-and-env.md) | Обновить когда телефон получит постоянный IP в `srv`-сегменте.                                                                                                                                                                                                                                                        |
 
 
 ---

@@ -1,7 +1,9 @@
 #!/bin/bash
 # Quick check after v25.06 reinstall: kernel version, network interfaces,
 # whether wlan0 came up and ath10k_snoc managed to load firmware.
-PHONE_IP=${PHONE_IP:-172.16.42.1}
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PHONE_DEFAULT=usb source "${SCRIPT_DIR}/../phone-defaults.sh"
 
 sshpass -p changemenow ssh \
     -o StrictHostKeyChecking=no \

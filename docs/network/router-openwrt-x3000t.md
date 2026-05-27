@@ -225,7 +225,7 @@ chain prenat {
 Сейчас bypass включён для **`192.168.1.116`** (`phoneserver`, postmarketOS; wlan0 MAC `02:00:89:de:af:ce`, DHCP-резервация `scripts/openwrt/reserve-phoneserver-dhcp.sh`), **`192.168.1.133`** (`pundef-pc`, Win + WSL mirrored — см. [zapret-bypass-pundef-pc-2026-05-27.md](incidents/zapret-bypass-pundef-pc-2026-05-27.md)), **`192.168.50.0/24`** (srv-сегмент). Ранее был Android `Redmi-Note-9-Pro` на `.157` (MAC `18:87:40:44:CD:51`). Стабильность:
 
 - hook `INIT_FW_POST_UP_HOOK=/opt/zapret/custom.bypass_devices.sh` в `/opt/zapret/config`;
-- скрипт `/opt/zapret/custom.bypass_devices.sh` (исходник: `[scripts/openwrt/custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh)`) после каждого `zapret restart` досыпает правила `ct original/reply ... return`.
+- скрипт `/opt/zapret/custom.bypass_devices.sh` (исходник: [scripts/openwrt/custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh)) после каждого `zapret restart` досыпает правила `ct original/reply ... return`.
 
 Если устройство сменит IP (например, MAC randomization без DHCP-резервации), bypass и pbr-policy перестанут срабатывать. В этом случае вернуть пин по MAC в `dhcp.@host` и обновить `custom.bypass_devices.sh` / pbr-policy.
 
@@ -290,7 +290,7 @@ nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.240 return commen
 - **Firewall zone `srv`**: `input REJECT, output ACCEPT, forward REJECT`, плюс rule `Allow-DHCP-DNS-srv` (53/67/68 udp). Forwarding только `srv→wan` и `lan→srv`. **НЕТ** `srv→awg1/awg2/workvpn` — ВМ всегда идут чистым WAN.
 - **Hairpin**: `dnsmasq.@dnsmasq[0].address='/cloud-pundef.mooo.com/192.168.50.34'` — клиенты `lan` резолвят домен сразу в локальный IP, без NAT loopback.
 - **Port-forwards** `wan: 80 → srv:192.168.50.34:80` и `wan: 443 → srv:192.168.50.34:443` (DNAT с `wan` в `srv`).
-- **zapret bypass для srv**: в `[scripts/openwrt/custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh)` добавлены `ct original ip saddr 192.168.50.0/24 return` (postnat) и зеркальное правило в `prenat`. Источник применяется автоматически через `INIT_FW_POST_UP_HOOK=/opt/zapret/custom.bypass_devices.sh` в `/opt/zapret/config`.
+- **zapret bypass для srv**: в [scripts/openwrt/custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh) добавлены `ct original ip saddr 192.168.50.0/24 return` (postnat) и зеркальное правило в `prenat`. Источник применяется автоматически через `INIT_FW_POST_UP_HOOK=/opt/zapret/custom.bypass_devices.sh` в `/opt/zapret/config`.
 
 
 Проверки:
@@ -379,7 +379,7 @@ nft list set inet fw4 pbr_awg2_4_dst_ip_cfg076ff5
 
 ## SNI proxy via /etc/hosts
 
-В `/etc/hosts` на роутере жёстко прибит набор AI/Telegram доменов на внешний SNI-proxy `45.155.204.190` (происхождение неизвестное, унаследовано из старой конфигурации). Источник в репо: `[scripts/openwrt/etc-hosts](../../scripts/openwrt/etc-hosts)`.
+В `/etc/hosts` на роутере жёстко прибит набор AI/Telegram доменов на внешний SNI-proxy `45.155.204.190` (происхождение неизвестное, унаследовано из старой конфигурации). Источник в репо: [scripts/openwrt/etc-hosts](../../scripts/openwrt/etc-hosts).
 
 > **WARNING (2026-05-20):** SNI proxy `45.155.204.190` сейчас не отвечает (`ping 100% loss`, `TCP/443 timeout 6s+`). Spotify-пины уже убраны (см. секцию «Spotify» выше). **Все остальные домены ниже по-прежнему запинены на этот мёртвый IP** — Cursor/Claude/OpenAI/Gemini/Grok/Copilot/ElevenLabs/DeepL/Trae/Windsurf/Manus/Notion/AIStudio/TelegramWeb. Они пока кажутся живыми только за счёт уже установленных TCP-сессий. Как только клиент полезет за новым коннектом — будет таймаут. План B: либо найти новый рабочий SNI-proxy IP и заменить, либо снять оставшиеся пины и пустить через подкоп → awg1 (Fin), как уже сделано со Spotify (но проверить страну/блок на стороне сервиса).
 
@@ -471,7 +471,7 @@ nft list set inet PodkopTable podkop_subnets
 
 ### Hotplug
 
-Файл: `/etc/hotplug.d/iface/99-vpn-stack` (исполняемый, исходник `[scripts/openwrt/99-vpn-stack](../../scripts/openwrt/99-vpn-stack)`).
+Файл: `/etc/hotplug.d/iface/99-vpn-stack` (исполняемый, исходник [scripts/openwrt/99-vpn-stack](../../scripts/openwrt/99-vpn-stack)).
 
 На `ifup` для `wan`, `awg1` или `awg2`:
 
@@ -508,22 +508,22 @@ nft list table inet zapret
 
 ## Скрипты в этом репозитории
 
-Путь в проекте: `[scripts/openwrt/](../../scripts/openwrt/)`.
+Путь в проекте: [scripts/openwrt/](../../scripts/openwrt/).
 
 
 | Файл                                                                                                 | Назначение                                                                                                                                                                          |
 | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `[scripts/openwrt/openwrt_exec.py](../../scripts/openwrt/openwrt_exec.py)`                                 | Выполнить одну команду на роутере по SSH с ключом без passphrase (`OPENWRT_HOST`, `OPENWRT_USER`, `OPENWRT_KEY`).                                                                   |
-| `[scripts/openwrt/upload.py](../../scripts/openwrt/upload.py)`                                             | Залить локальный файл на роутер по SSH (без SFTP — через `base64 -d`). Используется для обновления `99-vpn-stack` и других конфигов.                                                |
-| `[scripts/openwrt/check_stack.py](../../scripts/openwrt/check_stack.py)`                                   | Health-check всего стека: `pbr`/`podkop`/`sing-box`/`zapret`-bypass (`.116`/`.133`/`srv`) / `awg1`/`awg2`/`workvpn` + активные пробы + `vm-services` + `phoneserver`. |
-| `[scripts/openwrt/trace_traffic.py](../../scripts/openwrt/trace_traffic.py)`                               | Трассировка пути конкретного домена/IP через pbr/podkop/zapret.                                                                                                                     |
-| `[scripts/openwrt/podkop-subnets-watchdog.sh](../../scripts/openwrt/podkop-subnets-watchdog.sh)`           | Если `podkop_subnets` пуст — запустить `podkop list_update`. Cron: `*/15 * * * *`.                                                                                                  |
-| `[scripts/openwrt/99-vpn-stack](../../scripts/openwrt/99-vpn-stack)`                                       | Исходник hotplug-скрипта `/etc/hotplug.d/iface/99-vpn-stack`.                                                                                                                       |
-| `[scripts/openwrt/custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh)`               | Источник `/opt/zapret/custom.bypass_devices.sh`: per-IP bypass для `192.168.1.116` (phoneserver), `192.168.1.133` (pundef-pc) и per-subnet bypass `192.168.50.0/24` (srv). |
-| `[scripts/openwrt/etc-hosts](../../scripts/openwrt/etc-hosts)`                                             | Источник `/etc/hosts` на роутере: SNI-proxy mappings для AI/Spotify/Telegram через `45.155.204.190` (см. ниже «SNI proxy via /etc/hosts»). Twitch специально без override. |
-| `[scripts/openwrt/enable-workvpn-client.sh](../../scripts/openwrt/enable-workvpn-client.sh)`               | DHCP-резервация + pbr policy `workvpn` + force-DNS для LAN-клиента (corp с телефона или ПК).                                                                                        |
-| `[scripts/openwrt/rollback-workvpn-xiaomi-13t-pro.sh](../../scripts/openwrt/rollback-workvpn-xiaomi-13t-pro.sh)` | Откат corp pbr-policy для `xiaomi-13t-pro` (`.204`); не трогает `paul-mac` / `pundef-pc`.                                                                          |
-| `[scripts/openwrt/reserve-phoneserver-dhcp.sh](../../scripts/openwrt/reserve-phoneserver-dhcp.sh)`         | Фиксированный IP для `phoneserver` (pmOS) на `lan`.                                                                                                                                 |
+| [scripts/openwrt/openwrt_exec.py](../../scripts/openwrt/openwrt_exec.py)                                 | Выполнить одну команду на роутере по SSH с ключом без passphrase (`OPENWRT_HOST`, `OPENWRT_USER`, `OPENWRT_KEY`).                                                                   |
+| [scripts/openwrt/upload.py](../../scripts/openwrt/upload.py)                                             | Залить локальный файл на роутер по SSH (без SFTP — через `base64 -d`). Используется для обновления `99-vpn-stack` и других конфигов.                                                |
+| [scripts/openwrt/check_stack.py](../../scripts/openwrt/check_stack.py)                                   | Health-check всего стека: `pbr`/`podkop`/`sing-box`/`zapret`-bypass (`.116`/`.133`/`srv`) / `awg1`/`awg2`/`workvpn` + активные пробы + `vm-services` + `phoneserver`. |
+| [scripts/openwrt/trace_traffic.py](../../scripts/openwrt/trace_traffic.py)                               | Трассировка пути конкретного домена/IP через pbr/podkop/zapret.                                                                                                                     |
+| [scripts/openwrt/podkop-subnets-watchdog.sh](../../scripts/openwrt/podkop-subnets-watchdog.sh)           | Если `podkop_subnets` пуст — запустить `podkop list_update`. Cron: `*/15 * * * *`.                                                                                                  |
+| [scripts/openwrt/99-vpn-stack](../../scripts/openwrt/99-vpn-stack)                                       | Исходник hotplug-скрипта `/etc/hotplug.d/iface/99-vpn-stack`.                                                                                                                       |
+| [scripts/openwrt/custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh)               | Источник `/opt/zapret/custom.bypass_devices.sh`: per-IP bypass для `192.168.1.116` (phoneserver), `192.168.1.133` (pundef-pc) и per-subnet bypass `192.168.50.0/24` (srv). |
+| [scripts/openwrt/etc-hosts](../../scripts/openwrt/etc-hosts)                                             | Источник `/etc/hosts` на роутере: SNI-proxy mappings для AI/Spotify/Telegram через `45.155.204.190` (см. ниже «SNI proxy via /etc/hosts»). Twitch специально без override. |
+| [scripts/openwrt/enable-workvpn-client.sh](../../scripts/openwrt/enable-workvpn-client.sh)               | DHCP-резервация + pbr policy `workvpn` + force-DNS для LAN-клиента (corp с телефона или ПК).                                                                                        |
+| [scripts/openwrt/rollback-workvpn-xiaomi-13t-pro.sh](../../scripts/openwrt/rollback-workvpn-xiaomi-13t-pro.sh) | Откат corp pbr-policy для `xiaomi-13t-pro` (`.204`); не трогает `paul-mac` / `pundef-pc`.                                                                          |
+| [scripts/openwrt/reserve-phoneserver-dhcp.sh](../../scripts/openwrt/reserve-phoneserver-dhcp.sh)         | Фиксированный IP для `phoneserver` (pmOS) на `lan`.                                                                                                                                 |
 
 
 Пример с ПК (PowerShell, дефолтный ключ `C:\Users\PUndef-PC\.ssh\openwrt_ax300t_nopass`):

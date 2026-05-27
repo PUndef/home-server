@@ -5,8 +5,8 @@
 
 set -e
 
-PHONE_IP=${PHONE_IP:-172.16.42.1}
-SSH_KEY=${SSH_KEY:-$HOME/.ssh/phoneserver_nopass}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PHONE_DEFAULT=usb source "${SCRIPT_DIR}/../phone-defaults.sh"
 SUDO_PASS=${SUDO_PASS:-changemenow}
 BOOT_IMG=${BOOT_IMG:-$HOME/.local/var/pmbootstrap/chroot_native/home/pmos/pmos-joyeuse-test.img}
 

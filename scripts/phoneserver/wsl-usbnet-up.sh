@@ -12,9 +12,9 @@
 
 set -e
 
-PHONE_IP=${PHONE_IP:-172.16.42.1}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PHONE_DEFAULT=usb source "${SCRIPT_DIR}/phone-defaults.sh"
 WSL_USB_IP=${WSL_USB_IP:-172.16.42.2/24}
-SSH_KEY=${SSH_KEY:-$HOME/.ssh/phoneserver_nopass}
 
 IFACE=$(ip -4 link show | grep -oP 'enx[a-f0-9]+' | head -1)
 if [ -z "$IFACE" ]; then

@@ -5,8 +5,9 @@
 
 set -e
 
-KEY=${SSH_KEY:-$HOME/.ssh/phoneserver_nopass}
-PHONE_IP=${PHONE_IP:-172.16.42.1}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PHONE_DEFAULT=usb source "${SCRIPT_DIR}/phone-defaults.sh"
+KEY="${SSH_KEY}"
 INITIAL_PASS=${INITIAL_PASS:-changemenow}
 
 if [ ! -f "$KEY" ]; then

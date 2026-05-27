@@ -7,9 +7,10 @@
 
 set -euo pipefail
 
-PHONE_IP="${PHONE_IP:-192.168.1.116}"
-SSH_KEY="${SSH_KEY:-$HOME/.ssh/phoneserver_nopass}"
-REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=phone-defaults.sh
+source "${SCRIPT_DIR}/phone-defaults.sh"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 if [[ ! -f "${SSH_KEY}" ]]; then
     echo "missing SSH key: ${SSH_KEY}" >&2

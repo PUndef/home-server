@@ -8,8 +8,9 @@
 
 set -euo pipefail
 
-PHONE_IP="${PHONE_IP:-192.168.1.116}"
-SSH_KEY="${SSH_KEY:-$HOME/.ssh/phoneserver_nopass}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=phone-defaults.sh
+source "${SCRIPT_DIR}/phone-defaults.sh"
 KUMA_VERSION="${KUMA_VERSION:-2.3.2}"
 KUMA_PORT="${KUMA_PORT:-3001}"
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"

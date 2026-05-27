@@ -1,6 +1,7 @@
 #!/bin/bash
-PHONE_IP=${PHONE_IP:-192.168.1.116}
-SSH_KEY=${SSH_KEY:-$HOME/.ssh/phoneserver_nopass}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=phone-defaults.sh
+source "${SCRIPT_DIR}/phone-defaults.sh"
 
 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
     -i "$SSH_KEY" "pmos@${PHONE_IP}" \
