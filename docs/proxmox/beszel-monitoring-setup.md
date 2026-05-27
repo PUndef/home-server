@@ -1,5 +1,8 @@
 # Beszel — мониторинг всей инфраструктуры
 
+> **Статус:** completed setup  
+> **Последняя проверка:** 2026-05-28
+
 Лёгкий «единый дашборд» по всем узлам: Proxmox-host, ВМ/LXC, phoneserver, VPS. Hub живёт в существующем LXC `static-sites` (102), наружу прокидывается через тот же Caddy + Apache по path-based схеме (`https://apps-pundef.mooo.com/beszel/`). Опенсорс, без облака — [henrygd/beszel](https://github.com/henrygd/beszel).
 
 Делай по одному шагу. После каждого выполни блок **Проверить** и подтверди, прежде чем переходить дальше.
@@ -102,7 +105,7 @@
 
 **Цель.** Сейчас в LXC 102 — `512 МБ RAM + 256 МБ swap`. После добавления Beszel Hub + локального агента + Caddy под нагрузкой это станет впритык. Поднимаем RAM до 1024 МБ (swap оставляем 256), это обеспечит спокойный запас и место под SQLite WAL.
 
-Запас на хосте есть: по `hardware-and-env.md` свободно ~2.8 ГБ, забираем из них 512 МБ.
+Запас на хосте есть: по [`hardware-and-env.md`](../overview/hardware-and-env.md) свободно ~2 ГБ, забираем из них 512 МБ.
 
 **Сделать.**
 
@@ -139,7 +142,7 @@ python scripts/proxmox/proxmox_exec.py "pct exec 102 -- free -m"
 
 Ожидаемо: в строке `Mem:` колонка `total` ≈ `1000` (не `~500`, как было).
 
-3. Caddy и сайт `requiem-helper` остались живы (мы ничего не рестартовали, но проверим явно):
+3. Caddy и сайт `requiem` остались живы (мы ничего не рестартовали, но проверим явно):
 
 ```powershell
 python scripts/proxmox/proxmox_exec.py "pct exec 102 -- systemctl is-active caddy"
@@ -168,7 +171,7 @@ curl.exe -fsS -o NUL -w "HTTP %{http_code}`n" http://192.168.50.35/requiem/
 Скрипт идемпотентен: повторный запуск обновит бинарь, не сломав данные.
 
 > **Важный обходной путь: github недоступен из `srv`-сегмента.**
-> Из LXC 102 (`192.168.50.35`) DNS-резолв github идёт через роутерный dnsmasq → подкоп → fake-IP уходит в pbr policy `awg1` (AI/Cursor). Из `srv` форвард в `awg1` намеренно закрыт (см. `hardware-and-env.md` → «Изоляция серверного сегмента»). Симптом: `curl -v https://github.com` падает за 2 мс с `Connection refused`. Чинить роутер или заводить отдельный bypass для `srv→github` не стали — вместо этого скрипт умеет работать в режиме «tarball уже подложен в `/tmp/`».
+> Из LXC 102 (`192.168.50.35`) DNS-резолв github идёт через роутерный dnsmasq → подкоп → fake-IP уходит в pbr policy `awg1` (AI/Cursor). Из `srv` форвард в `awg1` намеренно закрыт (см. [`hardware-and-env.md`](../overview/hardware-and-env.md) → «Изоляция серверного сегмента»). Симптом: `curl -v https://github.com` падает за 2 мс с `Connection refused`. Чинить роутер или заводить отдельный bypass для `srv→github` не стали — вместо этого скрипт умеет работать в режиме «tarball уже подложен в `/tmp/`».
 
 **Сделать.**
 
@@ -227,9 +230,9 @@ python scripts/proxmox/proxmox_exec.py "pct exec 102 -- rm -f /tmp/beszel_linux_
 
 ## Шаг 3. Включить Hub в Caddy (`/beszel/*`) и проверить локально — ✅ сделано
 
-**Цель.** Дать Beszel UI выйти из LXC через тот же Caddy, рядом с `requiem-helper`, под path-префиксом `/beszel/`. Hub поддерживает subpath нативно: путь-часть из `APP_URL` автоматически становится `BASE_PATH` для фронта (виден внутри `index.html` как `globalThis.BESZEL.BASE_PATH`), и SPA правильно генерирует ссылки на `/beszel/assets/*`, `/beszel/static/*`, `/beszel/api/*`.
+**Цель.** Дать Beszel UI выйти из LXC через тот же Caddy, рядом с `requiem`, под path-префиксом `/beszel/`. Hub поддерживает subpath нативно: путь-часть из `APP_URL` автоматически становится `BASE_PATH` для фронта (виден внутри `index.html` как `globalThis.BESZEL.BASE_PATH`), и SPA правильно генерирует ссылки на `/beszel/assets/*`, `/beszel/static/*`, `/beszel/api/*`.
 
-**Caddyfile.** Конфигурация теперь живёт в репозитории — [`static-sites/Caddyfile`](static-sites/Caddyfile) (раньше существовала только инлайном внутри `static-sites-lxc.md`). К общему vhost-блоку добавлены:
+**Caddyfile.** Конфигурация теперь живёт в репозитории — [`static-sites/Caddyfile`](../../static-sites/Caddyfile) (раньше существовала только инлайном внутри `static-sites-lxc.md`). К общему vhost-блоку добавлены:
 
 - `request_body { max_size 10MB }` — запас под будущие POST-запросы хаба/агентов;
 - `redir /beszel /beszel/ 301` — нормализация URL без trailing slash;

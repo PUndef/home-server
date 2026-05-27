@@ -1,5 +1,7 @@
 # OwnCord — план развёртывания в home-server
 
+> **Статус:** plan (blocked — upstream alpha, только Windows server)
+
 Self-hosted Discord-подобный чат: текст, DM, голос/видео (LiveKit), **десктоп-клиент** (Tauri). Репозиторий: [J3vb/OwnCord](https://github.com/J3vb/OwnCord).
 
 > **Статус на 2026-05:** проект в **ранней alpha**. Официальный сервер — **Windows** (`chatserver.exe`). Запуск на Linux/macOS пока **не работает** ([#88](https://github.com/J3vb/OwnCord/issues/88), [#95](https://github.com/J3vb/OwnCord/issues/95)). Docker-образа нет. Автор предупреждает, что безопасность и production-readiness ещё в работе ([#89](https://github.com/J3vb/OwnCord/issues/89)).
@@ -20,7 +22,7 @@ Self-hosted Discord-подобный чат: текст, DM, голос/виде
 
 **Что реально на телефоне сегодня:** подключаться к OwnCord **нельзя** штатно; хостить чат на телефоне — **нельзя**. Варианты: (1) сервер на Windows/ПК/LXC, клиент OwnCord на Windows/Mac; (2) когда появится Linux-сервер — всё равно лучше **не** на phoneserver (батарея, NAT, alpha, LiveKit); (3) для «чата с телефона» позже — другой стек (Matrix, etc.) или ждать mobile/Linux-сборки OwnCord.
 
-Подробнее про phoneserver: [phoneserver-pmos-setup.md](phoneserver-pmos-setup.md).
+Подробнее про phoneserver: [pmos-setup.md](../phoneserver/pmos-setup.md).
 
 ---
 
@@ -231,5 +233,5 @@ tls:
 - [Quick Start](https://github.com/J3vb/OwnCord/blob/main/docs/quick-start.md)
 - [Deployment (Windows)](https://github.com/J3vb/OwnCord/blob/main/docs/deployment.md)
 - [Server configuration](https://github.com/J3vb/OwnCord/blob/main/docs/server-configuration.md)
-- [Beszel setup (паттерн LXC + Caddy)](beszel-monitoring-setup.md)
-- [static-sites LXC](static-sites-lxc.md)
+- [Beszel setup (паттерн LXC + Caddy)](../proxmox/beszel-monitoring-setup.md)
+- [static-sites LXC](../proxmox/static-sites-lxc.md)

@@ -528,4 +528,4 @@ sudo systemctl restart php8.3-fpm
 
 ---
 
-*См. также: [onlyoffice-nextcloud-setup.md](onlyoffice-nextcloud-setup.md) — интеграция ONLYOFFICE с Nextcloud.*
+*См. также: [onlyoffice.md](onlyoffice.md) — интеграция ONLYOFFICE с Nextcloud.*

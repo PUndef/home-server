@@ -1,7 +1,7 @@
 """Run a single shell command on OpenWrt over SSH (paramiko).
 
 Environment: OPENWRT_HOST, OPENWRT_USER, OPENWRT_KEY.
-Documented in router-openwrt-x3000t.md (repo root).
+Documented in docs/network/router-openwrt-x3000t.md.
 """
 import os
 import sys

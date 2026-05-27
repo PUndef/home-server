@@ -1,7 +1,7 @@
 #!/bin/sh
 # zapret per-device / per-subnet ct bypass.
 # Called from /opt/zapret/config: INIT_FW_POST_UP_HOOK=/opt/zapret/custom.bypass_devices.sh
-# Documented in router-openwrt-x3000t.md ("Per-device bypass").
+# Documented in docs/network/router-openwrt-x3000t.md ("Per-device bypass").
 #
 # Each rule is added only if not already present so re-runs are idempotent.
 

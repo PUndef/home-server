@@ -1,5 +1,8 @@
 # Xiaomi X3000T (OpenWrt 24.10) — актуальная схема
 
+> **Статус:** living reference  
+> **Последняя проверка:** 2026-05-28
+
 Справочник по **текущей** домашней конфигурации. Ключи AmneziaWG, пароли и токены в репозиторий не копировать.
 
 **LuCI** с LAN (`192.168.1.0/24`):
@@ -16,7 +19,7 @@
 - `lan` `192.168.1.0/24` — клиенты (ПК, Mac, телефоны), порты `lan3 lan4` X3000T + WiFi. Здесь работает вся машинерия: pbr / podkop / sing-box / zapret / awg1 / awg2 / workvpn.
 - `srv` `192.168.50.0/24` — Proxmox + ВМ, отдельный физический порт `lan2` X3000T. Forwarding только `srv→wan` и `lan→srv`. **Никаких** туннелей и DPI: zapret bypass-нут по `ct original ip saddr 192.168.50.0/24 return`.
 
-Проброс портов, белый IP, DDNS, NAT — теперь на OpenWrt (был ASUS RT-AX55 до 2026-05-10; ASUS снят). История миграции: `[migration-asus-to-openwrt.md](migration-asus-to-openwrt.md)`. Общий контекст дома: `[hardware-and-env.md](hardware-and-env.md)`.
+Проброс портов, белый IP, DDNS, NAT — на OpenWrt X3000T. Общий контекст дома: [`hardware-and-env.md`](../overview/hardware-and-env.md).
 
 ---
 
@@ -34,7 +37,7 @@
 ## Цель маршрутизации (как сейчас)
 
 ```text
-Обычный трафик              → WAN → ASUS → провайдер
+Обычный трафик              → WAN → провайдер
 Автообход блокировок        → podkop + sing-box (tproxy, fakeip, community lists)
 AI / Cursor домены          → pbr policy «AI Tools via awg1 (global)» → awg1 (Fin)
 Mangalib (geo/RU блокировки)→ pbr policy «Mangalib via awg1» → awg1 (Fin)
@@ -101,7 +104,7 @@ graph TD
   NAT_WORK --> OUT_WORK[vpn-workvpn → corp]
   NAT_WAN --> ZAP{zapret postnat?\noifname @wanif\n+ first 1-9 packets}
   ZAP -->|да| ZQ[queue → nfqws\nDPI mod]
-  ZAP -->|нет| OUT_WAN[wan → ASUS → провайдер]
+  ZAP -->|нет| OUT_WAN[wan → провайдер]
   ZQ --> OUT_WAN
 ```
 
@@ -181,7 +184,7 @@ Endpoints VPN-серверов (`89.44.76.52`, `45.154.35.222`) обязател
 
 ### Корпоративные ресурсы `*.kpb.lt` (workvpn-клиенты)
 
-Клиенты с **активной** pbr-policy: `paul-mac` (`192.168.1.198`), `pundef-pc` (`192.168.1.133`, Win + WSL mirrored — Cursor Remote SSH, см. [zapret-bypass-pundef-pc-2026-05-27.md](zapret-bypass-pundef-pc-2026-05-27.md)). Добавить ещё: `[scripts/openwrt/enable-workvpn-client.sh](scripts/openwrt/enable-workvpn-client.sh)`. `xiaomi-13t-pro` (`192.168.1.204`) — DHCP-резервация есть, corp-policy **снята** (откат stage-тестов).
+Клиенты с **активной** pbr-policy: `paul-mac` (`192.168.1.198`), `pundef-pc` (`192.168.1.133`, Win + WSL mirrored — Cursor Remote SSH, см. [zapret-bypass-pundef-pc-2026-05-27.md](incidents/zapret-bypass-pundef-pc-2026-05-27.md)). Добавить ещё: [`scripts/openwrt/enable-workvpn-client.sh`](../../scripts/openwrt/enable-workvpn-client.sh). `xiaomi-13t-pro` (`192.168.1.204`) — DHCP-резервация есть, corp-policy **снята** (откат stage-тестов).
 
 1. dnsmasq имеет per-domain server `=/kpb.lt/10.0.160.1` → DNS уходит в туннель `vpn-workvpn`.
 2. `pbr_prerouting` сматчил `src=<client-ip> + dst @kpb_set | 10.0.160.0/22 | 10.0.17.0/24` → mark `0x00030000`.
@@ -219,7 +222,7 @@ chain prenat {
 
 ### Per-device bypass для zapret
 
-Сейчас bypass включён для **`192.168.1.116`** (`phoneserver`, postmarketOS; wlan0 MAC `02:00:89:de:af:ce`, DHCP-резервация `scripts/openwrt/reserve-phoneserver-dhcp.sh`), **`192.168.1.133`** (`pundef-pc`, Win + WSL mirrored — см. [zapret-bypass-pundef-pc-2026-05-27.md](zapret-bypass-pundef-pc-2026-05-27.md)), **`192.168.50.0/24`** (srv-сегмент). Ранее был Android `Redmi-Note-9-Pro` на `.157` (MAC `18:87:40:44:CD:51`). Стабильность:
+Сейчас bypass включён для **`192.168.1.116`** (`phoneserver`, postmarketOS; wlan0 MAC `02:00:89:de:af:ce`, DHCP-резервация `scripts/openwrt/reserve-phoneserver-dhcp.sh`), **`192.168.1.133`** (`pundef-pc`, Win + WSL mirrored — см. [zapret-bypass-pundef-pc-2026-05-27.md](incidents/zapret-bypass-pundef-pc-2026-05-27.md)), **`192.168.50.0/24`** (srv-сегмент). Ранее был Android `Redmi-Note-9-Pro` на `.157` (MAC `18:87:40:44:CD:51`). Стабильность:
 
 - hook `INIT_FW_POST_UP_HOOK=/opt/zapret/custom.bypass_devices.sh` в `/opt/zapret/config`;
 - скрипт `/opt/zapret/custom.bypass_devices.sh` (исходник: `[scripts/openwrt/custom.bypass_devices.sh](scripts/openwrt/custom.bypass_devices.sh)`) после каждого `zapret restart` досыпает правила `ct original/reply ... return`.
@@ -516,7 +519,6 @@ nft list table inet zapret
 | `[scripts/openwrt/99-vpn-stack](scripts/openwrt/99-vpn-stack)`                                       | Исходник hotplug-скрипта `/etc/hotplug.d/iface/99-vpn-stack`.                                                                                                                       |
 | `[scripts/openwrt/custom.bypass_devices.sh](scripts/openwrt/custom.bypass_devices.sh)`               | Источник `/opt/zapret/custom.bypass_devices.sh`: per-IP bypass для `192.168.1.116` (phoneserver), `192.168.1.133` (pundef-pc) и per-subnet bypass `192.168.50.0/24` (srv). |
 | `[scripts/openwrt/etc-hosts](scripts/openwrt/etc-hosts)`                                             | Источник `/etc/hosts` на роутере: SNI-proxy mappings для AI/Spotify/Telegram через `45.155.204.190` (см. ниже «SNI proxy via /etc/hosts»). Twitch специально без override. |
-| `[scripts/openwrt/migration-activate-srv.sh](scripts/openwrt/migration-activate-srv.sh)`             | Активатор миграции "ASUS off, OpenWrt main" (см. `[migration-asus-to-openwrt.md](migration-asus-to-openwrt.md)`). Поднимает `srv`, перезапускает стек, пере-привинчивает маршруты.  |
 | `[scripts/openwrt/enable-workvpn-client.sh](scripts/openwrt/enable-workvpn-client.sh)`               | DHCP-резервация + pbr policy `workvpn` + force-DNS для LAN-клиента (corp с телефона или ПК).                                                                                        |
 | `[scripts/openwrt/rollback-workvpn-xiaomi-13t-pro.sh](scripts/openwrt/rollback-workvpn-xiaomi-13t-pro.sh)` | Откат corp pbr-policy для `xiaomi-13t-pro` (`.204`); не трогает `paul-mac` / `pundef-pc`.                                                                          |
 | `[scripts/openwrt/reserve-phoneserver-dhcp.sh](scripts/openwrt/reserve-phoneserver-dhcp.sh)`         | Фиксированный IP для `phoneserver` (pmOS) на `lan`.                                                                                                                                 |
@@ -552,7 +554,7 @@ nft list set inet fw4 pbr_awg2_4_dst_ip_cfg076ff5     # должны быть р
 ```powershell
 nslookup spotify.com           # ожидаемо: 35.186.224.x / 45.155.204.x (НЕ 198.18.0.x)
 nslookup api.openai.com        # ожидаемо: реальный IP
-tracert example.com            # после 192.168.1.1 — 192.168.50.1 (ASUS, WAN-ветка)
+tracert example.com            # после 192.168.1.1 — WAN X3000T → провайдер
 ```
 
 На роутере для конкретного клиента (подставь IP):

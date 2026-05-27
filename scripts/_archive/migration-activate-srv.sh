@@ -1,15 +1,15 @@
 #!/bin/sh
-# Activate srv (192.168.50.0/24) interface after ASUS is removed
-# and OpenWrt becomes the main router (provider WAN goes directly into X3000T).
+# One-time script: activate srv (192.168.50.0/24) when OpenWrt is the main router.
+# Completed 2026-05-10 — kept for reference only.
 #
-# Usage on router (after physical re-cabling, ASUS powered off):
-#     sh /root/migration-activate-srv.sh
+# Usage on router:
+#     sh migration-activate-srv.sh
 #
-# Source of truth: router-openwrt-x3000t.md / migration-asus-to-openwrt.md
+# Source of truth: docs/network/router-openwrt-x3000t.md
 
 set -e
 
-echo '=== 1. Verify WAN got a real public IP (not 192.168.50.x from ASUS) ==='
+echo '=== 1. Verify WAN got a real public IP (not private RFC1918) ==='
 WAN_IP="$(ifstatus wan | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null)"
 echo "WAN ipv4 = ${WAN_IP:-<none>}"
 case "$WAN_IP" in

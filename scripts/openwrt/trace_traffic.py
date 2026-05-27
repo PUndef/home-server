@@ -194,7 +194,7 @@ def trace_ip(client: paramiko.SSHClient, ctx: TraceContext, ip_text: str) -> Non
             print("    -> zapret postnat may queue first WAN packets to nfqws")
         else:
             print("    -> zapret WAN postnat rule not detected")
-        print("    -> expected exit: wan -> ASUS -> ISP")
+        print("    -> expected exit: wan -> ISP")
         return
 
     print("  PATH:")

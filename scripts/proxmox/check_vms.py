@@ -5,7 +5,7 @@ and prints a human-readable report. Inside the VMs it uses
 `qm guest exec <vmid> -- ...` and parses the JSON envelope returned by
 the QEMU guest agent, so output looks like a normal terminal.
 
-Use it before updating hardware-and-env.md or to do a quick post-change
+Use it before updating docs/overview/hardware-and-env.md or to do a quick post-change
 sanity check.
 """
 

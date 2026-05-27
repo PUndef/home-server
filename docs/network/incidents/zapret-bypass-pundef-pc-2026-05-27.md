@@ -1,6 +1,8 @@
 # pundef-pc: zapret bypass + Cursor Remote SSH (192.168.1.133)
 
-**Дата:** 2026-05-27  
+> **Статус:** incident (snapshot)  
+> **Дата:** 2026-05-27
+
 **Контекст:** Cursor Remote SSH с Mac (`paul-mac`, `192.168.1.198`) на Win-ПК (`pundef-pc`, `192.168.1.133`) через WSL2 в mirrored networking mode. WSL шерит namespace с Win, тот же IP `192.168.1.133`.
 
 **Статус (2026-05-27):** ✅ zapret bypass, ✅ pbr `pundef-pc kpb via workvpn`, ✅ corp GitLab из WSL, ✅ Cloudflare CDN (nodesource), ✅ SSH `:22` на LAN IP. На Mac-стороне — установка Node 22 / pnpm / git config + ключ в WSL `authorized_keys`.
@@ -13,7 +15,7 @@
 
 **Remote SSH:** Mac подключается к `<wsl-user>@192.168.1.133` (не `localhost`). WSL: `sshd` active, слушает `0.0.0.0:22`. `.wslconfig`: `networkingMode=mirrored`, `hostAddressLoopback=true`.
 
-См. также: [router-openwrt-x3000t.md](router-openwrt-x3000t.md) («Per-device bypass», «Корпоративные ресурсы», таблица pbr), исходник [scripts/openwrt/custom.bypass_devices.sh](scripts/openwrt/custom.bypass_devices.sh).
+См. также: [router-openwrt-x3000t.md](../router-openwrt-x3000t.md) («Per-device bypass», «Корпоративные ресурсы», таблица pbr), исходник [custom.bypass_devices.sh](../../../scripts/openwrt/custom.bypass_devices.sh).
 
 ---
 
@@ -21,25 +23,29 @@
 
 Пункты, которые уже выполнены. Оставлены для истории; в текущем плане не повторять.
 
-| Когда | Что сделано |
-|-------|-------------|
-| 2026-05-27 | **DHCP-резервация** — `pundef-pc` MAC `9C:6B:00:8B:3F:18` → `192.168.1.133` (infinite) на роутере. |
-| 2026-05-27 | **pbr workvpn** — политика `pundef-pc kpb via workvpn` для `192.168.1.133` (на роутере, с Mac-стороны). |
-| 2026-05-27 | **Проверка corp + SSH** — из WSL: `gitlab.kpb.lt` → `10.0.17.5`, HTTPS 302; `deb.nodesource.com` HTTP 200; `sshd` на `:22`, TCP с LAN OK. |
-| 2026-05-27 | **Runtime bypass** — `nft insert` postnat/prenat для `192.168.1.133` (комментарии `zapret-bypass-pundef-pc` / `-pre`). |
+
+| Когда      | Что сделано                                                                                                                                     |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-27 | **DHCP-резервация** — `pundef-pc` MAC `9C:6B:00:8B:3F:18` → `192.168.1.133` (infinite) на роутере.                                              |
+| 2026-05-27 | **pbr workvpn** — политика `pundef-pc kpb via workvpn` для `192.168.1.133` (на роутере, с Mac-стороны).                                         |
+| 2026-05-27 | **Проверка corp + SSH** — из WSL: `gitlab.kpb.lt` → `10.0.17.5`, HTTPS 302; `deb.nodesource.com` HTTP 200; `sshd` на `:22`, TCP с LAN OK.       |
+| 2026-05-27 | **Runtime bypass** — `nft insert` postnat/prenat для `192.168.1.133` (комментарии `zapret-bypass-pundef-pc` / `-pre`).                          |
 | 2026-05-27 | **Permanent bypass** — правила добавлены в `scripts/openwrt/custom.bypass_devices.sh`, залиты на роутер `/opt/zapret/custom.bypass_devices.sh`. |
-| 2026-05-27 | **Проверка после `zapret restart`** — правила `zapret-ct-bypass-133` / `-pre` на месте через `INIT_FW_POST_UP_HOOK`. |
-| 2026-05-27 | **Smoke-test** — `Test-NetConnection deb.nodesource.com -Port 443` с Win: `TcpTestSucceeded = True` до и после restart. |
+| 2026-05-27 | **Проверка после `zapret restart`** — правила `zapret-ct-bypass-133` / `-pre` на месте через `INIT_FW_POST_UP_HOOK`.                            |
+| 2026-05-27 | **Smoke-test** — `Test-NetConnection deb.nodesource.com -Port 443` с Win: `TcpTestSucceeded = True` до и после restart.                         |
+
 
 ---
 
 ## Паттерн bypass в скрипте
 
-| Устройство/сеть | postnat | prenat | nft comment |
-|---|---|---|---|
+
+| Устройство/сеть               | postnat                         | prenat                       | nft comment                     |
+| ----------------------------- | ------------------------------- | ---------------------------- | ------------------------------- |
 | `192.168.1.116` (phoneserver) | `ct original ip saddr … return` | `ct reply ip daddr … return` | `zapret-ct-bypass-116` / `-pre` |
-| `192.168.1.133` (pundef-pc) | то же | то же | `zapret-ct-bypass-133` / `-pre` |
-| `192.168.50.0/24` (srv) | то же с `/24` | то же с `/24` | `zapret-ct-bypass-srv` / `-pre` |
+| `192.168.1.133` (pundef-pc)   | то же                           | то же                        | `zapret-ct-bypass-133` / `-pre` |
+| `192.168.50.0/24` (srv)       | то же с `/24`                   | то же с `/24`                | `zapret-ct-bypass-srv` / `-pre` |
+
 
 Формат: idempotent `grep -q comment \|\| nft insert …`, shell-комментарий с описанием устройства, короткий nft comment. Host — один IP, subnet — CIDR `/24`. На роутере порядок в `postnat`: `srv` → `.133` → `.116` (порядок не критичен — все до WAN-правил zapret).
 
@@ -82,10 +88,12 @@ table inet zapret {
 
 ## Test-NetConnection `deb.nodesource.com:443`
 
-| Когда | RemoteAddress | TcpTestSucceeded |
-|---|---|---|
-| До runtime bypass | `104.20.45.190` | **True** |
-| После `zapret restart` | `172.66.150.169` | **True** |
+
+| Когда                  | RemoteAddress    | TcpTestSucceeded |
+| ---------------------- | ---------------- | ---------------- |
+| До runtime bypass      | `104.20.45.190`  | **True**         |
+| После `zapret restart` | `172.66.150.169` | **True**         |
+
 
 Команда (PowerShell, без admin):
 

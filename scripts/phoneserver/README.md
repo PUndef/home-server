@@ -2,7 +2,7 @@
 
 Скрипты для установки и сопровождения второго узла домашней инфраструктуры — Xiaomi Redmi Note 9 Pro Global (codename `joyeuse`, SoC SM7125), переделанного под headless-сервер на postmarketOS.
 
-Подробная история установки и текущий статус железа: [`../../phoneserver-pmos-setup.md`](../../phoneserver-pmos-setup.md).
+Подробная история установки и текущий статус железа: [`docs/phoneserver/pmos-setup.md`](../../docs/phoneserver/pmos-setup.md).
 
 Целевая конфигурация — pmaports **`v25.06`** stable, `device-xiaomi-miatoll-kernel-joyeuse_tianma`, Linux 6.12.1, классический Android boot.img в стандартный `boot` partition. Возня с edge-схемой (кастомный boot.img из EFI zboot, патчи pmbootstrap и т.п.) теперь не нужна — оставлена как fallback в [`diag/`](diag/).
 

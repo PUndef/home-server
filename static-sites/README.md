@@ -2,7 +2,7 @@
 
 Исходники и конфигурация для LXC **static-sites** (VMID 102, `192.168.50.35`): маленькие фронты на Vite + React, отдача через Caddy.
 
-Подробная инфраструктурная инструкция (создание LXC, DNS, HTTPS edge) — `[static-sites-lxc.md](../static-sites-lxc.md)` в корне репозитория.
+Подробная инфраструктурная инструкция (создание LXC, DNS, HTTPS edge) — [`docs/proxmox/static-sites-lxc.md`](../docs/proxmox/static-sites-lxc.md).
 
 ## Структура
 
@@ -28,7 +28,7 @@ static-sites/
 | `wf-farm/`  | Farm / Drops lookup  | `http://wffarm.home/`   | `https://apps-pundef.mooo.com/wf-farm/`  |
 
 
-Beszel hub (`/beszel/`) — не статика, reverse proxy на `127.0.0.1:8090`; см. `[beszel-monitoring-setup.md](../beszel-monitoring-setup.md)`.
+Beszel hub (`/beszel/`) — не статика, reverse proxy на `127.0.0.1:8090`; см. [`docs/proxmox/beszel-monitoring-setup.md`](../docs/proxmox/beszel-monitoring-setup.md).
 
 ## Быстрый старт
 
@@ -80,4 +80,4 @@ uci commit dhcp
 /etc/init.d/dnsmasq restart
 ```
 
-Внешний edge: `apps-pundef.mooo.com` → Apache на nextcloud-vm → Caddy LXC; см. `static-sites-lxc.md`.
+Внешний edge: `apps-pundef.mooo.com` → Apache на nextcloud-vm → Caddy LXC; см. [`docs/proxmox/static-sites-lxc.md`](../docs/proxmox/static-sites-lxc.md).

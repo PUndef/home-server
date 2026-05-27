@@ -2,7 +2,7 @@
 
 План по переносу файлов, документов, календаря, контактов, фото, задач, паролей (KeePass) и vault Obsidian в Nextcloud с работой на **Windows, Android и macOS**.
 
-**Сервер:** Nextcloud на nextcloud-vm, [https://cloud-pundef.mooo.com](https://cloud-pundef.mooo.com) (см. [hardware-and-env.md](hardware-and-env.md), [nextcloud-setup.md](nextcloud-setup.md)).
+**Сервер:** Nextcloud на nextcloud-vm, [https://cloud-pundef.mooo.com](https://cloud-pundef.mooo.com) (см. [hardware-and-env.md](../overview/hardware-and-env.md), [setup.md](setup.md)).
 
 Вся схема завязана на **одном** источнике правды — Nextcloud. Файлы, календарь, контакты, KeePass, Obsidian — без дополнительных слоёв синхронизации и сторонних «синк-сервисов»: клиенты подключаются к твоему серверу (веб, Desktop/Files, приложение, WebDAV, CalDAV/CardDAV).
 
@@ -198,7 +198,7 @@ sudo -u www-data php /var/www/nextcloud/occ app:list | grep -E 'calendar|contact
 
 ## 2. Документы (ONLYOFFICE)
 
-Редактирование документов — через браузер (или приложение Nextcloud на Android открывает в браузере). ONLYOFFICE уже настроен на nextcloud-vm (см. [onlyoffice-nextcloud-setup.md](onlyoffice-nextcloud-setup.md)).
+Редактирование документов — через браузер (или приложение Nextcloud на Android открывает в браузере). ONLYOFFICE уже настроен на nextcloud-vm (см. [onlyoffice.md](onlyoffice.md)).
 
 ---
 

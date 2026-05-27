@@ -1,5 +1,5 @@
 ---
-description: Контекст железа и окружения — читать hardware-and-env.md для ответов по серверу
+description: Контекст железа и окружения — читать docs/overview/hardware-and-env.md для ответов по серверу
 alwaysApply: true
 ---
 
@@ -7,6 +7,6 @@ alwaysApply: true
 
 При вопросах про home-server (ресурсы, миграции, настройки Proxmox/ВМ, Nextcloud, ONLYOFFICE, сеть):
 
-1. **Прочитай `hardware-and-env.md`** в корне проекта и используй его как контекст.
+1. **Прочитай [`docs/overview/hardware-and-env.md`](docs/overview/hardware-and-env.md)** и используй его как контекст.
 2. **Подстраивай ответы** под указанные там CPU, RAM, диски, список ВМ и сервисов.
-3. Если файл ещё не заполнен (остались плейсхолдеры) — давай общие советы и при необходимости напомни заполнить шаблон для более точных рекомендаций.
+3. Если файл ещё не заполнен (остались плейсхолдеры) — давай общие советы и при необходимости напомни обновить [`docs/overview/hardware-and-env.md`](docs/overview/hardware-and-env.md).

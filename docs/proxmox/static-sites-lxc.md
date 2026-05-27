@@ -1,6 +1,9 @@
 # Static-sites LXC — хостинг маленьких фронтов
 
-Инструкция для отдельного лёгкого LXC `static-sites`, который отдаёт собранную статику через Caddy. Исходники приложений — каталог [`static-sites/`](static-sites/README.md) в репозитории.
+> **Статус:** completed setup  
+> **Последняя проверка:** 2026-05-28
+
+Инструкция для отдельного лёгкого LXC `static-sites`, который отдаёт собранную статику через Caddy. Исходники приложений — каталог [`static-sites/`](../../static-sites/README.md) в репозитории.
 
 Делай по одному шагу. После каждого шага выполни блок **Проверить** и только потом переходи дальше.
 
@@ -257,7 +260,7 @@ nslookup requiem.home 127.0.0.1
 
 **Сделать:**
 
-Из корня репозитория на Windows (пример — Requiem; все приложения — см. [`static-sites/README.md`](static-sites/README.md)):
+Из корня репозитория на Windows (пример — Requiem; все приложения — см. [`static-sites/README.md`](../../static-sites/README.md)):
 
 ```powershell
 .\static-sites\requiem\scripts\deploy.ps1
@@ -475,7 +478,7 @@ curl.exe -sS -o nul -w "HTTP %{http_code} cert=%{ssl_verify_result}`n" https://a
 | 2026-05-23 | Установлен Caddy v2.11.3 из cloudsmith, настроен `auto_https off` + один vhost для `requiem.home`/IP/`localhost`.                                            |
 | 2026-05-23 | Создан пользователь `deploy` с ключом `cursor-agent@home-server-repo`, дан write на `/srv/static-sites`.                                                     |
 | 2026-05-23 | На OpenWrt добавлена split-horizon запись `/requiem.home/192.168.50.35` в `dnsmasq`.                                                                         |
-| 2026-05-23 | Задеплоен `requiem-helper`, проверено `http://requiem.home` и `http://192.168.50.35` → `HTTP 200`.                                                           |
+| 2026-05-23 | Задеплоен `requiem` (`static-sites/requiem`), проверено `http://requiem.home` и `http://192.168.50.35` → `HTTP 200`.                                                           |
 | 2026-05-23 | Vite `base: "./"` + `import.meta.env.BASE_URL` для иконок — один build работает и с корня, и из-под префикса.                                                |
 | 2026-05-23 | Caddy переведён на path-based edge: `/requiem/*` → сайт, `/` → 302 на `/requiem/`.                                                                           |
 | 2026-05-23 | На FreeDNS заведён `apps-pundef.mooo.com`, на OpenWrt добавлен второй DDNS-сервис `apps_pundef`.                                                             |
