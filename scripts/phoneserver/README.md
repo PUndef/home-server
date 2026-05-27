@@ -32,7 +32,8 @@
 | `seed-kuma-monitors.sh` | Залить мониторы из `kuma-monitors.json` через API (`uptime-kuma-api-v2`, venv `.venv-kuma`). |
 | `pin-dns-and-ntp.sh` | Публичный DNS (1.1.1.1), не dnsmasq роутера; `chronyc makestep`. |
 | `fix-kuma-monitors-phone.sh` | На phoneserver: `/etc/hosts` для `*.mooo.com` → `192.168.50.34` + перезапуск Kuma. |
-| `fix-kuma-lan-self-monitors.sh` | Удалить мониторы «сам на себя» (SSH/Kuma/Beszel :45876) — с phoneserver они не работают. |
+
+Не добавляй в Kuma мониторы с target `192.168.1.116` / `127.0.0.1` — Kuma на том же телефоне не может проверять сам себя (см. «Известные особенности» ниже).
 
 ### При первичной установке (по порядку)
 

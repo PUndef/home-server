@@ -4,9 +4,10 @@ __pycache__/
 
 backups/
 
-# Local/throwaway scripts under scripts/openwrt/ (diagnostics, one-off probes).
-# Convention: prefix with underscore to keep them out of the repo.
+# Local/throwaway scripts (diagnostics, one-off probes, completed migrations).
+# Convention: prefix with underscore or put under scripts/_archive/ — not tracked.
 scripts/openwrt/_*
+scripts/_archive/
 
 # Secrets and local env (never commit tokens or local overrides here).
 *.env.local
