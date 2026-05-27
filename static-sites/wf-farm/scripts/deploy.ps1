@@ -3,7 +3,7 @@ param(
     [string]$User = "deploy",
     [string]$RemotePath = "/srv/static-sites/wf-farm",
     [string]$KeyPath = "$env:USERPROFILE\.ssh\proxmox_pundef_nopass",
-    [string]$Url = "http://192.168.50.35/wf-farm/",
+    [string]$Url = "http://wffarm.home",
     [switch]$SkipBuild
 )
 

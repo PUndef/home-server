@@ -2,9 +2,25 @@
 	auto_https off
 }
 
-# Local hostname - serves requiem-helper SPA from root.
+# Hub landing — card index for Warframe tools.
+http://warframe.home {
+	root * /srv/static-sites/warframe
+	try_files {path} /index.html
+	encode zstd gzip
+	file_server
+}
+
+# Local hostname — requiem SPA from root.
 http://requiem.home {
 	root * /srv/static-sites/requiem
+	try_files {path} /index.html
+	encode zstd gzip
+	file_server
+}
+
+# Local hostname — wf-farm SPA from root.
+http://wffarm.home {
+	root * /srv/static-sites/wf-farm
 	try_files {path} /index.html
 	encode zstd gzip
 	file_server
@@ -19,9 +35,18 @@ http://apps-pundef.mooo.com, http://192.168.50.35, http://localhost {
 		max_size 10MB
 	}
 
+	redir / /warframe/ 302
+	redir /warframe /warframe/ 301
 	redir /requiem /requiem/ 301
 	redir /wf-farm /wf-farm/ 301
 	redir /beszel /beszel/ 301
+
+	handle_path /warframe/* {
+		root * /srv/static-sites/warframe
+		try_files {path} /index.html
+		encode zstd gzip
+		file_server
+	}
 
 	handle_path /requiem/* {
 		root * /srv/static-sites/requiem
@@ -47,10 +72,6 @@ http://apps-pundef.mooo.com, http://192.168.50.35, http://localhost {
 				read_timeout 360s
 			}
 		}
-	}
-
-	handle / {
-		redir /requiem/ 302
 	}
 
 	handle {

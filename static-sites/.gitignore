@@ -1,0 +1,6 @@
+# Shared ignores for all Vite apps under static-sites/
+**/node_modules/
+**/dist/
+*.tsbuildinfo
+vite.config.js
+**/public/drops.html

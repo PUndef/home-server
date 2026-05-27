@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { clearDropsCache, loadDropsDataset } from "@/lib/drops-data";
 import type { DropsDataset } from "@/lib/parse-drops";
 import { formatEfficiency, rankMatches, speedTierLabel, type FarmMatch } from "@/lib/search";
+import { WarframeBreadcrumb } from "@/components/warframe-breadcrumb";
 import { cn } from "@/lib/utils";
 
 const FILTERS_KEY = "wf-farm-helper-filters-v1";
@@ -113,6 +114,7 @@ export default function App() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-6xl px-4 py-8 sm:px-6">
+      <WarframeBreadcrumb current="WF Farm Helper" />
       <header className="mb-6 text-center">
         <Badge variant="outline" className="mb-3 border-primary/30 text-primary">
           Warframe PC Drops

@@ -23,6 +23,7 @@ import {
   defaultState,
   recommend,
 } from "@/lib/requiem";
+import { WarframeBreadcrumb } from "@/components/warframe-breadcrumb";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "requiem-helper-state-v2";
@@ -668,6 +669,7 @@ function App() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-6xl px-4 py-8 sm:px-6">
+      <WarframeBreadcrumb current="Requiem Helper" />
       <header className="mb-6 text-center">
         <Badge variant="outline" className="mb-3 border-primary/30 text-primary">
           Kuva Lich / Sister planner

@@ -2,20 +2,30 @@
 
 Небольшой статический помощник для подбора Requiem-порядка у Kuva Lich / Sister of Parvos.
 
-## Как запустить
+Стек — Vite + React + shadcn (`base: "./"`). Общая схема — [`../README.md`](../README.md).
+
+## Локальная разработка
 
 ```powershell
-npm install
+cd static-sites\requiem
+npm ci
 npm run dev
 ```
 
-Проверка production-сборки:
+Production-сборка:
 
 ```powershell
 npm run build
 ```
 
-Проект сделан на Vite + React + Tailwind, с UI-компонентами в стиле `shadcn/ui`.
+## Деплой
+
+```powershell
+.\static-sites\requiem\scripts\deploy.ps1
+```
+
+- URL: `http://requiem.home/` · `http://192.168.50.35/requiem/` · `https://apps-pundef.mooo.com/requiem/`
+- На LXC: `/srv/static-sites/requiem`
 
 ## Как пользоваться
 
@@ -26,9 +36,13 @@ npm run build
 5. Первый осмысленный порядок обычно такой: `первый мод / Oull / любой`.
 6. После первой проверки снова фарми thralls, пока не откроется второй Requiem.
 7. После stab добавь попытку и укажи результат каждого проверенного слота:
-   - `верный / белый` - слот прошёл.
-   - `неверный / красный` - слот не прошёл.
-   - `не проверялся` - игра не дошла до этого слота.
+   - `верный / белый` — слот прошёл.
+   - `неверный / красный` — слот не прошёл.
+   - `не проверялся` — игра не дошла до этого слота.
 8. После этого helper предложит следующий порядок.
 
 Массовые сбросы и удаление попыток спрашивают подтверждение.
+
+## Favicon
+
+`scripts/make-favicon.py` собирает `favicon.ico` и `apple-touch-icon.png` из `Oull.webp`.

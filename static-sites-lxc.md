@@ -1,6 +1,6 @@
 # Static-sites LXC — хостинг маленьких фронтов
 
-Инструкция для отдельного лёгкого LXC `static-sites`, который отдаёт собранную статику через Caddy. Первый целевой сайт — `requiem-helper`, но схема рассчитана на несколько маленьких сайтов.
+Инструкция для отдельного лёгкого LXC `static-sites`, который отдаёт собранную статику через Caddy. Исходники приложений — каталог [`static-sites/`](static-sites/README.md) в репозитории.
 
 Делай по одному шагу. После каждого шага выполни блок **Проверить** и только потом переходи дальше.
 
@@ -11,7 +11,7 @@
 ```text
 Windows / Git repo
   -> npm run build (Vite, base: "./", относительные пути)
-  -> requiem-helper/scripts/deploy.ps1 (tar + scp + remote untar)
+  -> static-sites/<app>/scripts/deploy.ps1 (tar + scp + remote untar)
   -> static-sites LXC:/srv/static-sites/requiem
   -> Caddy на :80, path-based: /requiem/* -> /srv/static-sites/requiem
        <- локально:  http://requiem.home/      (split-horizon DNS на OpenWrt)
@@ -40,7 +40,7 @@ Windows / Git repo
 | Edge HTTPS         | Apache на `nextcloud-vm` (`192.168.50.34`), LE на `apps-pundef.mooo.com`  |
 | Корень сайта       | `/srv/static-sites/requiem`                                               |
 | Deploy user        | `deploy` (uid 1000), ключ `~/.ssh/proxmox_pundef_nopass`                  |
-| Deploy команда     | `requiem-helper/scripts/deploy.ps1`                                       |
+| Deploy команда     | `static-sites/deploy.ps1` или `static-sites/<app>/scripts/deploy.ps1`   |
 
 
 ---
@@ -253,26 +253,28 @@ nslookup requiem.home 127.0.0.1
 
 ---
 
-### Шаг 6. Задеплоить `requiem-helper` — ✅ сделано
+### Шаг 6. Задеплоить приложения — ✅ сделано
 
 **Сделать:**
 
-Из корня репозитория на Windows:
+Из корня репозитория на Windows (пример — Requiem; все приложения — см. [`static-sites/README.md`](static-sites/README.md)):
 
 ```powershell
-.\requiem-helper\scripts\deploy.ps1
+.\static-sites\requiem\scripts\deploy.ps1
+# или всё сразу:
+.\static-sites\deploy.ps1
 ```
 
-Скрипт делает: `npm ci && npm run build` в `requiem-helper/`, пакует `dist` в `tar.gz`, копирует его на LXC по `scp`, распаковывает в `/srv/static-sites/requiem` и проверяет `http://requiem.home`.
+Скрипт делает: `npm ci && npm run build` в `static-sites/requiem/`, пакует `dist` в `tar.gz`, копирует его на LXC по `scp`, распаковывает в `/srv/static-sites/requiem` и проверяет `http://requiem.home`.
 
 Полезные флаги:
 
 ```powershell
 # уже собрано, только заливка
-.\requiem-helper\scripts\deploy.ps1 -SkipBuild
+.\static-sites\requiem\scripts\deploy.ps1 -SkipBuild
 
 # другой ключ / хост / урл проверки
-.\requiem-helper\scripts\deploy.ps1 `
+.\static-sites\requiem\scripts\deploy.ps1 `
   -HostName 192.168.50.35 `
   -User deploy `
   -KeyPath "$env:USERPROFILE\.ssh\proxmox_pundef_nopass" `
@@ -295,7 +297,7 @@ nslookup requiem.home 127.0.0.1
 
 Внешний `80/443` уже проброшен на `nextcloud-vm` (`192.168.50.34`), поэтому новый сайт втащен в этот же edge: один общий hostname `apps-pundef.mooo.com`, в Apache добавлен **один** vhost-reverse-proxy на Caddy LXC, а path-роутинг для каждого сайта живёт уже внутри Caddy (`/requiem/`*, потом `/foo/*` и т.д.). Nextcloud `cloud-pundef.mooo.com` не трогается.
 
-> Vite build должен идти с `base: "./"`, чтобы один и тот же `dist` работал и с корня (`http://requiem.home/`), и под префиксом (`https://apps-pundef.mooo.com/requiem/`). См. `requiem-helper/vite.config.ts`.
+> Vite build должен идти с `base: "./"`, чтобы один и тот же `dist` работал и с корня (`http://requiem.home/`), и под префиксом (`https://apps-pundef.mooo.com/requiem/`). См. `static-sites/requiem/vite.config.ts`.
 
 ### Шаг 7. FreeDNS hostname для всех сайтов — ✅ сделано
 
@@ -482,6 +484,6 @@ curl.exe -sS -o nul -w "HTTP %{http_code} cert=%{ssl_verify_result}`n" https://a
 | 2026-05-23 | Фикс `crypto.randomUUID` → fallback через `crypto.getRandomValues`, чтобы работало по `http://` (не secure context).                                         |
 | 2026-05-23 | Split-horizon на OpenWrt: `/apps-pundef.mooo.com/192.168.50.34` — обход hairpin/uhttpd RFC1918-фильтра из LAN.                                               |
 | 2026-05-23 | Зафиксировано: в браузере для split-horizon нужно отключить Secure DNS (DoH), иначе он обходит роутерный dnsmasq.                                            |
-| 2026-05-23 | Favicon: `requiem-helper/scripts/make-favicon.py` собирает `favicon.ico` (16/32/48/64) и `apple-touch-icon.png` из `Oull.webp` (белый знак на индиго круге). |
+| 2026-05-23 | Favicon: `static-sites/requiem/scripts/make-favicon.py` собирает `favicon.ico` (16/32/48/64) и `apple-touch-icon.png` из `Oull.webp` (белый знак на индиго круге). |
 
 
