@@ -17,6 +17,12 @@ nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-133 ||
 nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-133-pre || \
     nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.133 return comment zapret-ct-bypass-133-pre
 
+# xiaomi-13t-pro: Android TLS/DPI bypass (same symptom class as pundef-pc).
+nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-214 || \
+    nft insert rule inet zapret postnat ct original ip saddr 192.168.1.214 return comment zapret-ct-bypass-214
+nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-214-pre || \
+    nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.214 return comment zapret-ct-bypass-214-pre
+
 # Whole srv subnet (Proxmox host + VMs): keep DPI off the server traffic.
 # Effective only when traffic with saddr 192.168.50.x actually hits zapret postnat
 # (e.g. asymmetric routing or routed scenarios).
