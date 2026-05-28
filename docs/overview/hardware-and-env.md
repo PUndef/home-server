@@ -63,7 +63,7 @@
 
 > Полную свежую сводку (хост + конфиги ВМ + всё внутри них) можно собрать одной командой: `python scripts/proxmox/check_vms.py`. Перед правкой этой таблицы — стоит сравниться с её выводом.
 
-**Бэкапы Nextcloud (nextcloud-vm):** раз в неделю по cron, воскресенье 3:00. Скрипт `/usr/local/bin/nextcloud-backup.sh`, лог `/var/log/nextcloud-backup.log`. Сжатие (tar.gz + gzip). Папка: `/backup/nextcloud`. Ротация: `-mtime +21` — хранятся бэкапы за последние ~3 недели (~3 набора: app_*.tar.gz, data_*.tar.gz, nextcloud-sqlbkp_*.bak.gz).
+**Бэкапы Nextcloud (nextcloud-vm):** раз в неделю по cron, воскресенье 3:00. Скрипт в репозитории [`nextcloud-vm/nextcloud-backup.sh`](../../nextcloud-vm/nextcloud-backup.sh) → на ВМ `/usr/local/bin/nextcloud-backup.sh`, лог `/var/log/nextcloud-backup.log`. Сжатие (tar.gz + gzip). Папка: `/backup/nextcloud`. Ротация: **один набор** — перед каждым запуском удаляются старые `app_*.tar.gz`, `data_*.tar.gz`, `nextcloud-sqlbkp_*.bak.gz`.
 
 **HTTPS Nextcloud:** **Let's Encrypt**. Домен cloud-pundef.mooo.com; сертификат в `/etc/letsencrypt/live/cloud-pundef.mooo.com/` (fullchain.pem, privkey.pem). Срок действия — ~3 месяца. Автопродление: certbot.timer (systemd), запуск дважды в день. В Nextcloud: overwriteprotocol https, overwrite.cli.url [https://cloud-pundef.mooo.com](https://cloud-pundef.mooo.com).
 
