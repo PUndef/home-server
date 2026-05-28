@@ -60,6 +60,13 @@ SCRIPTS = [
         usage="python start.py trace_traffic <domain-or-ip> [domain-or-ip...]",
         example="python start.py trace_traffic gitlab.kpb.lt api.openai.com",
     ),
+    ScriptSpec(
+        name="enable_workvpn_client_safe",
+        relative_path="scripts/openwrt/enable_workvpn_client_safe.py",
+        description="Safely enable corp workvpn for a LAN client (check_stack + auto-rollback).",
+        usage="python start.py enable_workvpn_client_safe",
+        example="python start.py enable_workvpn_client_safe",
+    ),
 ]
 
 SCRIPTS_BY_NAME = {item.name: item for item in SCRIPTS}

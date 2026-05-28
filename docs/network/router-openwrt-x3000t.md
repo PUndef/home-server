@@ -42,7 +42,7 @@
 AI / Cursor домены          → pbr policy «AI Tools via awg1 (global)» → awg1 (Fin)
 Mangalib (geo/RU блокировки)→ pbr policy «Mangalib via awg1» → awg1 (Fin)
 Spotify                     → подкоп → sing-box → awg1 (Fin); SNI proxy сдох 2026-05-20, см. ниже
-Корпоративные домены        → pbr policy «paul-mac / pundef-pc kpb via workvpn» → vpn-workvpn
+Корпоративные домены        → pbr policy «paul-mac / pundef-pc / xiaomi-13t-pro kpb via workvpn» → vpn-workvpn
 DPI                         → zapret / nfqws на WAN-потоках (mark не пересекается с pbr)
 Default route               → всегда WAN, не в туннели
 ```
@@ -51,13 +51,13 @@ Default route               → всегда WAN, не в туннели
 
 - **dnsmasq** — корневой резолвер LAN (`192.168.1.1:53`). Имеет per-domain upstream:
   - `*.spotify.com`, `*.scdn.co`, `*.spotifycdn.com/.net`, `pscdn.co` → `8.8.8.8` (мимо подкопа), чтобы получать **реальные** IP, а не fake-IP.
-  - `*.kpb.lt` → `10.0.160.1` (внутренний DNS workvpn).
+  - `*.kpb.lt` → `10.0.160.1` (внутренний DNS workvpn); pin `gitlab.kpb.lt` → `10.0.17.5`.
   - всё остальное → `127.0.0.42` (DNS-инбаунд `sing-box` подкопа: rule_set + fake-IP).
 - **pbr** — выбор маршрута по `dst_addr` (через `nftset`-сеты) и/или `src_addr`. Раздаёт mark, ставит `ip rule` в свои таблицы.
 - **podkop / sing-box** — основной автообход. Перехватывает трафик в community-листы и `198.18.0.0/15` через `tproxy → 127.0.0.1:1602` и выпускает наружу через `bind_interface=awg1`.
 - **AmneziaWG `awg1`** — туннель в Fin VPS (`89.44.76.52`).
 - **AmneziaWG `awg2`** — туннель в Neth VPS (`45.154.35.222`, NL/Amsterdam). Backup VPN; в pbr на 2026-05-13 не используется (Spotify-policy убрана, см. ниже). Доступен через `--interface awg2` для ручных сценариев.
-- **OpenConnect `vpn-workvpn`** — корпоративный VPN, поднимается с парой `username/password`, split-routing для клиентов с pbr-policy (сейчас `paul-mac` `192.168.1.198`, `pundef-pc` `192.168.1.133`) и `*.kpb.lt`. Stage-телефон `xiaomi-13t-pro` (`192.168.1.204`) — только DHCP-резервация; pbr-policy откатана (`rollback-workvpn-xiaomi-13t-pro.sh`).
+- **OpenConnect `vpn-workvpn`** — корпоративный VPN, поднимается с парой `username/password`, split-routing для клиентов с pbr-policy (сейчас `paul-mac` `192.168.1.198`, `pundef-pc` `192.168.1.133`, `xiaomi-13t-pro` `192.168.1.214`) и `*.kpb.lt`.
 - **zapret / nfqws** — модификация первых пакетов TCP/UDP уже выбранных WAN-потоков; маршрут не выбирает.
 
 ---
@@ -82,7 +82,7 @@ graph TD
 
   MARK -->|dst в pbr_awg2 set\n_real Spotify IPs_| MK_AWG2[mark 0x00040000]
   MARK -->|dst в pbr_awg1 set\n_AI/Cursor + Mangalib IPs_| MK_AWG1[mark 0x00020000]
-  MARK -->|src=192.168.1.198 / .133 +\ndst=*.kpb.lt / 10.0.160.0/22 / 10.0.17.0/24| MK_WORK[mark 0x00030000]
+  MARK -->|src=192.168.1.198 / .133 / .214 +\ndst=*.kpb.lt / 10.0.160.0/22 / 10.0.17.0/24| MK_WORK[mark 0x00030000]
   MARK -->|dst в podkop_subnets\nили 198.18.0.0/15| MK_PD[mark 0x00100000]
   MARK -->|без правил| MK_NONE[нет mark]
 
@@ -126,7 +126,7 @@ graph TD
 | -------- | ------------------------------------- | ------------- | ------------------------------------------------ |
 | `105`    | `fwmark 0x100000/0x100000`            | `podkop`      | подкоп tproxy / sing-box (главный обход)         |
 | `29997`  | `fwmark 0x40000/0xff0000`             | `pbr_awg2`    | резерв под awg2-policy (сейчас policy нет)       |
-| `29998`  | `fwmark 0x30000/0xff0000`             | `pbr_workvpn` | pbr-policy «paul-mac / pundef-pc kpb via workvpn» |
+| `29998`  | `fwmark 0x30000/0xff0000`             | `pbr_workvpn` | pbr-policy «paul-mac / pundef-pc / xiaomi-13t-pro kpb via workvpn» |
 | `29999`  | `fwmark 0x20000/0xff0000`             | `pbr_awg1`    | pbr-policy «AI Tools via awg1 (global)»          |
 | `29998`  | `lookup main suppress_prefixlength 1` | `main`        | local/специфичные маршруты, default подавлен     |
 | `30000`  | `fwmark 0x10000/0xff0000`             | `pbr_wan`     | pbr-uplink, явно вернуть в WAN при необходимости |
@@ -184,12 +184,12 @@ Endpoints VPN-серверов (`89.44.76.52`, `45.154.35.222`) обязател
 
 ### Корпоративные ресурсы `*.kpb.lt` (workvpn-клиенты)
 
-Клиенты с **активной** pbr-policy: `paul-mac` (`192.168.1.198`), `pundef-pc` (`192.168.1.133`, Win + WSL mirrored — Cursor Remote SSH, см. [zapret-bypass-pundef-pc-2026-05-27.md](incidents/zapret-bypass-pundef-pc-2026-05-27.md)). Добавить ещё: [`scripts/openwrt/enable-workvpn-client.sh`](../../scripts/openwrt/enable-workvpn-client.sh). `xiaomi-13t-pro` (`192.168.1.204`) — DHCP-резервация есть, corp-policy **снята** (откат stage-тестов).
+Клиенты с **активной** pbr-policy: `paul-mac` (`192.168.1.198`), `pundef-pc` (`192.168.1.133`, Win + WSL mirrored — Cursor Remote SSH, см. [zapret-bypass-pundef-pc-2026-05-27.md](incidents/zapret-bypass-pundef-pc-2026-05-27.md)), `xiaomi-13t-pro` (`192.168.1.214`, Android). Включить/перенастроить клиента: [`scripts/openwrt/enable-workvpn-client.sh`](../../scripts/openwrt/enable-workvpn-client.sh) (безопасно с ПК: [`enable_workvpn_client_safe.py`](../../scripts/openwrt/enable_workvpn_client_safe.py) — baseline/post `check_stack`, авто-откат; см. [router-resilience.md](router-resilience.md)). Откат телефона: [`rollback-workvpn-xiaomi-13t-pro.sh`](../../scripts/openwrt/rollback-workvpn-xiaomi-13t-pro.sh).
 
-1. dnsmasq имеет per-domain server `=/kpb.lt/10.0.160.1` → DNS уходит в туннель `vpn-workvpn`.
+1. dnsmasq: `server=/kpb.lt/10.0.160.1`, pin `address=/gitlab.kpb.lt/10.0.17.5` → corp DNS через `vpn-workvpn`.
 2. `pbr_prerouting` сматчил `src=<client-ip> + dst @kpb_set | 10.0.160.0/22 | 10.0.17.0/24` → mark `0x00030000`.
 3. `ip rule 29998` → `table pbr_workvpn` → `vpn-workvpn`.
-4. На телефоне: **Private DNS выключить** (иначе DNS-redirect роутера не сработает); Wi-Fi MAC randomization выключить (иначе сменится MAC и резервация).
+4. На Android-телефоне: **Private DNS выключить**; **MAC randomization выключить** (использовать MAC устройства, иначе резервация не сработает); в **Chrome → Secure DNS → Off** (иначе corp-DNS обходится); переподключить Wi-Fi.
 
 ---
 
@@ -201,6 +201,7 @@ Endpoints VPN-серверов (`89.44.76.52`, `45.154.35.222`) обязател
 chain postnat {
     ct original ip saddr 192.168.1.116 return comment "zapret-ct-bypass-116"   # phoneserver
     ct original ip saddr 192.168.1.133 return comment "zapret-ct-bypass-133"   # pundef-pc
+    ct original ip saddr 192.168.1.214 return comment "zapret-ct-bypass-214"   # xiaomi-13t-pro
     ct original ip saddr 192.168.50.0/24 return comment "zapret-ct-bypass-srv"
     oifname @wanif udp ... queue flags bypass to 200
     oifname @wanif tcp dport ... ct original packets 1-9 ... queue flags bypass to 200
@@ -209,6 +210,7 @@ chain postnat {
 chain prenat {
     ct reply ip daddr 192.168.1.116 return comment "zapret-ct-bypass-116-pre"
     ct reply ip daddr 192.168.1.133 return comment "zapret-ct-bypass-133-pre"
+    ct reply ip daddr 192.168.1.214 return comment "zapret-ct-bypass-214-pre"
     ct reply ip daddr 192.168.50.0/24 return comment "zapret-ct-bypass-srv-pre"
     iifname @wanif tcp sport ... ct reply packets 1-3 ... queue flags bypass to 200
 }
@@ -222,7 +224,7 @@ chain prenat {
 
 ### Per-device bypass для zapret
 
-Сейчас bypass включён для **`192.168.1.116`** (`phoneserver`, postmarketOS; wlan0 MAC `02:00:89:de:af:ce`, DHCP-резервация `scripts/openwrt/reserve-phoneserver-dhcp.sh`), **`192.168.1.133`** (`pundef-pc`, Win + WSL mirrored — см. [zapret-bypass-pundef-pc-2026-05-27.md](incidents/zapret-bypass-pundef-pc-2026-05-27.md)), **`192.168.50.0/24`** (srv-сегмент). Ранее был Android `Redmi-Note-9-Pro` на `.157` (MAC `18:87:40:44:CD:51`). Стабильность:
+Сейчас bypass включён для **`192.168.1.116`** (`phoneserver`, postmarketOS; wlan0 MAC `02:00:89:de:af:ce`, DHCP-резервация `scripts/openwrt/reserve-phoneserver-dhcp.sh`), **`192.168.1.133`** (`pundef-pc`, Win + WSL mirrored — см. [zapret-bypass-pundef-pc-2026-05-27.md](incidents/zapret-bypass-pundef-pc-2026-05-27.md)), **`192.168.1.214`** (`xiaomi-13t-pro`, Android), **`192.168.50.0/24`** (srv-сегмент). Ранее был Android `Redmi-Note-9-Pro` на `.157` (MAC `18:87:40:44:CD:51`). Стабильность:
 
 - hook `INIT_FW_POST_UP_HOOK=/opt/zapret/custom.bypass_devices.sh` в `/opt/zapret/config`;
 - скрипт `/opt/zapret/custom.bypass_devices.sh` (исходник: [scripts/openwrt/custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh)) после каждого `zapret restart` досыпает правила `ct original/reply ... return`.
@@ -244,7 +246,7 @@ nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.240 return commen
 | Компонент          | Mark / ct mark             | Где используется                                   | Зачем                                    |
 | ------------------ | -------------------------- | -------------------------------------------------- | ---------------------------------------- |
 | `pbr` (awg1)       | `0x00020000/0xff0000`      | `ip rule 29999`, table `pbr_awg1`                  | AI / Cursor → awg1 (Fin)                 |
-| `pbr` (workvpn)    | `0x00030000/0xff0000`      | `ip rule 29998`, table `pbr_workvpn`               | corp `*.kpb.lt` для paul-mac / pundef-pc |
+| `pbr` (workvpn)    | `0x00030000/0xff0000`      | `ip rule 29998`, table `pbr_workvpn`               | corp `*.kpb.lt` для paul-mac / pundef-pc / xiaomi-13t-pro |
 | `pbr` (awg2)       | `0x00040000/0xff0000`      | `ip rule 29997`, table `pbr_awg2`                  | Spotify → awg2 (Neth NL)                 |
 | `pbr` (uplink)     | `0x00010000/0xff0000`      | `ip rule 30000`, table `pbr_wan`                   | принудительный return в WAN              |
 | `podkop`           | `0x00100000`               | `PodkopTable mangle/proxy`, `ip rule priority 105` | tproxy в sing-box                        |
@@ -274,7 +276,7 @@ nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.240 return commen
 | `paul-mac`     | `26:C5:4C:20:C5:AD` | `192.168.1.198` | MacBook, pbr `workvpn`                          |
 | `pundef-pc`    | `9C:6B:00:8B:3F:18` | `192.168.1.133` | Win 11 + WSL mirrored, pbr `workvpn` + zapret bypass |
 | `phoneserver`  | `02:00:89:de:af:ce` | `192.168.1.116` | postmarketOS, zapret bypass                     |
-| `xiaomi-13t-pro` | `36:63:0f:4d:4b:5c` | `192.168.1.204` | corp pbr-policy **снята** (только DHCP-пин)     |
+| `xiaomi-13t-pro` | `2c:fe:4f:6b:de:aa` | `192.168.1.214` | Android, pbr `workvpn` + force-DNS + zapret bypass |
 
 
 ### Серверный сегмент `srv` (отдельная firewall zone)
@@ -322,6 +324,7 @@ awg show awg2
 | 2   | `Mangalib via awg1`          | `awg1`    | —               | `mangalib.me`, `lib.social`, `ranobelib.me`, `imglib.org` — резерв под точечные RU-блокировки тайтлов и API; делит mark `0x00020000` и таблицу `pbr_awg1` с AI-policy                                                                                                          |
 | 3   | `ai-frontend-ghcr-awg1`      | `awg1`    | `192.168.50.36` | `ghcr.io`, `github.com`, `*.githubusercontent.com`, `api.github.com` — pull образов ai-frontend VM через Fin                                                                                                                                                                   |
 | 4   | `pundef-pc kpb via workvpn`  | `workvpn` | `192.168.1.133` | те же corp dest, что у paul-mac (Win + WSL mirrored, Cursor Remote SSH)                                                                                                                                                                                                        |
+| 5   | `xiaomi-13t-pro kpb via workvpn` | `workvpn` | `192.168.1.214` | те же corp dest; force-DNS + block DoT `:853` на роутере                                                                                                                                                                                                                       |
 
 
 Полный список:
@@ -515,14 +518,15 @@ nft list table inet zapret
 | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [scripts/openwrt/openwrt_exec.py](../../scripts/openwrt/openwrt_exec.py)                                 | Выполнить одну команду на роутере по SSH с ключом без passphrase (`OPENWRT_HOST`, `OPENWRT_USER`, `OPENWRT_KEY`).                                                                   |
 | [scripts/openwrt/upload.py](../../scripts/openwrt/upload.py)                                             | Залить локальный файл на роутер по SSH (без SFTP — через `base64 -d`). Используется для обновления `99-vpn-stack` и других конфигов.                                                |
-| [scripts/openwrt/check_stack.py](../../scripts/openwrt/check_stack.py)                                   | Health-check всего стека: `pbr`/`podkop`/`sing-box`/`zapret`-bypass (`.116`/`.133`/`srv`) / `awg1`/`awg2`/`workvpn` + активные пробы + `vm-services` + `phoneserver`. |
+| [scripts/openwrt/check_stack.py](../../scripts/openwrt/check_stack.py)                                   | Health-check всего стека: `pbr`/`podkop`/`sing-box`/`zapret`-bypass (`.116`/`.133`/`.214`/srv) / `awg1`/`awg2`/`workvpn` + активные пробы + `vm-services` + `phoneserver`. |
 | [scripts/openwrt/trace_traffic.py](../../scripts/openwrt/trace_traffic.py)                               | Трассировка пути конкретного домена/IP через pbr/podkop/zapret.                                                                                                                     |
 | [scripts/openwrt/podkop-subnets-watchdog.sh](../../scripts/openwrt/podkop-subnets-watchdog.sh)           | Если `podkop_subnets` пуст — запустить `podkop list_update`. Cron: `*/15 * * * *`.                                                                                                  |
 | [scripts/openwrt/99-vpn-stack](../../scripts/openwrt/99-vpn-stack)                                       | Исходник hotplug-скрипта `/etc/hotplug.d/iface/99-vpn-stack`.                                                                                                                       |
-| [scripts/openwrt/custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh)               | Источник `/opt/zapret/custom.bypass_devices.sh`: per-IP bypass для `192.168.1.116` (phoneserver), `192.168.1.133` (pundef-pc) и per-subnet bypass `192.168.50.0/24` (srv). |
+| [scripts/openwrt/custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh)               | Источник `/opt/zapret/custom.bypass_devices.sh`: per-IP bypass для `192.168.1.116` (phoneserver), `192.168.1.133` (pundef-pc), `192.168.1.214` (xiaomi-13t-pro) и per-subnet bypass `192.168.50.0/24` (srv). |
 | [scripts/openwrt/etc-hosts](../../scripts/openwrt/etc-hosts)                                             | Источник `/etc/hosts` на роутере: SNI-proxy mappings для AI/Spotify/Telegram через `45.155.204.190` (см. ниже «SNI proxy via /etc/hosts»). Twitch специально без override. |
-| [scripts/openwrt/enable-workvpn-client.sh](../../scripts/openwrt/enable-workvpn-client.sh)               | DHCP-резервация + pbr policy `workvpn` + force-DNS для LAN-клиента (corp с телефона или ПК).                                                                                        |
-| [scripts/openwrt/rollback-workvpn-xiaomi-13t-pro.sh](../../scripts/openwrt/rollback-workvpn-xiaomi-13t-pro.sh) | Откат corp pbr-policy для `xiaomi-13t-pro` (`.204`); не трогает `paul-mac` / `pundef-pc`.                                                                          |
+| [scripts/openwrt/enable-workvpn-client.sh](../../scripts/openwrt/enable-workvpn-client.sh)               | DHCP-резервация + pbr policy `workvpn` + force-DNS для LAN-клиента (corp с телефона или ПК). Дефолт — `xiaomi-13t-pro` `.214`.                                                                                        |
+| [scripts/openwrt/enable_workvpn_client_safe.py](../../scripts/openwrt/enable_workvpn_client_safe.py)     | Безопасное включение corp-клиента: `check_stack` до/после, авто-откат; см. [router-resilience.md](router-resilience.md).                                                                                          |
+| [scripts/openwrt/rollback-workvpn-xiaomi-13t-pro.sh](../../scripts/openwrt/rollback-workvpn-xiaomi-13t-pro.sh) | Откат corp pbr-policy для `xiaomi-13t-pro` (`.214`); не трогает `paul-mac` / `pundef-pc`.                                                                          |
 | [scripts/openwrt/reserve-phoneserver-dhcp.sh](../../scripts/openwrt/reserve-phoneserver-dhcp.sh)         | Фиксированный IP для `phoneserver` (pmOS) на `lan`.                                                                                                                                 |
 
 
