@@ -63,7 +63,7 @@ Edge-конфиг: [`nextcloud-vm/apache/`](../nextcloud-vm/apache/)
 
 | Документ | Статус | Описание |
 |----------|--------|----------|
-| [plans/owncord-setup.md](plans/owncord-setup.md) | plan (blocked) | Self-hosted Discord-аналог OwnCord |
+| [plans/owncord-setup.md](plans/owncord-setup.md) | plan | OwnCord [Restezzz](https://github.com/Restezzz/OwnCord) — Linux, [DEPLOY.md](https://github.com/Restezzz/OwnCord/blob/main/deploy/DEPLOY.md) |
 
 ---
 

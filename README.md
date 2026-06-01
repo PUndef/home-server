@@ -11,9 +11,10 @@
 
 | VMID / узел | Имя | IP | Роль |
 |-------------|-----|-----|------|
-| 100 | haos17.0 | 192.168.50.51 | Home Assistant |
+| 100 | haos17.0 | 192.168.50.51 | Home Assistant (остановлен, onboot 0) |
 | 101 | nextcloud-vm | 192.168.50.34 | Nextcloud, ONLYOFFICE, Apache edge (`apps-pundef.mooo.com`) |
 | 102 | static-sites (LXC) | 192.168.50.35 | Caddy, Warframe apps, Beszel hub |
+| 103 | owncord (LXC) | 192.168.50.36 | OwnCord — [docs/plans/owncord-setup.md](docs/plans/owncord-setup.md) |
 | — | pundef (Proxmox host) | 192.168.50.9 | Гипервизор |
 | — | phoneserver | 192.168.1.116 | postmarketOS: Beszel agent, Uptime Kuma |
 | — | OpenWrt X3000T | 192.168.1.1 / 192.168.50.1 | Роутер, VPN, NAT, DDNS |
