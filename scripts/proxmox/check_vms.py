@@ -43,6 +43,21 @@ def run(client: paramiko.SSHClient, command: str, timeout: int = 30) -> tuple[in
     return rc, out, err
 
 
+def pct_exec(client: paramiko.SSHClient, vmid: int, inner: str, timeout: int = 60) -> str:
+    """Run a shell snippet inside an LXC via pct exec (plain stdout, not JSON)."""
+    safe = inner.replace("'", "'\\''")
+    cmd = f"pct exec {vmid} -- bash -lc '{safe}'"
+    rc, out, err = run(client, cmd, timeout=timeout)
+    parts: list[str] = []
+    if out.strip():
+        parts.append(out.rstrip("\n"))
+    if err.strip():
+        parts.append("[stderr]\n" + err.rstrip("\n"))
+    if rc != 0:
+        parts.append(f"[exit={rc}]")
+    return "\n".join(parts).strip() or f"<pct exec error (rc={rc})>"
+
+
 def guest_exec(client: paramiko.SSHClient, vmid: int, inner: str, timeout: int = 30) -> str:
     """Run a shell snippet inside a VM through qm guest exec, return stdout.
 
@@ -192,9 +207,52 @@ def collect_nextcloud_vm(client: paramiko.SSHClient) -> None:
         "certbot certificates 2>/dev/null | grep -E 'Certificate Name|Domains|Expiry|Subject Names' || "
         "  (echo '/etc/letsencrypt/live/' && ls -la /etc/letsencrypt/live/ 2>/dev/null); "
         "echo '--- certbot.timer ---'; "
-        "systemctl list-timers certbot.timer --no-pager 2>/dev/null | head -3"
+        "systemctl list-timers certbot.timer --no-pager 2>/dev/null | head -3; "
+        "echo '--- owncord edge ---'; "
+        "apache2ctl -S 2>/dev/null | grep -E 'owncord-pundef|443' | head -5 || true; "
+        "if [ -f /etc/letsencrypt/live/owncord-pundef.mooo.com/fullchain.pem ]; then "
+        "  echo 'owncord TLS: letsencrypt'; "
+        "  curl -fsS --connect-timeout 8 https://owncord-pundef.mooo.com/api/health 2>/dev/null "
+        "    || echo 'owncord HTTPS curl failed'; "
+        "else "
+        "  echo 'owncord TLS: self-signed or missing'; "
+        "  curl -kfsS --connect-timeout 8 https://owncord-pundef.mooo.com/api/health 2>/dev/null "
+        "    || echo 'owncord HTTPS curl failed'; "
+        "fi"
     )
     print(guest_exec(client, 101, snippet, timeout=60))
+
+
+def collect_lxc(client: paramiko.SSHClient, vmid: int, label: str) -> None:
+    section(f"LXC {vmid}: {label}")
+    _, out, _ = run(client, f"pct status {vmid}")
+    kv("status", out.strip())
+    _, out, _ = run(client, f"pct config {vmid} | grep -E '^(hostname|memory|cores|net0|onboot):'")
+    if out.strip():
+        kv("config", out.strip().replace("\n", "\n" + " " * 24))
+
+
+def collect_owncord_lxc(client: paramiko.SSHClient) -> None:
+    section("LXC 103 inside (OwnCord)")
+    snippet = (
+        "echo '--- os ---'; "
+        "grep PRETTY_NAME /etc/os-release || true; "
+        "uname -r; uptime -p; "
+        "echo '--- owncord service ---'; "
+        "systemctl is-active owncord 2>/dev/null || true; "
+        "echo '--- health ---'; "
+        "curl -fsS --connect-timeout 5 http://127.0.0.1:3001/api/health; echo; "
+        "echo '--- ice (TURN/STUN) ---'; "
+        "curl -fsS --connect-timeout 5 http://127.0.0.1:3001/api/ice 2>/dev/null | head -c 240; echo; "
+        "echo '--- coturn ---'; "
+        "docker ps --format '{{.Names}}|{{.Status}}' 2>/dev/null | grep -i turn || echo 'no turn container'; "
+        "echo '--- client patches ---'; "
+        "grep -q 'listenOnly' /opt/owncord/client/src/hooks/useGroupCall.ts 2>/dev/null "
+        "&& echo 'patch: listen-only voice' || echo 'patch: listen-only MISSING'; "
+        "grep -q 'getOutboundAudioTrack' /opt/owncord/client/src/hooks/useGroupCall.ts 2>/dev/null "
+        "&& echo 'patch: screen-audio fallback' || echo 'patch: screen-audio MISSING'"
+    )
+    print(pct_exec(client, 103, snippet, timeout=90))
 
 
 def collect_haos_vm(client: paramiko.SSHClient) -> None:
@@ -237,6 +295,8 @@ def main() -> int:
         collect_vm(client, 100, "haos17.0 (Home Assistant OS)")
         collect_vm(client, 101, "nextcloud-vm (Debian)")
         collect_nextcloud_vm(client)
+        collect_lxc(client, 103, "owncord (OwnCord chat)")
+        collect_owncord_lxc(client)
         collect_haos_vm(client)
     finally:
         client.close()

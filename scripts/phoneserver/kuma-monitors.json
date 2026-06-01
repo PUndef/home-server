@@ -24,6 +24,14 @@
     {
       "group": "Public HTTPS",
       "type": "http",
+      "name": "OwnCord",
+      "url": "https://owncord-pundef.mooo.com/api/health",
+      "interval": 60,
+      "maxretries": 3
+    },
+    {
+      "group": "Public HTTPS",
+      "type": "http",
       "name": "Requiem (static)",
       "url": "https://apps-pundef.mooo.com/requiem/",
       "interval": 120
@@ -76,6 +84,20 @@
       "type": "ping",
       "name": "static-sites LXC",
       "hostname": "192.168.50.35",
+      "interval": 120
+    },
+    {
+      "group": "srv (Proxmox / VMs)",
+      "type": "ping",
+      "name": "owncord LXC",
+      "hostname": "192.168.50.36",
+      "interval": 60
+    },
+    {
+      "group": "srv (Proxmox / VMs)",
+      "type": "http",
+      "name": "OwnCord backend (LAN)",
+      "url": "http://192.168.50.36:3001/api/health",
       "interval": 120
     },
     {

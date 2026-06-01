@@ -61,9 +61,15 @@ py -3 scripts/openwrt/openwrt_exec.py "sed -i 's/\r$//' /tmp/enable-owncord-dns.
 **Проверить:**
 
 ```powershell
+python scripts/proxmox/check_vms.py
+python start.py check_stack
 py -3 scripts/proxmox/proxmox_exec.py "pct exec 103 -- curl -fsS http://127.0.0.1:3001/api/health"
 curl.exe -fsS https://owncord-pundef.mooo.com/api/health
 ```
+
+`check_vms.py` — LXC 103 (systemd, `/api/health`, TURN, homelab-патчи) и edge на VM 101.  
+`check_stack.py` — split-horizon DNS, HTTPS `/api/health`, DHCP-lease `.36`.  
+Uptime Kuma: шаблон мониторов в `scripts/phoneserver/kuma-monitors.json` (OwnCord public + LAN backend).
 
 Друзья открывают `https://owncord-pundef.mooo.com`, вводят registration code при регистрации.
 

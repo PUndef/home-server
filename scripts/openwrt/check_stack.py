@@ -208,6 +208,27 @@ def main() -> int:
         "case \"$out\" in *code=2*|*code=3*) exit 0 ;; esac; "
         "exit 1"
     )
+    owncord_https_via_domain_probe = (
+        "ip=$(nslookup owncord-pundef.mooo.com 127.0.0.1 | awk '/^Address: /{print $2}' | head -1); "
+        "echo \"owncord-pundef.mooo.com -> $ip\"; "
+        "[ \"$ip\" = \"192.168.50.34\" ] || exit 1; "
+        "body=$(curl -4 -sS --connect-timeout 8 --max-time 15 "
+        "https://owncord-pundef.mooo.com/api/health 2>&1) || "
+        "body=$(curl -4 -k -sS --connect-timeout 8 --max-time 15 "
+        "https://owncord-pundef.mooo.com/api/health 2>&1); "
+        "echo \"$body\" | head -c 120; echo; "
+        "echo \"$body\" | grep -q '\"ok\":true'"
+    )
+    owncord_https_edge_probe = (
+        "body=$(curl -4 -sS --connect-timeout 8 --max-time 15 "
+        "--resolve 'owncord-pundef.mooo.com:443:192.168.50.34' "
+        "https://owncord-pundef.mooo.com/api/health 2>&1) || "
+        "body=$(curl -4 -k -sS --connect-timeout 8 --max-time 15 "
+        "--resolve 'owncord-pundef.mooo.com:443:192.168.50.34' "
+        "https://owncord-pundef.mooo.com/api/health 2>&1); "
+        "echo \"$body\" | head -c 120; echo; "
+        "echo \"$body\" | grep -q '\"ok\":true'"
+    )
     # BusyBox nc has no -z/-w, so probe via curl instead. Any HTTP code != 000
     # means TCP handshake + reply succeeded; we don't care which 2xx/3xx/4xx it is.
     haos_tcp_probe = (
@@ -450,6 +471,15 @@ def main() -> int:
         ),
         (
             "vm-services",
+            "owncord-backend-lan",
+            "body=$(curl -4 -sS --connect-timeout 5 --max-time 10 "
+            "http://192.168.50.36:3001/api/health 2>&1); "
+            "echo \"$body\" | head -c 80; echo; "
+            "echo \"$body\" | grep -q '\"ok\":true'",
+            "OwnCord backend http://192.168.50.36:3001/api/health returns ok",
+        ),
+        (
+            "vm-services",
             "vm-isolation-from-tunnels",
             vm_isolation_probe,
             "no srv -> awg1/awg2/workvpn forwarding (VMs are tunnel-isolated)",
@@ -460,6 +490,14 @@ def main() -> int:
             "nslookup cloud-pundef.mooo.com 127.0.0.1 "
             "| awk '/^Address: /{print $2}' | grep -qx 192.168.50.34",
             "router DNS resolves cloud-pundef.mooo.com -> 192.168.50.34",
+        ),
+        (
+            "vm-services",
+            "split-horizon-owncord-pundef",
+            "grep -q 'owncord-pundef.mooo.com/192.168.50.34' /etc/dnsmasq.conf "
+            "&& nslookup owncord-pundef.mooo.com 127.0.0.1 "
+            "| awk '/^Address: /{print $2}' | grep -qx 192.168.50.34",
+            "dnsmasq + router DNS: owncord-pundef.mooo.com -> 192.168.50.34",
         ),
         (
             "vm-services",
@@ -487,6 +525,18 @@ def main() -> int:
             "nextcloud-https-by-domain",
             nextcloud_https_via_domain_probe,
             "https://cloud-pundef.mooo.com/ resolves to local IP and answers",
+        ),
+        (
+            "vm-services",
+            "owncord-https-by-domain",
+            owncord_https_via_domain_probe,
+            "https://owncord-pundef.mooo.com/api/health resolves locally and returns ok",
+        ),
+        (
+            "vm-services",
+            "owncord-https-edge-vhost",
+            owncord_https_edge_probe,
+            "Apache edge answers owncord vhost on 192.168.50.34 (/api/health ok)",
         ),
         (
             "vm-services",
