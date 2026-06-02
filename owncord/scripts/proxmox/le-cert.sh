@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Issue Let's Encrypt cert for owncord-pundef.mooo.com on nextcloud-vm (101).
 # Prerequisite: public DNS A record owncord-pundef.mooo.com -> WAN IP (FreeDNS).
-# Run on Proxmox host after: upload owncord-pundef.conf + apply-vm-file.sh to /tmp/
+# Run on Proxmox host after: upload owncord/apache/owncord-pundef.conf + apply-vm-file.sh to /tmp/
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -31,7 +31,7 @@ if ! qm_guest_rc "${VMID}" --timeout 300 -- bash -lc "
 fi
 
 if [[ ! -f "${CONF_LOCAL}" ]]; then
-  echo "[owncord-le] missing ${CONF_LOCAL} on Proxmox host — upload nextcloud-vm/apache/owncord-pundef.conf first" >&2
+  echo "[owncord-le] missing ${CONF_LOCAL} on Proxmox host — upload owncord/apache/owncord-pundef.conf first" >&2
   exit 1
 fi
 

@@ -60,7 +60,7 @@
 | Beszel agent               | phoneserver                   | WebSocket → hub на `192.168.50.35`; метрики в Beszel UI.                                                                               |
 | Beszel hub                 | static-sites LXC (102)        | `127.0.0.1:8090`, UI: `https://apps-pundef.mooo.com/beszel/`. См. [beszel-monitoring-setup.md](../proxmox/beszel-monitoring-setup.md). |
 | Caddy + static apps        | static-sites LXC (102)        | `warframe`, `requiem`, `wf-farm`; LAN `*.home`, path `/warframe/` и т.д. См. [static-sites/README.md](../../static-sites/README.md).   |
-| OwnCord                    | owncord LXC (103)             | `https://owncord-pundef.mooo.com`, backend `:3001`, Apache edge на VM 101; опц. coturn. См. [owncord-setup.md](../plans/owncord-setup.md). |
+| OwnCord                    | owncord LXC (103)             | `https://owncord-pundef.mooo.com`, backend `:3001`, Apache edge на VM 101; опц. coturn. См. [owncord/setup.md](../../owncord/setup.md). |
 
 
 > Полную свежую сводку (хост + конфиги ВМ + всё внутри них) можно собрать одной командой: `python scripts/proxmox/check_vms.py`. Перед правкой этой таблицы — стоит сравниться с её выводом.

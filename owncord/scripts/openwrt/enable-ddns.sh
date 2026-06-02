@@ -2,7 +2,7 @@
 # DDNS for owncord-pundef.mooo.com on OpenWrt (FreeDNS dynamic update URL).
 # 1) Create A record on https://freedns.afraid.org (subdomain owncord-pundef, mooo.com).
 # 2) Copy Dynamic update URL from the subdomain page.
-# 3) Run: OWNCORD_DDNS_URL='https://freedns.afraid.org/dynamic/update.php?...' sh enable-owncord-ddns.sh
+# 3) Run: OWNCORD_DDNS_URL='https://freedns.afraid.org/dynamic/update.php?...' sh enable-ddns.sh
 set -e
 
 DOMAIN=owncord-pundef.mooo.com

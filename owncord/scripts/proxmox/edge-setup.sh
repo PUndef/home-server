@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Apache HTTPS edge for OwnCord on nextcloud-vm (101).
-# Run on Proxmox host after uploading conf to /tmp/owncord-pundef.conf
+# Run on Proxmox host after uploading owncord/apache/owncord-pundef.conf to /tmp/owncord-pundef.conf
 set -euo pipefail
 
 VMID=101
@@ -28,7 +28,7 @@ qm guest exec "${VMID}" --timeout 60 -- bash -lc "
       -out \"\${CERT_DIR}/fullchain.pem\" \
       -subj '/CN=${DOMAIN}/O=pundef-homelab'
     chmod 600 \"\${CERT_DIR}/privkey.pem\"
-    echo 'created self-signed cert (run owncord-le-cert.sh after FreeDNS)'
+    echo 'created self-signed cert (run owncord/scripts/proxmox/le-cert.sh after FreeDNS)'
   fi
 "
 
