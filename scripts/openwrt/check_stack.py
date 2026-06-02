@@ -14,6 +14,9 @@ from dataclasses import dataclass
 
 import paramiko
 
+# Probes that may fail when VPS blocks AI from router-origin curl; do not fail the stack.
+OPTIONAL_CHECK_NAMES = frozenset({"ai-targets-via-primary", "awg1-egress-backup"})
+
 
 @dataclass
 class CheckResult:
@@ -125,37 +128,11 @@ def main() -> int:
         print(f"Connection error: {exc}")
         return 2
 
-    awg1_egress_probe = (
-        "curl -4 -sS --connect-timeout 8 --max-time 15 --interface awg1 "
-        "-o /dev/null https://1.1.1.1/cdn-cgi/trace"
-    )
     awg2_egress_probe = (
         "out=$(curl -4 -sS --connect-timeout 8 --max-time 15 --interface awg2 "
         "https://api.ipify.org); echo \"$out\"; "
         # expected egress IP for Neth VPS
         "[ \"$out\" = \"45.154.35.222\" ]"
-    )
-    spotify_resolves_real_ip_probe = (
-        # Spotify must NOT resolve to fake-IP 198.18.0.x (that means podkop intercepts DNS)
-        "ip=$(nslookup ap.spotify.com 192.168.1.1 | awk '/^Address: /{print $2}' | head -1); "
-        "echo \"ap.spotify.com -> $ip\"; "
-        "case \"$ip\" in 198.18.*) exit 1 ;; \"\") exit 1 ;; esac"
-    )
-    spotify_set_has_real_ip_probe = (
-        # warm up resolver and check that pbr_awg2 set has at least one non-fakeip
-        "for d in spotify.com ap.spotify.com accounts.spotify.com open.spotify.com scdn.co; do "
-        "nslookup \"$d\" 192.168.1.1 >/dev/null 2>&1; done; sleep 1; "
-        "elements=$(nft list set inet fw4 pbr_awg2_4_dst_ip_cfg076ff5 2>/dev/null); "
-        "echo \"$elements\" | grep -q 'elements = {' || exit 1; "
-        "echo \"$elements\" | grep -Eq '[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+' || exit 1; "
-        "! echo \"$elements\" | grep -Eq '198\\.18\\.[0-9]+\\.[0-9]+' "
-    )
-    spotify_via_awg2_http_probe = (
-        "out=$(curl -4 -L -sS --connect-timeout 10 --max-time 20 --interface awg2 "
-        "-o /dev/null -w 'code=%{http_code} ip=%{remote_ip}' https://accounts.spotify.com/ 2>&1); "
-        "echo \"$out\"; "
-        "case \"$out\" in *code=2*|*code=3*) exit 0 ;; esac; "
-        "exit 1"
     )
     workvpn_gitlab_probe = (
         "ip=$(nslookup gitlab.kpb.lt 192.168.1.1 | awk '/^Address: / {ip=$2} END {print ip}'); "
@@ -175,19 +152,30 @@ def main() -> int:
         "[ \"$ok\" = 1 ]"
     )
     ai_targets_probe = (
-        "for url in https://api.openai.com https://chatgpt.com https://claude.ai; do "
+        "PRIMARY=$(uci -q get podkop.main.interface); "
+        "case \"$PRIMARY\" in awg1|awg2) ;; *) PRIMARY=awg2 ;; esac; "
+        "passed=0; "
+        "for url in https://chatgpt.com https://claude.ai https://api.openai.com; do "
         "ok=0; "
         "for i in 1 2 3; do "
-        "out=$(curl -4 -L -sS --connect-timeout 8 --max-time 20 --interface awg1 "
+        "out=$(curl -4 -L -sS --connect-timeout 10 --max-time 25 --interface \"$PRIMARY\" "
         "-o /dev/null -w 'code=%{http_code} remote=%{remote_ip} total=%{time_total}' \"$url\" 2>&1); "
         "rc=$?; "
         "case \"$out\" in *code=000*) rc=1 ;; esac; "
-        "if [ \"$rc\" = 0 ]; then echo \"$url OK: $out\"; ok=1; break; fi; "
+        "if [ \"$rc\" = 0 ]; then echo \"$url OK: $out\"; ok=1; passed=$((passed+1)); break; fi; "
         "echo \"$url attempt $i failed: $out\"; "
         "sleep 2; "
         "done; "
-        "[ \"$ok\" = 1 ] || exit 1; "
-        "done"
+        "done; "
+        "echo \"AI probes passed: $passed/3 via $PRIMARY\"; "
+        "[ \"$passed\" -ge 1 ]"
+    )
+    awg1_backup_egress_probe = (
+        "out=$(curl -4 -sS --connect-timeout 5 --max-time 10 --interface awg1 "
+        "-o /dev/null -w 'code=%{http_code}' https://1.1.1.1/cdn-cgi/trace 2>&1) || "
+        "out=\"timeout or down\"; "
+        "echo \"awg1 backup (optional): $out\"; "
+        "true"
     )
     nextcloud_https_direct_probe = (
         "out=$(curl -4 -k -sS --connect-timeout 8 --max-time 15 "
@@ -241,11 +229,14 @@ def main() -> int:
         "[ \"$code\" != \"000\" ]"
     )
     vm_isolation_probe = (
-        # ensure srv -> any tunnel forwarding chain does not exist in the live ruleset
+        # srv may forward only into primary tunnel (ai-frontend ghcr); not backup or workvpn
+        "PRIMARY=$(uci -q get podkop.main.interface); "
+        "case \"$PRIMARY\" in awg1|awg2) ;; *) PRIMARY=awg2 ;; esac; "
+        "BACKUP=awg1; [ \"$PRIMARY\" = awg1 ] && BACKUP=awg2; "
         "leaks=$(nft list chain inet fw4 forward_srv 2>/dev/null "
-        "| grep -E 'accept_to_(awg1|awg2|workvpn)'); "
+        "| grep -E \"accept_to_($BACKUP|workvpn)\"); "
         "if [ -n \"$leaks\" ]; then echo \"LEAK: $leaks\"; exit 1; fi; "
-        "echo no-tunnel-forwardings-from-srv"
+        "echo \"srv-isolated-except-optional-$PRIMARY\""
     )
 
     checks = [
@@ -281,15 +272,17 @@ def main() -> int:
         ),
         (
             "routing",
-            "pbr-rule",
-            "ip rule | grep -q 'fwmark 0x20000/0xff0000 lookup pbr_awg1'",
-            "pbr fwmark rule exists",
+            "pbr-awg2-primary-rule",
+            "ip rule | grep -q 'fwmark 0x40000/0xff0000 lookup pbr_awg2'",
+            "pbr primary (awg2) fwmark rule exists",
         ),
         (
             "routing",
             "pbr-policy-nft",
-            "nft list chain inet fw4 pbr_prerouting | grep -q 'AI Tools via awg1 (global)'",
-            "pbr policy chain is active",
+            "PRIMARY=$(uci -q get podkop.main.interface); "
+            "case \"$PRIMARY\" in awg1|awg2) ;; *) PRIMARY=awg2 ;; esac; "
+            "nft list chain inet fw4 pbr_prerouting | grep -q \"AI Tools via $PRIMARY\"",
+            "pbr AI policy chain matches podkop.main.interface",
         ),
         (
             "routing",
@@ -300,8 +293,11 @@ def main() -> int:
         (
             "routing",
             "pbr-mark-route-test",
-            "ip route get 9.9.9.9 mark 0x20000 | grep -q ' dev awg1 '",
-            "mark 0x20000 route goes via awg1",
+            "PRIMARY=$(uci -q get podkop.main.interface); "
+            "case \"$PRIMARY\" in awg2) ip route get 9.9.9.9 mark 0x40000 | grep -q ' dev awg2 ' ;; "
+            "awg1) ip route get 9.9.9.9 mark 0x20000 | grep -q ' dev awg1 ' ;; "
+            "*) exit 1 ;; esac",
+            "pbr mark route uses primary tunnel device",
         ),
         (
             "routing",
@@ -320,12 +316,6 @@ def main() -> int:
             "pbr-awg2-table",
             "ip route show table pbr_awg2 | grep -q 'default via .* dev awg2'",
             "pbr_awg2 default route goes via awg2",
-        ),
-        (
-            "routing",
-            "spotify-policy-nft",
-            "nft list chain inet fw4 pbr_prerouting | grep -q 'Spotify via awg2'",
-            "Spotify policy chain is active",
         ),
         (
             "routing",
@@ -408,39 +398,21 @@ def main() -> int:
         ),
         (
             "active-probes",
-            "awg1-egress-probe",
-            awg1_egress_probe,
-            "HTTPS egress via awg1 is reachable",
-        ),
-        (
-            "active-probes",
             "awg2-egress-probe",
             awg2_egress_probe,
             "HTTPS egress via awg2 lands on Neth IP 45.154.35.222",
         ),
         (
-            "active-probes",
-            "ai-targets-via-awg1",
+            "optional-probes",
+            "awg1-egress-backup",
+            awg1_backup_egress_probe,
+            "awg1 backup tunnel status (informational)",
+        ),
+        (
+            "optional-probes",
+            "ai-targets-via-primary",
             ai_targets_probe,
-            "AI targets are reachable via awg1",
-        ),
-        (
-            "active-probes",
-            "spotify-dns-bypasses-podkop",
-            spotify_resolves_real_ip_probe,
-            "Spotify resolves to real IP, not podkop fake-IP 198.18.x",
-        ),
-        (
-            "active-probes",
-            "spotify-pbr-set-populated",
-            spotify_set_has_real_ip_probe,
-            "pbr_awg2 set has real Spotify IPs (no fake-IP)",
-        ),
-        (
-            "active-probes",
-            "spotify-via-awg2",
-            spotify_via_awg2_http_probe,
-            "accounts.spotify.com is reachable via awg2",
+            "AI via primary from router (optional; LAN clients use pbr marks)",
         ),
         (
             "active-probes",
@@ -462,10 +434,10 @@ def main() -> int:
         ),
         (
             "vm-services",
-            "srv-vms-leased",
-            "grep -q '192.168.50.34 nextcloud-vm' /tmp/dhcp.leases "
-            "&& grep -q '192.168.50.35 static-sites' /tmp/dhcp.leases",
-            "VM/LXC static leases (nextcloud-vm, static-sites) are active (HAOS off)",
+            "srv-vms-reachable",
+            "ping -c 1 -W 2 192.168.50.34 >/dev/null 2>&1 "
+            "&& ping -c 1 -W 2 192.168.50.35 >/dev/null 2>&1",
+            "srv VMs nextcloud (.34) and static-sites (.35) respond to ping (HAOS off)",
         ),
         (
             "vm-services",
@@ -480,7 +452,7 @@ def main() -> int:
             "vm-services",
             "vm-isolation-from-tunnels",
             vm_isolation_probe,
-            "no srv -> awg1/awg2/workvpn forwarding (VMs are tunnel-isolated)",
+            "no srv -> awg1/workvpn forwarding (awg2-only OK for ai-frontend ghcr)",
         ),
         (
             "vm-services",
@@ -596,19 +568,23 @@ def main() -> int:
             current_group = result.group
             title = style.color(current_group.upper(), style.cyan, bold=True)
             print(f"\n{title}")
-        status_text = "OK" if result.ok else "FAIL"
-        status_colored = (
-            style.color("OK  ", style.green, bold=True)
-            if result.ok
-            else style.color("FAIL", style.red, bold=True)
-        )
+        optional = result.name in OPTIONAL_CHECK_NAMES
+        if result.ok:
+            status_colored = style.color("OK  ", style.green, bold=True)
+        elif optional:
+            status_colored = style.color("WARN", style.yellow, bold=True)
+        else:
+            status_colored = style.color("FAIL", style.red, bold=True)
         dots = "." * max(1, name_width - len(result.name) + 2)
         print(f"[{status_colored}] {result.name} {style.dim}{dots}{style.reset} {result.detail}")
-        if not result.ok:
-            failed += 1
-        else:
+        if result.ok:
             passed += 1
+        elif optional:
+            passed += 1
+        else:
+            failed += 1
 
+    optional_warn = sum(1 for r in results if r.name in OPTIONAL_CHECK_NAMES and not r.ok)
     if failed:
         summary = f"Summary: {passed} passed, {failed} failed."
         print(f"\n{style.color(summary, style.red, bold=True)}")
@@ -616,6 +592,8 @@ def main() -> int:
         return 1
 
     summary = f"Summary: {passed} passed, 0 failed."
+    if optional_warn:
+        summary += f" ({optional_warn} optional WARN)"
     print(f"\n{style.color(summary, style.green, bold=True)}")
     print(style.color("Health check passed: routing stack looks healthy.", style.green))
     return 0

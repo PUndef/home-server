@@ -8,7 +8,7 @@
 # AI/Spotify/Telegram sites listed below (origin lost; do not assume trust).
 # Twitch was REMOVED on 2026-05-12: the proxy refuses Twitch CDN, HLS gives
 # 'Connection reset'. Without an override Twitch resolves via sing-box/podkop
-# fake-IP and exits through awg1 (Fin), which works.
+# fake-IP and exits through the primary tunnel (awg2 / Neth since 2026-06-02).
 # Spotify routing notes (2026-05-13): the user's Premium is tied to a Nigerian
 # account, so any non-NG egress (FI via SNI proxy, NL via awg2, ...) trips the
 # "country does not match profile" guard. We tried awg2 (Neth NL) but it
@@ -17,7 +17,7 @@
 # Spotify UNPINNED on 2026-05-20: SNI proxy 45.155.204.190 stopped responding
 # (100% ICMP loss, TCP/443 timeout). With the pin in place clients just hang
 # waiting for 45.155.204.190. Without the pin Spotify resolves via sing-box,
-# gets fake-IP, exits through awg1 (Fin) -- player will probably show country
+# gets fake-IP, exits through primary tunnel (awg2) -- player will probably show country
 # mismatch (NG profile vs FI egress) but at least it stops hanging. The pin
 # block stays here, commented out, for quick rollback once we have a working
 # proxy or an NG egress.
@@ -25,49 +25,52 @@
 # Gemini / Grok / OpenAI / Copilot / ElevenLabs / DeepL / Claude / Trae /
 # Windsurf / Manus / Notion / AIStudio / Telegram / Spotify-CDN. Those will
 # all start hanging too once their TCP sessions die. Either find a new SNI
-# proxy IP or unpin them and route via awg1/awg2.
+# proxy IP or unpin them and route via podkop -> primary tunnel (see switch-primary-tunnel.sh).
+# UNPINNED 2026-06-02: SNI proxy 45.155.204.190 dead; AI block below commented out.
+# Traffic uses dnsmasq -> sing-box (podkop) -> bind_interface from podkop.main.interface.
+# Restore pins only when a working SNI proxy IP is available.
 
 127.0.0.1 localhost
 
 ::1     localhost ip6-localhost ip6-loopback
 ff02::1 ip6-allnodes
 ff02::2 ip6-allrouters
-#Gemini
-45.155.204.190 gemini.google.com
+#Gemini -- UNPINNED 2026-06-02 (dead SNI proxy)
+#45.155.204.190 gemini.google.com
 #Grok
-45.155.204.190 grok.com accounts.x.ai assets.grok.com
+#45.155.204.190 grok.com accounts.x.ai assets.grok.com
 #OpenAI
-45.155.204.190 chatgpt.com ab.chatgpt.com auth.openai.com auth0.openai.com platform.openai.com cdn.oaistatic.com
-45.155.204.190 tcr9i.chat.openai.com webrtc.chatgpt.com android.chat.openai.com api.openai.com operator.chatgpt.com
-45.155.204.190 sora.chatgpt.com sora.com videos.openai.com ios.chat.openai.com cdn.auth0.com files.oaiusercontent.com
+#45.155.204.190 chatgpt.com ab.chatgpt.com auth.openai.com auth0.openai.com platform.openai.com cdn.oaistatic.com
+#45.155.204.190 tcr9i.chat.openai.com webrtc.chatgpt.com android.chat.openai.com api.openai.com operator.chatgpt.com
+#45.155.204.190 sora.chatgpt.com sora.com videos.openai.com ios.chat.openai.com cdn.auth0.com files.oaiusercontent.com
 #Microsoft
-45.155.204.190 copilot.microsoft.com sydney.bing.com edgeservices.bing.com rewards.bing.com
-45.155.204.190 xsts.auth.xboxlive.com xgpuwebf2p.gssv-play-prod.xboxlive.com xgpuweb.gssv-play-prod.xboxlive.com
+#45.155.204.190 copilot.microsoft.com sydney.bing.com edgeservices.bing.com rewards.bing.com
+#45.155.204.190 xsts.auth.xboxlive.com xgpuwebf2p.gssv-play-prod.xboxlive.com xgpuweb.gssv-play-prod.xboxlive.com
 #ElevenLabs
-45.155.204.190 elevenlabs.io api.us.elevenlabs.io elevenreader.io api.elevenlabs.io help.elevenlabs.io
+#45.155.204.190 elevenlabs.io api.us.elevenlabs.io elevenreader.io api.elevenlabs.io help.elevenlabs.io
 #DeepL
-45.155.204.190 deepl.com www.deepl.com www2.deepl.com login-wall.deepl.com w.deepl.com dict.deepl.com ita-free.www.deepl.com
-45.155.204.190 write-free.www.deepl.com experimentation.deepl.com experimentation-grpc.deepl.com ita-free.app.deepl.com
-45.155.204.190 ott.deepl.com api-free.deepl.com backend.deepl.com clearance.deepl.com errortracking.deepl.com
-45.155.204.190 oneshot-free.www.deepl.com checkout.www.deepl.com gtm.deepl.com auth.deepl.com shield.deepl.com
+#45.155.204.190 deepl.com www.deepl.com www2.deepl.com login-wall.deepl.com w.deepl.com dict.deepl.com ita-free.www.deepl.com
+#45.155.204.190 write-free.www.deepl.com experimentation.deepl.com experimentation-grpc.deepl.com ita-free.app.deepl.com
+#45.155.204.190 ott.deepl.com api-free.deepl.com backend.deepl.com clearance.deepl.com errortracking.deepl.com
+#45.155.204.190 oneshot-free.www.deepl.com checkout.www.deepl.com gtm.deepl.com auth.deepl.com shield.deepl.com
 #Claude
-45.155.204.190 claude.ai console.anthropic.com api.anthropic.com
+#45.155.204.190 claude.ai console.anthropic.com api.anthropic.com
 #Trae.ai
-45.155.204.190 trae-api-sg.mchost.guru api.trae.ai api-sg-central.trae.ai api16-normal-alisg.mchost.guru
+#45.155.204.190 trae-api-sg.mchost.guru api.trae.ai api-sg-central.trae.ai api16-normal-alisg.mchost.guru
 #Windsurf
-45.155.204.190 windsurf.com codeium.com server.codeium.com web-backend.codeium.com  marketplace.windsurf.com
-45.155.204.190 unleash.codeium.com inference.codeium.com windsurf-stable.codeium.com
+#45.155.204.190 windsurf.com codeium.com server.codeium.com web-backend.codeium.com  marketplace.windsurf.com
+#45.155.204.190 unleash.codeium.com inference.codeium.com windsurf-stable.codeium.com
 144.31.14.104 windsurf-telemetry.codeium.com
 #Manus
-45.155.204.190 manus.im api.manus.im
+#45.155.204.190 manus.im api.manus.im
 #Notion
-45.155.204.190 www.notion.so calendar.notion.so
+#45.155.204.190 www.notion.so calendar.notion.so
 #AIStudio
-45.155.204.190 aistudio.google.com generativelanguage.googleapis.com aitestkitchen.withgoogle.com aisandbox-pa.googleapis.com xsts.auth.xboxlive.com
-45.155.204.190 webchannel-alkalimakersuite-pa.clients6.google.com alkalimakersuite-pa.clients6.google.com assistant-s3-pa.googleapis.com
-45.155.204.190 proactivebackend-pa.googleapis.com robinfrontend-pa.googleapis.com o.pki.goog labs.google labs.google.com notebooklm.google
-45.155.204.190 notebooklm.google.com jules.google.com stitch.withgoogle.com gemini.google.com copilot.microsoft.com edgeservices.bing.com
-45.155.204.190 rewards.bing.com sydney.bing.com xboxdesignlab.xbox.com xgpuweb.gssv-play-prod.xboxlive.com xgpuwebf2p.gssv-play-prod.xboxlive.com
+#45.155.204.190 aistudio.google.com generativelanguage.googleapis.com aitestkitchen.withgoogle.com aisandbox-pa.googleapis.com xsts.auth.xboxlive.com
+#45.155.204.190 webchannel-alkalimakersuite-pa.clients6.google.com alkalimakersuite-pa.clients6.google.com assistant-s3-pa.googleapis.com
+#45.155.204.190 proactivebackend-pa.googleapis.com robinfrontend-pa.googleapis.com o.pki.goog labs.google labs.google.com notebooklm.google
+#45.155.204.190 notebooklm.google.com jules.google.com stitch.withgoogle.com gemini.google.com copilot.microsoft.com edgeservices.bing.com
+#45.155.204.190 rewards.bing.com sydney.bing.com xboxdesignlab.xbox.com xgpuweb.gssv-play-prod.xboxlive.com xgpuwebf2p.gssv-play-prod.xboxlive.com
 #Instagram&Facebook
 57.144.222.34 instagram.com www.instagram.com
 157.240.9.174 instagram.com www.instagram.com
@@ -94,7 +97,7 @@ ff02::2 ip6-allrouters
 103.27.157.38 accounts.supercell.com cdn.id.supercell.com clashofclans.inbox.supercell.com game-assets.brawlstarsgame.com
 103.27.157.38 game-assets.clashofclans.com game-assets.clashroyaleapp.com security.id.supercell.com store.supercell.com
 #Spotify  -- UNPINNED 2026-05-20 (SNI proxy 45.155.204.190 dead). Routed via
-#           podkop -> awg1 (Fin) like any other community-list site. Restore by
+#           podkop -> primary tunnel (awg2). Restore by
 #           uncommenting these lines and reloading /etc/hosts + dnsmasq.
 #45.155.204.190 api.spotify.com login5.spotify.com encore.scdn.co gew1-spclient.spotify.com spclient.wg.spotify.com
 #45.155.204.190 api-partner.spotify.com aet.spotify.com www.spotify.com accounts.spotify.com open.spotify.com

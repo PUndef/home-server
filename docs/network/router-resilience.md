@@ -1,7 +1,7 @@
 # Отказоустойчивость роутера и восстановление инфраструктуры
 
 > **Статус:** living reference  
-> **Последняя проверка:** 2026-05-28  
+> **Последняя проверка:** 2026-06-02  
 > **Связано:** [`router-openwrt-x3000t.md`](router-openwrt-x3000t.md), [`hardware-and-env.md`](../overview/hardware-and-env.md)
 
 Домашняя инфраструктура (Proxmox, Nextcloud, Home Assistant, static-sites, мониторинг) **зависит от OpenWrt X3000T** не меньше, чем от самого Proxmox. Роутер — единственный шлюз для сегмента `srv` (`192.168.50.0/24`), DHCP, DNS split-horizon, NAT на Nextcloud и hotplug-восстановление VPN-стека. Ошибка в firewall, pbr, podkop или zapret может обрубить **весь** серверный сегмент, хотя `lan` (`192.168.1.0/24`) при этом остаётся живым.
@@ -185,6 +185,7 @@ Hotplug [`99-vpn-stack`](../../scripts/openwrt/99-vpn-stack) на `ifup wan|awg1
 | Инструмент | Назначение |
 |------------|------------|
 | [`check_stack.py`](../../scripts/openwrt/check_stack.py) | Полный стек + `vm-services` + phoneserver lease |
+| [`switch_primary_tunnel_safe.py`](../../scripts/openwrt/switch_primary_tunnel_safe.py) | Переключение primary `awg1` ⇄ `awg2` с baseline/rollback |
 | Uptime Kuma на phoneserver | Внешние/HTTPS пробы homelab |
 | Beszel | Метрики хостов и agents |
 | [`podkop-subnets-watchdog.sh`](../../scripts/openwrt/podkop-subnets-watchdog.sh) | Cron: пустой `podkop_subnets` → list_update |
@@ -198,3 +199,4 @@ Hotplug [`99-vpn-stack`](../../scripts/openwrt/99-vpn-stack) на `ifup wan|awg1
 | Дата | Что |
 |------|-----|
 | 2026-05-28 | Первый runbook: критический путь, протокол изменений, post-reboot checklist, сценарии recovery |
+| 2026-06-02 | Primary tunnel → `awg2` (Neth); `check_stack` и `switch_primary_tunnel_safe.py`; SNI `/etc/hosts` unpinned |

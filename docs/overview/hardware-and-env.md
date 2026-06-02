@@ -135,8 +135,8 @@
 
 | Где / имя                      | IP или хост   | Назначение                           | Роль на роутере                                          |
 | ------------------------------ | ------------- | ------------------------------------ | -------------------------------------------------------- |
-| fin-sweet-home-vps.mooo.com    | 89.44.76.52   | Amnezia-WG (Finland)                 | `awg1`: AI/Cursor pbr-policy + основной outbound подкопа |
-| sweet-home-vps.mooo.com (Neth) | 45.154.35.222 | Amnezia-WG (Netherlands / Amsterdam) | `awg2`: pbr-policy «Spotify via awg2 (Neth NL)»          |
+| fin-sweet-home-vps.mooo.com    | 89.44.76.52   | Amnezia-WG (Finland)                 | `awg1`: **backup** (Fin нестабилен с 2026-06-02)         |
+| sweet-home-vps.mooo.com (Neth) | 45.154.35.222 | Amnezia-WG (Netherlands / Amsterdam) | `awg2`: **primary** — podkop, pbr AI/Mangalib, GitHub routes |
 
 
 **Детали fin-sweet-home-vps:** Ubuntu 24.04 LTS, 1 vCPU (Intel Broadwell), 1.9 ГБ RAM, диск 15 ГБ, eth0 89.44.76.52/24. **3x-ui полностью удалён.** Вместо него — **Amnezia-WG**: сервер WireGuard развёрнут с приложения Amnezia на Windows, создано несколько клиентских профилей.
@@ -153,8 +153,8 @@
 
 ## Заметки
 
-- **Роутер:** OpenWrt X3000T — uplink к провайдеру, NAT, проброс портов, DDNS, VPN/DPI-машинерия (pbr: AI→`awg1`, Spotify→`awg2`, corp→`vpn-workvpn`, podkop/sing-box, zapret). Подробно: [`router-openwrt-x3000t.md`](../network/router-openwrt-x3000t.md).
-- **Изоляция серверного сегмента:** `srv` (`192.168.50.0/24`) и `lan` (`192.168.1.0/24`) — две независимые firewall zone на X3000T. ВМ намеренно не имеют forwarding в `awg1/awg2/workvpn` и закрыты от zapret через `ct original ip saddr 192.168.50.0/24 return` ([scripts/openwrt/custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh)). DNS у ВМ — `8.8.8.8 / 1.1.1.1` (через `dhcp_option='6,...'`), мимо dnsmasq роутера; иначе Nextcloud получал бы fake-IP `198.18.x` от sing-box.
+- **Роутер:** OpenWrt X3000T — VPN/DPI (primary **`awg2`**, backup `awg1`, corp `workvpn`, podkop/sing-box, zapret). Failover: [`switch_primary_tunnel_safe.py`](../../scripts/openwrt/switch_primary_tunnel_safe.py). Подробно: [`router-openwrt-x3000t.md`](../network/router-openwrt-x3000t.md).
+- **Изоляция `srv`:** ВМ без туннелей, кроме **`srv→awg2`** для OwnCord LXC (ghcr). Zapret bypass: [`custom.bypass_devices.sh`](../../scripts/openwrt/custom.bypass_devices.sh). DNS ВМ — `8.8.8.8 / 1.1.1.1` (мимо dnsmasq роутера).
 - **Корпоративный VPN на OpenWrt:** split-routing через `workvpn` для зоны `kpb.lt` (домены + подсети `10.0.160.0/22`, `10.0.17.0/24`) на клиентах `paul-mac` (`192.168.1.198`), `pundef-pc` (`192.168.1.133`, Win + WSL), `xiaomi-13t-pro` (`192.168.1.214`, Android). На Mac и телефоне — force-DNS redirect на роутерный `dnsmasq`; на Android дополнительно выключить Private DNS и Chrome Secure DNS.
 - **DNS:** централизованного DNS-фильтра на Proxmox нет; при необходимости — фильтрация на роутере или клиентские средства. Хост Proxmox смотрит на `1.1.1.1 / 8.8.8.8` напрямую (см. `/etc/resolv.conf`), не через роутерный dnsmasq.
 - Один физический диск: все ВМ на LVM thin в одном пуле — при апгрейде/бэкапах учитывать отсутствие отдельного хранилища.
