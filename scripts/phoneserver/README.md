@@ -70,6 +70,15 @@ KUMA_USERNAME=admin KUMA_PASSWORD='...' ./seed-kuma-monitors.sh
 
 Пакет: `uptime-kuma-api-v2` (не `uptime-kuma-api` 1.x — только Kuma 1.21–1.23). После смены DNS/hosts на phone: `./fix-kuma-monitors-phone.sh` через ssh или `PHONE_IP=192.168.1.116` + scp/ssh вручную.
 
+**OwnCord без пароля API** (hosts + три монитора в `kuma.db`, idempotent):
+
+```bash
+# из WSL на ПК:
+bash scripts/phoneserver/run-owncord-kuma-remote.sh
+```
+
+Полный seed из `kuma-monitors.json` по-прежнему через `seed-kuma-monitors.sh` (нужен `KUMA_USERNAME` / `KUMA_PASSWORD`).
+
 **Проверить:** в UI мониторы Public HTTPS зелёные; нет мониторов на `192.168.1.116` / `127.0.0.1`.
 
 ---
@@ -102,7 +111,7 @@ ssh -i ~/.ssh/phoneserver_nopass pmos@172.16.42.1
 - **RTC battery отсутствует** — после reboot часы откатываются в 1975 год. `chrony` синхронизирует за секунды после поднятия сети.
 - **Uptime Kuma** на phoneserver (`uptime-kuma`, порт 3001, данные `/var/lib/uptime-kuma`). Язык UI: Settings → Appearance → Language → English.
 - **Kuma: не мониторить сам phoneserver.** Мониторы с target `192.168.1.116` / `127.0.0.1` (SSH, :3001, Beszel :45876) с Kuma **на том же телефоне** всегда красные — это ограничение архитектуры. Живость phoneserver — в **Beszel**; доступность Kuma с ПК — `http://192.168.1.116:3001/`.
-- **Kuma: HTTPS `*.mooo.com`.** Публичный DNS для `cloud-pundef.mooo.com` / `apps-pundef.mooo.com` указывает на старый VPS (`5.189.245.251`). На phoneserver в `/etc/hosts` (прописывает `phoneserver-wifi` и `fix-kuma-monitors-phone.sh`): `192.168.50.34 cloud-pundef.mooo.com apps-pundef.mooo.com`. Иначе мониторы Public HTTPS — self-signed / 403.
+- **Kuma: HTTPS `*.mooo.com`.** Публичный DNS для homelab-доменов часто указывает на старый VPS (`5.189.245.251`). На phoneserver в `/etc/hosts` (прописывает `phoneserver-wifi` и `fix-kuma-monitors-phone.sh`): `192.168.50.34 cloud-pundef.mooo.com apps-pundef.mooo.com owncord-pundef.mooo.com`. Иначе мониторы Public HTTPS — self-signed / 403 / wrong host.
 - **Beszel agent** на phoneserver — WebSocket к hub (`192.168.50.35`), порт **45876 не слушается** (это нормально, не port-monitor).
 - **VPS NL (`45.154.35.222`)** — ICMP с phoneserver не проходит (фаервол хостера); в `kuma-monitors.json` — **Port :22**, не Ping.
 

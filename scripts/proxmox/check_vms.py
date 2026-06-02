@@ -7,6 +7,9 @@ the QEMU guest agent, so output looks like a normal terminal.
 
 Use it before updating docs/overview/hardware-and-env.md or to do a quick post-change
 sanity check.
+
+HAOS (VM 100) is stopped (onboot 0) — guest checks for it are commented out below.
+Re-enable when the VM is started again.
 """
 
 from __future__ import annotations
@@ -292,12 +295,13 @@ def main() -> int:
 
     try:
         collect_host(client)
-        collect_vm(client, 100, "haos17.0 (Home Assistant OS)")
+        # HAOS VM 100 остановлен (onboot 0) — раскомментировать при включении:
+        # collect_vm(client, 100, "haos17.0 (Home Assistant OS)")
         collect_vm(client, 101, "nextcloud-vm (Debian)")
         collect_nextcloud_vm(client)
         collect_lxc(client, 103, "owncord (OwnCord chat)")
         collect_owncord_lxc(client)
-        collect_haos_vm(client)
+        # collect_haos_vm(client)
     finally:
         client.close()
     return 0

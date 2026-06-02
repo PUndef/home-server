@@ -128,7 +128,7 @@ sleep 5
 | 2 | `python start.py check_stack` | 0 failed; особенно `srv-zone-up`, `srv-vms-leased`, `vm-isolation-from-tunnels` |
 | 3 | Proxmox UI `https://192.168.50.9:8006/` | страница логина |
 | 4 | Nextcloud `https://cloud-pundef.mooo.com/` или `https://192.168.50.34/` | 2xx/3xx |
-| 5 | HA `http://192.168.50.51:8123/` | UI |
+| 5 | HA `http://192.168.50.51:8123/` | UI (VM 100 сейчас **выключена** — шаг пропустить) |
 | 6 | Static apps `https://apps-pundef.mooo.com/beszel/` | 2xx |
 | 7 | Uptime Kuma `http://192.168.1.116:3001/` | UI (мониторы могут краснеть 1–2 мин — норма после cold start) |
 

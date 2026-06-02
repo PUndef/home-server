@@ -27,7 +27,7 @@
 
 | Имя          | ОС / тип                 | Назначение                       | vCPU | RAM  | Диск                     | Сеть / примечания    |
 | ------------ | ------------------------ | -------------------------------- | ---- | ---- | ------------------------ | -------------------- |
-| haos17.0     | VM (Home Assistant OS)   | Home Assistant                   | 2    | 6 ГБ | 64 ГБ (virtio, discard)  | vmbr0, 192.168.50.51 |
+| haos17.0     | VM (Home Assistant OS)   | Home Assistant (**остановлен**, onboot 0) | 2    | 6 ГБ | 64 ГБ (virtio, discard)  | vmbr0, 192.168.50.51; проверки в `check_*` закомментированы |
 | nextcloud-vm | VM, Debian 12 (Bookworm) | Nextcloud + ONLYOFFICE           | 4    | 6 ГБ | 100 ГБ (virtio, discard) | vmbr0, 192.168.50.34 |
 | static-sites | LXC, Debian 13 (trixie)  | Caddy, Warframe apps, Beszel hub | 1    | 1 ГБ | 8 ГБ (rootfs)            | vmbr0, 192.168.50.35 |
 | owncord      | LXC, Debian              | OwnCord chat (Restezzz)          | —    | —    | —                        | vmbr0, 192.168.50.36; edge HTTPS на VM 101 |

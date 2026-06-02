@@ -229,13 +229,12 @@ def main() -> int:
         "echo \"$body\" | head -c 120; echo; "
         "echo \"$body\" | grep -q '\"ok\":true'"
     )
-    # BusyBox nc has no -z/-w, so probe via curl instead. Any HTTP code != 000
-    # means TCP handshake + reply succeeded; we don't care which 2xx/3xx/4xx it is.
-    haos_tcp_probe = (
-        "code=$(curl -k -sS -o /dev/null -m 5 -w '%{http_code}' "
-        "http://192.168.50.51:8123/); echo \"haos-8123 code=$code\"; "
-        "[ \"$code\" != \"000\" ]"
-    )
+    # HAOS VM 100 остановлен (onboot 0) — проба отключена, раскомментировать при включении:
+    # haos_tcp_probe = (
+    #     "code=$(curl -k -sS -o /dev/null -m 5 -w '%{http_code}' "
+    #     "http://192.168.50.51:8123/); echo \"haos-8123 code=$code\"; "
+    #     "[ \"$code\" != \"000\" ]"
+    # )
     proxmox_tcp_probe = (
         "code=$(curl -k -sS -o /dev/null -m 5 -w '%{http_code}' "
         "https://192.168.50.9:8006/); echo \"pve-8006 code=$code\"; "
@@ -465,9 +464,8 @@ def main() -> int:
             "vm-services",
             "srv-vms-leased",
             "grep -q '192.168.50.34 nextcloud-vm' /tmp/dhcp.leases "
-            "&& grep -q '192.168.50.51 haos17' /tmp/dhcp.leases "
             "&& grep -q '192.168.50.35 static-sites' /tmp/dhcp.leases",
-            "VM/LXC static leases (nextcloud-vm, haos17, static-sites) are active",
+            "VM/LXC static leases (nextcloud-vm, static-sites) are active (HAOS off)",
         ),
         (
             "vm-services",
@@ -538,12 +536,13 @@ def main() -> int:
             owncord_https_edge_probe,
             "Apache edge answers owncord vhost on 192.168.50.34 (/api/health ok)",
         ),
-        (
-            "vm-services",
-            "haos-webui-tcp",
-            haos_tcp_probe,
-            "Home Assistant web UI tcp/8123 reachable on 192.168.50.51",
-        ),
+        # HAOS VM 100 остановлен — раскомментировать вместе с haos_tcp_probe:
+        # (
+        #     "vm-services",
+        #     "haos-webui-tcp",
+        #     haos_tcp_probe,
+        #     "Home Assistant web UI tcp/8123 reachable on 192.168.50.51",
+        # ),
         (
             "phoneserver",
             "phoneserver-dhcp-lease",

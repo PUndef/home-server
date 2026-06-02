@@ -53,7 +53,7 @@ _pin_homelab_hosts() {
 		cat >>/etc/hosts <<'EOF'
 
 # homelab LAN (phoneserver) — see scripts/phoneserver/fix-kuma-monitors-phone.sh
-192.168.50.34 cloud-pundef.mooo.com apps-pundef.mooo.com
+192.168.50.34 cloud-pundef.mooo.com apps-pundef.mooo.com owncord-pundef.mooo.com
 EOF
 	fi
 }
