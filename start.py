@@ -61,11 +61,32 @@ SCRIPTS = [
         example="python start.py trace_traffic gitlab.kpb.lt api.openai.com",
     ),
     ScriptSpec(
+        name="check_steam_route",
+        relative_path="scripts/openwrt/check_steam_route.py",
+        description="Steam routing for pundef-pc: current path + optional CDN speed compare.",
+        usage="python start.py check_steam_route [--benchmark] [--live]",
+        example="python start.py check_steam_route --benchmark",
+    ),
+    ScriptSpec(
+        name="pick_steam_region",
+        relative_path="scripts/openwrt/pick_steam_region.py",
+        description="Probe Steam CDN regions via API + WAN benchmarks; suggest Download Region.",
+        usage="python start.py pick_steam_region [--quick]",
+        example="python start.py pick_steam_region --quick",
+    ),
+    ScriptSpec(
         name="enable_workvpn_client_safe",
         relative_path="scripts/openwrt/enable_workvpn_client_safe.py",
         description="Safely enable corp workvpn for a LAN client (check_stack + auto-rollback).",
         usage="python start.py enable_workvpn_client_safe",
         example="python start.py enable_workvpn_client_safe",
+    ),
+    ScriptSpec(
+        name="enable_steam_wan_safe",
+        relative_path="scripts/openwrt/enable_steam_wan_safe.py",
+        description="Route Steam from pundef-pc via WAN (check_stack + auto-rollback).",
+        usage="python start.py enable_steam_wan_safe",
+        example="python start.py enable_steam_wan_safe",
     ),
 ]
 
