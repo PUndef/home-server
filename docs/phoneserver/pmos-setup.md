@@ -2,7 +2,8 @@
 
 Второй физический узел домашней инфраструктуры — Xiaomi Redmi Note 9 Pro Global (codename `**joyeuse**`, SoC SM7125 / Snapdragon 720G), переделанный под headless-сервер на postmarketOS. Изначальная мотивация — UPS «из коробки» (батарея 5020 mAh), 8-ядерный ARM, 6 ГБ RAM и 128 ГБ UFS, потребление 2–5 Вт в idle.
 
-Рабочие скрипты для повседневной эксплуатации и переустановки — [scripts/phoneserver/](../../scripts/phoneserver/README.md).
+Рабочие скрипты для повседневной эксплуатации и переустановки — [scripts/phoneserver/](../../scripts/phoneserver/README.md).  
+Голосовой ассистент (Voice PE + HA) — [voice-assistant.md](voice-assistant.md).
 
 ---
 

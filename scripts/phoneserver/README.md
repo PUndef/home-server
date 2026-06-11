@@ -83,6 +83,71 @@ bash scripts/phoneserver/run-owncord-kuma-remote.sh
 
 ---
 
+## Home Assistant (Container, не HA OS)
+
+На phoneserver HA ставится как **Docker Compose** (`scripts/phoneserver/homeassistant/compose.yaml`), без магазина Add-ons.
+
+**Голосовой ассистент (актуально):** [docs/phoneserver/voice-assistant.md](../../docs/phoneserver/voice-assistant.md)
+
+| Слой | Рабочая схема |
+|------|----------------|
+| STT / TTS | **Yandex SpeechKit** (облако, `marina`) |
+| LLM | **Groq** `llama-3.3-70b-versatile` (облако, pbr awg2) |
+| Wake / железо | **Voice PE** + Okay Nabu |
+| Локальный Wyoming | **не используется** (профиль `local` в compose — только для экспериментов) |
+
+Установка HA: `PHONE_IP=192.168.1.227 bash scripts/phoneserver/install-homeassistant.sh` (из WSL).
+
+Остановить старые whisper/piper на уже развёрнутом узле: `bash scripts/phoneserver/stop-local-voice-backends.sh`.
+
+Docker на pmOS: `/etc/docker/daemon.json` с `"iptables": false` (см. `fix-docker-iptables.sh`) — host network, роутер не трогаем.
+
+UI: `http://192.168.1.227:8123/` (eth) или `.116` (Wi‑Fi).
+
+Погода в Assist: `sudo python3 /tmp/expose-ha-weather.py` (из `expose-ha-weather.py`).
+
+### Home Assistant Voice Preview Edition
+
+Официальный гайд: [voice-pe.home-assistant.io](https://voice-pe.home-assistant.io/). У нас **HA Container**, не HA OS — add-ons нет; STT/TTS через **Yandex SpeechKit** (см. [voice-assistant.md](../../docs/phoneserver/voice-assistant.md)).
+
+**Перед стартом**
+
+- Voice PE и phoneserver в одной сети **`192.168.1.x`**, Wi‑Fi **2.4 GHz** (не guest).
+- HA UI: `http://192.168.1.227:8123/` — этот адрес должен быть в Companion app на телефоне.
+- Если Voice PE раньше был привязан к старому HA (`haos17.0` / `50.51`) — [factory reset](https://voice-pe.home-assistant.io/) (иначе ключ шифрования не совпадёт).
+- Bluetooth на phoneserver в HA **сломан** — onboarding только через **Companion app** на телефоне (BLE), не через браузер на ПК.
+
+**Шаги**
+
+1. Подключи Voice PE к USB‑C питанию → LED «twinkle», готов к pairing.
+2. На телефоне: **Home Assistant Companion** → сервер `http://192.168.1.227:8123`.
+   - Android: разрешения **Location (precise)** и **Nearby devices** (нужны только для onboarding).
+3. В app: **Настройки → Устройства и службы → Обнаружено** → `home-assistant-… Improv via BLE` → **Добавить**.
+4. SSID/пароль **2.4 GHz** Wi‑Fi → **Подключить** → нажми **центральную кнопку** на Voice PE.
+5. Снова **Обнаружено** → `Home Assistant Voice …` (ESPHome) → **Добавить** → Submit.
+6. Мастер спросит Cloud vs DIY:
+   - **Не** Home Assistant Cloud.
+   - **Do it yourself** — **не** «Setup with apps» (это add-ons для HA OS). Wyoming уже настроен; мастер можно пропустить/закрыть.
+   - Если просит host/IP устройства — IP Voice PE из роутера (`192.168.1.x`), не IP phoneserver.
+7. На странице устройства Voice PE:
+   - сущность **Assist** → pipeline **Voice Assistant** (русский, Yandex + Groq);
+   - wake word: **Okay Nabu** (на устройстве по умолчанию).
+8. Тест: «Okay Nabu» → «какая погода» / «проверка».
+
+Переустановка прошивки (если onboarding сломался): [esphome.github.io/home-assistant-voice-pe](https://esphome.github.io/home-assistant-voice-pe/) (Chrome, USB к ПК).
+
+**Просит encryption key** — старый HA; factory reset иногда **не** стирает ключ. **Не жми «Добавить»** на плашке `Home Assistant` в Обнаружено.
+
+1. **Отключи питание** Voice PE (чтобы не торчал в Wi‑Fi со старым ключом).
+2. В HA: **⋮** у плашки в Обнаружено → **Игнорировать** (если есть).
+3. **Перепрошивка USB** (Chrome/Edge): [esphome.github.io/home-assistant-voice-pe](https://esphome.github.io/home-assistant-voice-pe/) — версия **25.12.4** (не pre-release). Кабель USB‑C с **данными** в ПК.
+4. В мастере прошивки **не пропускай Wi‑Fi** — настрой сеть и привязку к HA **в том же мастере** (URL `http://192.168.1.227:8123`). Пропуск Wi‑Fi + Companion app снова даёт запрос ключа ([thread](https://community.home-assistant.io/t/factory-reset-issue-with-home-assistant-voice-preview-edition-device-blinking-blue-instead-of-white/866308)).
+5. Если installer завис на «preparing» — другой браузер, без расширений, bootloader: питание выкл → держать кнопку → подключить USB → отпустить → Connect на странице installer.
+
+После прошивки: twinkle → Improv BLE в Companion **или** сразу добавление из мастера. Плашку с ключом не трогать.
+
+---
+
 ## Короткая шпаргалка
 
 ```bash

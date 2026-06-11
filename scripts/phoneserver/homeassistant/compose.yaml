@@ -1,0 +1,43 @@
+# Home Assistant on phoneserver (aarch64, network_mode: host).
+# Active voice stack: Yandex SpeechKit STT/TTS + Groq (cloud) — see docs/phoneserver/voice-assistant.md
+#
+# Optional local Wyoming backends (not used in production):
+#   docker compose --profile local up -d
+
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    network_mode: host
+    privileged: true
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Moscow
+      DISABLE_JEMALLOC: "true"
+    volumes:
+      - ./config:/config
+      - /run/dbus:/run/dbus:ro
+
+  whisper:
+    profiles: ["local"]
+    image: rhasspy/wyoming-whisper
+    container_name: wyoming-whisper
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Moscow
+    volumes:
+      - ./whisper-data:/data
+    command: --model small-int8 --language ru
+
+  piper:
+    profiles: ["local"]
+    image: rhasspy/wyoming-piper
+    container_name: wyoming-piper
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Moscow
+    volumes:
+      - ./piper-data:/data
+    command: --voice ru_RU-irina-medium

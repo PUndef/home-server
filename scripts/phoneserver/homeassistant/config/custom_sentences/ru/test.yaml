@@ -1,0 +1,9 @@
+# Test phrases for Assist (local intent, not free chat).
+language: "ru"
+intents:
+  TestCheck:
+    data:
+      - sentences:
+          - "проверка"
+          - "тест"
+          - "привет"
