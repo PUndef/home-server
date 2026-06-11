@@ -87,7 +87,8 @@ bash scripts/phoneserver/run-owncord-kuma-remote.sh
 
 На phoneserver HA ставится как **Docker Compose** (`scripts/phoneserver/homeassistant/compose.yaml`), без магазина Add-ons.
 
-**Голосовой ассистент (актуально):** [docs/phoneserver/voice-assistant.md](../../docs/phoneserver/voice-assistant.md)
+**Голосовой ассистент (актуально):** [docs/phoneserver/voice-assistant.md](../../docs/phoneserver/voice-assistant.md)  
+**Spotify / музыка (план на будущее):** тот же doc, раздел «Spotify / музыка — план на будущее»
 
 | Слой | Рабочая схема |
 |------|----------------|

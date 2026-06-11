@@ -99,42 +99,89 @@ Voice PE (Okay Nabu)
 
 ---
 
-## Spotify с говорилки
+## Spotify / музыка с говорилки — ⬜ план на будущее
 
-### Коротко
+> **Статус:** не делали; подписка Spotify **Individual** (Premium) есть.  
+> **Сейчас:** колонки и отдельного плеера нет — только Voice PE + phoneserver.  
+> **Идея:** позже собрать сценарий «как у Алисы» (включи конкретный трек/исполнителя) **без Groq** для музыки.
 
-**Да, можно**, но не «из коробки» с текущим Groq-агентом.
+### Почему не на сам Voice PE
 
-| Требование | Детали |
-|------------|--------|
-| Аккаунт | **Spotify Premium** (с 2026 dev portal только Premium) |
-| Интеграция HA | Официальная [Spotify](https://www.home-assistant.io/integrations/spotify/) (OAuth в UI) |
-| Куда играть | Нужен **media_player** с Spotify Connect: телефон, колонка, Chromecast, WiiM, ПК с Spotify… |
-| Голос | Текущий **Groq Cloud API** — только текст, **без** вызова Spotify |
+Voice PE — **голосовой спутник** (микрофон + короткий TTS), не Spotify Connect плеер. Spotify отдаёт поток на Connect-устройства; прошивка Voice PE этого не умеет и не планирует.
 
-### Пути по сложности
+### Почему не JBL по Bluetooth с Voice PE
 
-**1. Простые фразы (без LLM)** — если есть `media_player`:
+Чип **ESP32-S3** — только **BLE** (настройка). Для музыки нужен **Bluetooth Classic (A2DP)** — на Voice PE его нет ([issue #332](https://github.com/esphome/home-assistant-voice-pe/issues/332)). Варианты звука с Voice PE:
 
-Custom sentences / intent_script: «включи музыку на `<плеер>`» → `media_player.play_media` или сценарий.
+| Вариант | Что даёт |
+|---------|----------|
+| 3.5 mm с Voice PE | Только **ответы Assist**, не Spotify |
+| Voice PE → BT → JBL | **Нельзя** (нет A2DP) |
+| Отдельный плеер → JBL (AUX или BT от плеера) | **Рабочий путь** |
 
-**2. Music Assistant (рекомендуется для голоса)** — отдельный Docker-сервис рядом с HA:
+### Целевая схема (когда появится плеер)
 
-- Провайдер Spotify, очереди, «играй X на кухне».
-- Документация: [music-assistant.io](https://www.music-assistant.io/).
-- На phoneserver потянет как лёгкий сервис; тяжёлая часть — на стороне Spotify API.
+```text
+Voice PE (Okay Nabu) — только слушает команды
+phoneserver — HA + Music Assistant (Docker)
+Плеер в комнате — Spotify Connect / MA player → колонка (JBL и т.п.)
+STT/TTS — как сейчас (Yandex); Groq — только болтовня, не музыка
+```
 
-**3. Natural language + Spotify** — custom [spotify-voice-assistant](https://github.com/cauld/spotify-voice-assistant) + агент с **function calling** (Extended OpenAI Conversation и т.п.). С простым Groq-интегратором **не совместимо** без доработки.
+### Железо: что можно использовать без покупки колонки
 
-### Шаги, если решишь подключать Spotify
+| Вариант | Оценка |
+|---------|--------|
+| **Старый неиспользуемый телефон** | **Лучший бесплатный старт.** Постоянно на зарядке, Wi‑Fi 2.4 GHz, приложение Spotify → **Spotify Connect** target. Можно BT на JBL, если колонка появится. Требования: Android 8+ (лучше 10+), не умирающая батарея на постоянной зарядке ок. |
+| ПК со Spotify | Уже есть; не «колонка в комнате» |
+| WiiM Mini / аналог | Покупка; line-out на JBL, стабильнее старого телефона |
 
-1. Создать приложение в [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
-2. HA → **Устройства и службы → + → Spotify** → OAuth.
-3. Выбрать/настроить `media_player` (куда играть).
-4. Проверить из UI: воспроизведение плейлиста.
-5. Добавить голос (Music Assistant или custom sentences).
+Старый телефон = **плеер**, Voice PE = **микрофон**. Это нормальная схема для HA.
 
-**Проверить:** в HA появился `media_player.spotify_*`; тестовый трек играет на выбранном устройстве.
+### Этапы (когда решишь делать)
+
+#### Этап 1 — минимум (без Music Assistant) — ⬜
+
+**Сделать**
+
+1. [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) → приложение, Redirect URI `https://my.home-assistant.io/redirect/oauth` (или `http://192.168.1.227:8123/auth/external/callback`).
+2. HA → интеграция **Spotify** → OAuth.
+3. Старый телефон: установить Spotify, залогиниться, оставить в сети; в HA выбрать его как **source** у `media_player.spotify_*`.
+4. Expose `media_player.spotify_*` в Assist; плеер и Voice PE в одной **area**.
+
+**Проверить:** из HA UI трек играет на телефоне; «Okay Nabu» → «следующий трек» / «пауза» (локально, без Groq).
+
+#### Этап 2 — «как у Алисы», конкретные запросы — ⬜
+
+**Сделать**
+
+1. **Music Assistant** — Docker на phoneserver (рядом с HA).
+2. Подключить Spotify Premium в MA.
+3. Плеер MA: старый телефон или [MA mobile player](https://www.music-assistant.io/) на нём.
+4. Blueprint [music-assistant/voice-support](https://github.com/music-assistant/voice-support):
+   - **Option 1 (Local)** — без LLM, фразы вида «Play artist …» (англ. синтаксис);
+   - **Option 2 (LLM Enhanced)** — свободная речь на русском, LLM **только для музыки** (отдельно от Groq в основном ассистенте).
+5. Плеер и Voice PE в одной area (обязательно для «играй в гостиной»).
+
+**Проверить:** «Okay Nabu» → «Play artist …» / русский запрос (если LLM blueprint) → музыка на телефоне/JBL.
+
+#### Этап 3 — колонка JBL (опционально) — ⬜
+
+- JBL с **входом AUX** → кабель от WiiM Mini или от телефона (если телефон у колонки).
+- JBL только по **BT** → телефон-плеер по BT к JBL, MA/Spotify управляет телефоном.
+
+### Что не ждать один в один от Алисы
+
+- Каталог **Spotify**, не Яндекс.Музыка.
+- Voice PE **никогда** не станет колонкой Spotify.
+- Свободный русский «включи что угодно» без LLM — только через **custom sentences** на свои плейлисты или **MA LLM blueprint**.
+
+### Ссылки
+
+- [Spotify integration](https://www.home-assistant.io/integrations/spotify/)
+- [Music Assistant](https://www.music-assistant.io/)
+- [MA voice-support blueprints](https://github.com/music-assistant/voice-support)
+- Voice PE и BT: [community thread](https://community.home-assistant.io/t/home-assistant-voice-pe-connection-to-bluetooth-speaker/817188)
 
 ---
 
