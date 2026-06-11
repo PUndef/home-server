@@ -135,11 +135,11 @@
 
 | Где / имя                      | IP или хост   | Назначение                           | Роль на роутере                                          |
 | ------------------------------ | ------------- | ------------------------------------ | -------------------------------------------------------- |
-| fin-sweet-home-vps.mooo.com    | 89.44.76.52   | Amnezia-WG (Finland)                 | `awg1`: **backup** (Fin нестабилен с 2026-06-02)         |
+| fin-sweet-home-vps.mooo.com    | 89.44.76.52   | Amnezia-WG (Finland)                 | `awg1`: **backup** (проверен 2026-06-02: endpoint/туннель OK) |
 | sweet-home-vps.mooo.com (Neth) | 45.154.35.222 | Amnezia-WG (Netherlands / Amsterdam) | `awg2`: **primary** — podkop, pbr AI/Mangalib, GitHub routes |
 
 
-**Детали fin-sweet-home-vps:** Ubuntu 24.04 LTS, 1 vCPU (Intel Broadwell), 1.9 ГБ RAM, диск 15 ГБ, eth0 89.44.76.52/24. **3x-ui полностью удалён.** Вместо него — **Amnezia-WG**: сервер WireGuard развёрнут с приложения Amnezia на Windows, создано несколько клиентских профилей.
+**Детали fin-sweet-home-vps:** Ubuntu 24.04 LTS, 1 vCPU (Intel Broadwell), 1.9 ГБ RAM, диск 15 ГБ, eth0 89.44.76.52/24. **3x-ui полностью удалён** (2026-06-02: fail2ban `3x-ipl`, `/var/log/x-ui`, acme.sh/cron, образ `amneziavpn/amneziawg-go`; journal ≤80M). Вместо него — **Amnezia-WG** в Docker (`amnezia-awg2`, UDP 45007): сервер развёрнут с клиента Amnezia, несколько peer-профилей.
 
 **Детали sweet-home-vps (Neth):** Ubuntu 22.04.5 LTS, hostname `customer55224`, 1 vCPU (Intel Xeon E5-2699A v4), 957 МБ RAM, диск 15 ГБ, ens3 `45.154.35.222/24`. **Очищен 2026-05-07** от лишнего:
 

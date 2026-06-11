@@ -189,6 +189,7 @@ Hotplug [`99-vpn-stack`](../../scripts/openwrt/99-vpn-stack) на `ifup wan|awg1
 | Uptime Kuma на phoneserver | Внешние/HTTPS пробы homelab |
 | Beszel | Метрики хостов и agents |
 | [`podkop-subnets-watchdog.sh`](../../scripts/openwrt/podkop-subnets-watchdog.sh) | Cron: пустой `podkop_subnets` → list_update |
+| [`pbr-workvpn-watchdog.sh`](../../scripts/openwrt/pbr-workvpn-watchdog.sh) | Cron: `workvpn` up, но пустая `pbr_workvpn` → `pbr restart` |
 
 **Рекомендация:** перед и после каждой сессии правок на роутере — `check_stack`. При плановом reboot роутера — checklist выше.
 
@@ -199,4 +200,4 @@ Hotplug [`99-vpn-stack`](../../scripts/openwrt/99-vpn-stack) на `ifup wan|awg1
 | Дата | Что |
 |------|-----|
 | 2026-05-28 | Первый runbook: критический путь, протокол изменений, post-reboot checklist, сценарии recovery |
-| 2026-06-02 | Primary tunnel → `awg2` (Neth); `check_stack` и `switch_primary_tunnel_safe.py`; SNI `/etc/hosts` unpinned |
+| 2026-06-08 | `pbr-workvpn-watchdog` + hotplug `workvpn ifup → pbr restart`; `check_stack` probe `corp-workvpn-mark-route` |

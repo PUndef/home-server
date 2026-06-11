@@ -25,7 +25,7 @@ uci commit podkop
 for sid in $(uci show pbr 2>/dev/null | sed -n "s/^\(pbr\.@policy\[[0-9]*\]\)=policy$/\1/p"); do
   name=$(uci -q get "${sid}.name" || true)
   case "$name" in
-    *"AI Tools"*|*"Mangalib"*|*"ai-frontend-ghcr"*)
+    *"AI Tools"*|*"Mangalib"*|*"ai-frontend-ghcr"*|*"Warframe"*|*"games via"*)
       uci set "${sid}.interface=$PRIMARY"
       newname=$(printf '%s' "$name" | sed "s/via awg[12]/via $PRIMARY/" | sed "s/-awg[12]/-$PRIMARY/")
       uci set "${sid}.name=$newname"

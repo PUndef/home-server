@@ -343,6 +343,13 @@ def main() -> int:
         ),
         (
             "routing",
+            "corp-workvpn-mark-route",
+            "ifstatus workvpn | grep -q '\"up\": true' && "
+            "ip route get 10.0.17.5 mark 0x30000 2>/dev/null | grep -q 'dev vpn-workvpn'",
+            "marked corp traffic (fwmark 0x30000) routes via vpn-workvpn",
+        ),
+        (
+            "routing",
             "workvpn-policy-nft",
             "nft list chain inet fw4 pbr_prerouting | grep -q 'paul-mac kpb via workvpn' "
             "&& nft list chain inet fw4 pbr_prerouting | grep -q 'pundef-pc kpb via workvpn'",

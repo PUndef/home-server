@@ -17,4 +17,9 @@ case "$INTERFACE" in
     /etc/init.d/zapret restart
     /etc/init.d/pbr restart
     ;;
+  workvpn)
+    # Rebuild pbr_workvpn routes after OpenConnect reconnect; full stack not needed.
+    sleep 5
+    /etc/init.d/pbr restart
+    ;;
 esac
