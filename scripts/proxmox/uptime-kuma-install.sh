@@ -111,7 +111,10 @@ EnvironmentFile=${ENV_FILE}
 ExecStart=/usr/bin/node ${INSTALL_DIR}/server/server.js --host=\${KUMA_HOST} --port=\${KUMA_PORT}
 Restart=on-failure
 RestartSec=10
-NoNewPrivileges=true
+# Ping monitors need raw ICMP sockets (Node ping module).
+AmbientCapabilities=CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_BIND_SERVICE CAP_SETUID CAP_SETGID CAP_DAC_OVERRIDE
+NoNewPrivileges=false
 PrivateTmp=true
 
 [Install]

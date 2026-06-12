@@ -82,11 +82,11 @@
     },
     {
       "group": "LAN",
-      "type": "port",
-      "name": "OpenWrt router SSH",
-      "hostname": "192.168.1.1",
-      "port": 22,
-      "interval": 60
+      "type": "ping",
+      "name": "Internet uplink (1.1.1.1)",
+      "hostname": "1.1.1.1",
+      "interval": 60,
+      "_note": "Router admin (SSH/LuCI) blocked from srv by fw4; WAN ping proxies uplink health"
     },
     {
       "group": "LAN",
