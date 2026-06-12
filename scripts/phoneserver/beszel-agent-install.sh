@@ -82,8 +82,7 @@ output_log="/var/log/beszel-agent.log"
 error_log="/var/log/beszel-agent.log"
 
 depend() {
-    need phoneserver-wifi net
-    after phoneserver-wifi
+    need net
 }
 
 start_pre() {

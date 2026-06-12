@@ -2,14 +2,14 @@
 #
 # Prerequisites:
 #   - SSH key: %USERPROFILE%\.ssh\phoneserver_nopass (or WSL ~/.ssh/phoneserver_nopass)
-#   - phoneserver reachable (Wi-Fi 192.168.1.116 or USB 172.16.42.1 after wsl-usbnet-up.sh)
+#   - phoneserver reachable (eth 192.168.1.227 or USB 172.16.42.1 after wsl-usbnet-up.sh)
 #
 # Usage:
 #   .\scripts\phoneserver\install-uptime-kuma.ps1
 #   $env:PHONE_IP='172.16.42.1'; .\scripts\phoneserver\install-uptime-kuma.ps1
 
 param(
-    [string]$PhoneIp = $(if ($env:PHONE_IP) { $env:PHONE_IP } else { "192.168.1.116" }),
+    [string]$PhoneIp = $(if ($env:PHONE_IP) { $env:PHONE_IP } else { "192.168.1.227" }),
     [string]$SshUser = "pmos",
     [string]$SshKey = "$env:USERPROFILE\.ssh\phoneserver_nopass",
     [string]$KumaVersion = "2.3.2",

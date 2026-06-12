@@ -22,8 +22,8 @@
 | Hostname          | `phoneserver`                                                                                                            |
 | Пользователь      | `pmos`, **NOPASSWD sudo** через `/etc/sudoers.d/pmos-nopasswd` (доступ только по SSH-ключу)                              |
 | SSH-ключ от WSL   | `~/.ssh/phoneserver_nopass` (ed25519, без passphrase)                                                                    |
-| Wi-Fi             | `wlan0`, DECO_HOME (5 GHz WiFi 5), DHCP-выдано `**192.168.1.116`** в `lan`-сегменте OpenWrt                              |
-| USB-сеть          | `usb0` 172.16.42.1/16 — резервный канал при подключении к WSL                                                            |
+| LAN (eth0)        | USB-C хаб с RJ45 → Mercusys → OpenWrt `lan`; DHCP `**192.168.1.227**`, MAC `dc:04:5a:58:5a:93`                           |
+| USB-сеть          | `usb0` 172.16.42.1/16 — резервный канал при прямом USB к ПК (usbipd)                                                     |
 | DNS               | `1.1.1.1, 8.8.8.8` (в обход dnsmasq роутера / sing-box, через `/etc/resolv.conf` + `nohook resolv.conf` в `dhcpcd.conf`) |
 | Swap              | 8.2 GiB zram                                                                                                             |
 | Время             | синхронизируется `chrony` при загрузке (RTC battery в устройстве физически отсутствует)                                  |
@@ -46,10 +46,10 @@
 1. **SSH-ключ от WSL** положен в `pmos@phoneserver:~/.ssh/authorized_keys`.
 2. **Реальный sudo вместо doas-sudo-shim** + `/etc/sudoers.d/pmos-nopasswd` (см. [`enable-passwordless-doas.sh`](../../scripts/phoneserver/install/enable-passwordless-doas.sh)). По умолчанию в pmOS v25.06 стоит `doas + doas-sudo-shim`, в котором нет `sudo -S` — это ломает скрипты с `echo $pass | sudo -S`. Замена на настоящий `sudo` + NOPASSWD убирает проблему.
 3. `**resize2fs /dev/sda18`** — root до 103 GiB.
-4. **Wi-Fi**: `wpa_supplicant` + `wireless-regdb` + `dhcpcd`, ассоциация с DECO_HOME (5 GHz). Получили DHCP-leased IP `192.168.1.116`, статичный default route, lease 12 ч.
+4. **LAN (eth0)**: USB-Ethernet хаб, `dhcpcd` на eth0, IP `192.168.1.227`. DHCP-резервация: `scripts/openwrt/reserve-phoneserver-dhcp.sh`.
 5. **DNS pinned**: `/etc/resolv.conf` → `1.1.1.1, 8.8.8.8`; `nohook resolv.conf` в `/etc/dhcpcd.conf` чтобы dhcpcd при ренью не возвращал dnsmasq роутера (с sing-box подкопом).
 6. `**chrony`** + `chrony-openrc` в default runlevel — время синхронизируется при загрузке.
-7. **Internet sharing через WSL** (`MASQUERADE` на eth0) сейчас уже **не нужен** — phoneserver сам в LAN-сети. Скрипт [`wsl-share-internet.sh`](../../scripts/phoneserver/wsl-share-internet.sh) остаётся на случай если Wi-Fi выпадет.
+7. **Internet sharing через WSL** (`MASQUERADE`) нужен только при первичной установке до появления eth в LAN. В штатной эксплуатации phoneserver в сети через хаб.
 
 ### Архитектурные решения, не очевидные из pmaports
 
@@ -71,7 +71,7 @@
 | Приоритет   | Задача                                                            | Комментарий                                                                                                                                                                                                                                                                                                           |
 | ----------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **высокий** | **Зарядка от USB-PD-хаба**                                        | Ждём приезд USB-C хаба с PD passthrough + RJ45. Пока используется wall-PD-зарядка отдельно от USB-связи с ПК; от ПК через USB-A фоном **не** заряжается (Type-C порт уходит в `source` role). Через хаб одновременно: PD-passthrough зарядка + Ethernet в `srv`-сегмент.                                              |
-| **высокий** | **Интеграция в `srv`-сегмент**                                    | Сейчас phoneserver в `lan` (`192.168.1.116`) — там pbr/zapret/awg-туннели. По хорошему: либо проводной Ethernet в `lan2` X3000T через хаб/свитч (получит IP в `192.168.50.0/24`), либо bypass на OpenWrt для конкретно этого MAC/IP в `lan`-сегменте. DHCP-резервация в любом случае нужна — MAC `02:00:89:de:af:ce`. |
+| средний     | **Интеграция в `srv`-сегмент**                                    | Сейчас phoneserver в `lan` (`192.168.1.227`) — pbr/zapret/awg на клиентском сегменте. Опционально: хаб в `lan2` X3000T → IP в `192.168.50.0/24`. DHCP-резервация: MAC `dc:04:5a:58:5a:93`. |
 | низкий      | **Charge limit при питании через хаб**                            | Когда подключим хаб с PD passthrough — постоянная зарядка станет реальной 24/7. Тогда либо kernel-параметр `/sys/class/power_supply/battery/charge_control_*` (если драйвер поддержит), либо железный таймер на розетке.                                                                                              |
 | низкий      | **Отключить парольный SSH**                                       | Сейчас SSH работает по ключу. Стоит явно поставить `PasswordAuthentication no` в `/etc/ssh/sshd_config` после того как пароль будет сменён с `changemenow`.                                                                                                                                                           |
 | низкий      | **Поменять пароль `pmos`** с `changemenow`                        | После v25.06-переустановки пароль снова дефолтный. SSH-логин — только по ключу, но sudo-пароль (на случай восстановления) поменять стоит.                                                                                                                                                                             |
@@ -97,7 +97,7 @@
 Работает:
 
 - CPU (8 ядер), RAM, UFS storage
-- **Wi-Fi** (`ath10k_snoc` / WCN3990) — wlan0, 5 GHz WiFi 5, ассоциация COMPLETED
+- **USB-Ethernet** (eth0 через хаб) — основной uplink в `lan`
 - Bluetooth (QCA WCN3990) — `hci0` поднимается, firmware `qca/crbtfw32.tlv` + `crnv32u.bin` загружается
 - USB-CDC NCM (USB-сеть к WSL как резерв)
 - DSP (`adsp.mbn`, `cdsp.mbn`) — для сенсоров (`hexagonrpcd-adsp-sensorspd` стартует)

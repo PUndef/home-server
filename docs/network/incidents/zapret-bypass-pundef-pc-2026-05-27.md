@@ -9,7 +9,7 @@
 
 **Симптом (исходный):** `curl https://deb.nodesource.com/setup_22.x` в WSL висит 272+ сек — DNS резолвит Cloudflare CDN (`172.66.150.169`, `104.20.45.190`), TCP-handshake на 443 не проходит. Гипотеза: `zapret`/`nfqws` ломает первые пакеты TLS-handshake к Cloudflare при выходе через WAN.
 
-**Решение (zapret):** per-device bypass для `192.168.1.133` (тот же паттерн, что для `phoneserver` `.116` и srv-сегмента `192.168.50.0/24`).
+**Решение (zapret):** per-device bypass для `192.168.1.133` (тот же паттерн, что для `phoneserver` `.227` и srv-сегмента `192.168.50.0/24`).
 
 **Решение (corp):** pbr-policy `pundef-pc kpb via workvpn` на роутере (настроено с Mac-стороны) — WSL ходит в `*.kpb.lt` через `vpn-workvpn`, DNS `gitlab.kpb.lt` → `10.0.17.5`.
 
@@ -42,14 +42,14 @@
 
 | Устройство/сеть               | postnat                         | prenat                       | nft comment                     |
 | ----------------------------- | ------------------------------- | ---------------------------- | ------------------------------- |
-| `192.168.1.116` (phoneserver) | `ct original ip saddr … return` | `ct reply ip daddr … return` | `zapret-ct-bypass-116` / `-pre` |
+| `192.168.1.227` (phoneserver) | `ct original ip saddr … return` | `ct reply ip daddr … return` | `zapret-ct-bypass-227` / `-pre` |
 | `192.168.1.133` (pundef-pc)   | то же                           | то же                        | `zapret-ct-bypass-133` / `-pre` |
 | `192.168.50.0/24` (srv)       | то же с `/24`                   | то же с `/24`                | `zapret-ct-bypass-srv` / `-pre` |
 
 
 Формат: idempotent `grep -q comment \|\| nft insert …`, shell-комментарий с описанием устройства, короткий nft comment. Host — один IP, subnet — CIDR `/24`. На роутере порядок в `postnat`: `srv` → `.133` → `.116` (порядок не критичен — все до WAN-правил zapret).
 
-> Legacy Android `Redmi-Note-9-Pro` на `.157` — только в истории; bypass снят, phoneserver теперь на `.116`.
+> Legacy: Android `.157`, phoneserver wlan `.116` — только в истории; phoneserver сейчас eth `.227`.
 
 ---
 

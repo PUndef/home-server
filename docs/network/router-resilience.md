@@ -33,7 +33,7 @@ OpenWrt X3000T
 | zapret bypass для `192.168.50.0/24` | nft `zapret-ct-bypass-srv` | Серверный трафик модифицируется nfqws → странные обрывы HTTPS |
 | Split-horizon DNS | `cloud-pundef.mooo.com` → `192.168.50.34` с роутера | Клиенты LAN не попадают на Nextcloud по домену |
 
-Phoneserver (`192.168.1.116`) живёт в `lan`, не в `srv`, но **мониторит** homelab через Uptime Kuma и Beszel — его падение не роняет Proxmox, но слепнет наблюдаемость.
+Phoneserver (`192.168.1.227`, eth) живёт в `lan`, не в `srv`. Beszel agent на телефоне; Uptime Kuma на `static-sites` (`.35`). Падение phoneserver не роняет Proxmox, но слепнет метрики телефона в Beszel и HA.
 
 ---
 
@@ -130,7 +130,7 @@ sleep 5
 | 4 | Nextcloud `https://cloud-pundef.mooo.com/` или `https://192.168.50.34/` | 2xx/3xx |
 | 5 | HA `http://192.168.50.51:8123/` | UI (VM 100 сейчас **выключена** — шаг пропустить) |
 | 6 | Static apps `https://apps-pundef.mooo.com/beszel/` | 2xx |
-| 7 | Uptime Kuma `http://192.168.1.116:3001/` | UI (мониторы могут краснеть 1–2 мин — норма после cold start) |
+| 7 | Uptime Kuma `http://192.168.50.35:3001/` | UI на static-sites LXC |
 
 Hotplug [`99-vpn-stack`](../../scripts/openwrt/99-vpn-stack) на `ifup wan|awg1|awg2` сам перезапускает стек через ~10 с. Если `check_stack` сразу после reboot показывает FAIL на `podkop`/`pbr` — **подождать 60 с и повторить**, не чинить вслепую.
 

@@ -3,7 +3,7 @@
 #
 # Usage:
 #   ./install-uptime-kuma.sh
-#   PHONE_IP=192.168.1.116 ./install-uptime-kuma.sh
+#   PHONE_IP=192.168.1.227 ./install-uptime-kuma.sh
 #   PHONE_IP=172.16.42.1 ./install-uptime-kuma.sh   # USB after wsl-usbnet-up.sh
 
 set -euo pipefail
@@ -28,7 +28,7 @@ REMOTE="pmos@${PHONE_IP}"
 echo "=== phoneserver Uptime Kuma (${PHONE_IP}) ==="
 if ! "${SSH[@]}" "${REMOTE}" "echo ok" >/dev/null 2>&1; then
     echo "SSH to ${REMOTE} failed." >&2
-    echo "  Wi-Fi: PHONE_IP=192.168.1.116 ./install-uptime-kuma.sh" >&2
+    echo "  LAN:   PHONE_IP=192.168.1.227 ./install-uptime-kuma.sh" >&2
     echo "  USB:   wsl-usbnet-up.sh then PHONE_IP=172.16.42.1 ./install-uptime-kuma.sh" >&2
     exit 1
 fi

@@ -5,11 +5,11 @@
 #
 # Each rule is added only if not already present so re-runs are idempotent.
 
-# phoneserver: postmarketOS on Redmi joyeuse (wlan0 MAC 02:00:89:de:af:ce, DHCP .116).
-nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-116 || \
-    nft insert rule inet zapret postnat ct original ip saddr 192.168.1.116 return comment zapret-ct-bypass-116
-nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-116-pre || \
-    nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.116 return comment zapret-ct-bypass-116-pre
+# phoneserver: postmarketOS on Redmi joyeuse (eth0 .227 via USB-Ethernet hub).
+nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-227 || \
+    nft insert rule inet zapret postnat ct original ip saddr 192.168.1.227 return comment zapret-ct-bypass-227
+nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-227-pre || \
+    nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.227 return comment zapret-ct-bypass-227-pre
 
 # pundef-pc (Win + WSL mirrored): Cloudflare CDN TLS handshake bypass. See zapret-bypass-pundef-pc-2026-05-27.
 nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-133 || \

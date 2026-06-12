@@ -119,9 +119,7 @@ output_log="/var/log/uptime-kuma.log"
 error_log="/var/log/uptime-kuma.log"
 
 depend() {
-    need phoneserver-wifi
-    use net
-    after phoneserver-wifi
+    need net
 }
 
 start_pre() {

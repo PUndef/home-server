@@ -69,7 +69,7 @@
 | `Proxmox` | `pundef` (Proxmox host) | `192.168.50.9` | systemd |
 | `nextcloud-vm` | `nextcloud-vm` (VM 101) | `192.168.50.34` | systemd |
 | `static-sites` | `static-sites` (LXC 102, self-monitor) | `127.0.0.1` | systemd |
-| `phoneserver` | `phoneserver` (Redmi/pmOS) | `192.168.1.116` (Wi-Fi/LAN) | OpenRC |
+| `phoneserver` | `phoneserver` (Redmi/pmOS) | `192.168.1.227` (eth/LAN) | OpenRC |
 | `fin-sweet-home-vps` | `fin-sweet-home-vps` | `89.44.76.52` | systemd |
 | `sweet-home-vps` | `customer55224` (hostname) | `45.154.35.222` | systemd |
 
@@ -616,13 +616,13 @@ python scripts/proxmox/proxmox_exec.py "qm guest exec 101 --timeout 5 -- bash -l
 
 1. [https://apps-pundef.mooo.com/beszel/](https://apps-pundef.mooo.com/beszel/) → `+ Add System`:
    - Name: `phoneserver`
-   - Host: `192.168.1.116` (или актуальный IP; USB: `172.16.42.1`)
+   - Host: `192.168.1.227` (USB fallback: `172.16.42.1`)
    - Port: `45876`
 2. Из модалки `docker run …` скопировать **только `TOKEN=`** (UUID). `KEY` и `HUB_URL` уже зашиты в установщик).
 
 **Предусловия на телефоне.**
 
-- SSH по ключу: `pmos@192.168.1.116` (ключ в WSL `~/.ssh/phoneserver_nopass` или Windows `%USERPROFILE%\.ssh\phoneserver_nopass`).
+- SSH по ключу: `pmos@192.168.1.227` (ключ в WSL `~/.ssh/phoneserver_nopass`).
 - Телефон видит hub по LAN: `curl -fsS -m 5 http://192.168.50.35/beszel/` → HTTP 200 (маршрут `lan→srv` на X3000T).
 
 **Установка (Windows или WSL, из корня репо).**

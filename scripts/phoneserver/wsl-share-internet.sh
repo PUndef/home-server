@@ -1,7 +1,7 @@
 #!/bin/bash
 # Share WSL's internet with phoneserver over the USB-net link.
 #
-# Why: until Wi-Fi/USB-Ethernet is set up on the phone, the only way to
+# Why: during initial install before eth0 has LAN DHCP, the only way to
 # `apk update` from pmOS is through the WSL uplink. We MASQUERADE on the
 # WSL side and add a default route + DNS on the phone side.
 #

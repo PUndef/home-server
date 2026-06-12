@@ -2,8 +2,8 @@
 #
 # Prerequisites:
 #   - SSH key: %USERPROFILE%\.ssh\phoneserver_nopass (or WSL ~/.ssh/phoneserver_nopass)
-#   - In Beszel UI: + Add System "phoneserver", host 192.168.1.116, port 45876 → copy TOKEN
-#   - phoneserver reachable (Wi-Fi/LAN 192.168.1.116 or USB 172.16.42.1)
+#   - In Beszel UI: + Add System "phoneserver", host 192.168.1.227, port 45876 → copy TOKEN
+#   - phoneserver reachable on eth 192.168.1.227 (or USB 172.16.42.1 fallback)
 #
 # Usage:
 #   .\scripts\phoneserver\install-beszel-agent.ps1 -Token "<uuid-from-beszel-ui>"
@@ -11,7 +11,7 @@
 
 param(
     [string]$Token = $env:BESZEL_PHONESERVER_TOKEN,
-    [string]$PhoneIp = $(if ($env:PHONE_IP) { $env:PHONE_IP } else { "192.168.1.116" }),
+    [string]$PhoneIp = $(if ($env:PHONE_IP) { $env:PHONE_IP } else { "192.168.1.227" }),
     [string]$SshUser = "pmos",
     [string]$SshKey = "$env:USERPROFILE\.ssh\phoneserver_nopass",
 

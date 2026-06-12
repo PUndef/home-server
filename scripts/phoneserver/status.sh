@@ -21,8 +21,8 @@ mount | grep -E "^/dev/sd"
 echo
 echo "=== net ==="
 ls /sys/class/net/
+ip -4 addr show eth0 2>/dev/null | tail -2
 ip -4 addr show usb0 2>/dev/null | tail -2
-ip -4 addr show wlan0 2>/dev/null | tail -2
 echo
 echo "=== internet ==="
 ping -c 1 -W 2 1.1.1.1 2>&1 | tail -2'

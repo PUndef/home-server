@@ -358,14 +358,14 @@ def main() -> int:
         (
             "zapret-bypass",
             "zapret-bypass-phoneserver-postnat",
-            "nft list chain inet zapret postnat | grep -q 'zapret-ct-bypass-116'",
-            "phoneserver bypass postnat rule exists (.116)",
+            "nft list chain inet zapret postnat | grep -q 'zapret-ct-bypass-227'",
+            "phoneserver bypass postnat rule exists (.227)",
         ),
         (
             "zapret-bypass",
             "zapret-bypass-phoneserver-prenat",
-            "nft list chain inet zapret prenat | grep -q 'zapret-ct-bypass-116-pre'",
-            "phoneserver bypass prenat rule exists (.116)",
+            "nft list chain inet zapret prenat | grep -q 'zapret-ct-bypass-227-pre'",
+            "phoneserver bypass prenat rule exists (.227)",
         ),
         (
             "zapret-bypass",
@@ -525,22 +525,22 @@ def main() -> int:
         (
             "phoneserver",
             "phoneserver-dhcp-lease",
-            "grep -q '192.168.1.116 phoneserver' /tmp/dhcp.leases",
-            "phoneserver DHCP lease 192.168.1.116 is active",
+            "grep -qE 'dc:04:5a:58:5a:93.*192\\.168\\.50\\.127' /tmp/dhcp.leases",
+            "phoneserver DHCP lease 192.168.50.127 is active",
         ),
         (
             "phoneserver",
             "phoneserver-ping",
-            "ping -c 1 -W 3 192.168.1.116 >/dev/null 2>&1",
-            "phoneserver responds to ping on 192.168.1.116",
+            "ping -c 1 -W 3 192.168.50.127 >/dev/null 2>&1",
+            "phoneserver responds to ping on 192.168.50.127",
         ),
         (
             "phoneserver",
             "phoneserver-kuma-http",
-            "code=$(curl -sS -o /dev/null -m 5 -w '%{http_code}' http://192.168.1.116:3001/); "
+            "code=$(curl -sS -o /dev/null -m 5 -w '%{http_code}' http://192.168.50.35:3001/); "
             "echo \"kuma-3001 code=$code\"; "
             "[ \"$code\" != \"000\" ]",
-            "Uptime Kuma http://192.168.1.116:3001/ answers",
+            "Uptime Kuma http://192.168.50.35:3001/ answers",
         ),
     ]
 

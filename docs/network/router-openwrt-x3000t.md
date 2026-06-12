@@ -201,7 +201,7 @@ Endpoints VPN-серверов (`89.44.76.52`, `45.154.35.222`) обязател
 
 ```sh
 chain postnat {
-    ct original ip saddr 192.168.1.116 return comment "zapret-ct-bypass-116"   # phoneserver
+    ct original ip saddr 192.168.1.227 return comment "zapret-ct-bypass-227"   # phoneserver
     ct original ip saddr 192.168.1.133 return comment "zapret-ct-bypass-133"   # pundef-pc
     ct original ip saddr 192.168.1.214 return comment "zapret-ct-bypass-214"   # xiaomi-13t-pro
     ct original ip saddr 192.168.50.0/24 return comment "zapret-ct-bypass-srv"
@@ -210,7 +210,7 @@ chain postnat {
 }
 
 chain prenat {
-    ct reply ip daddr 192.168.1.116 return comment "zapret-ct-bypass-116-pre"
+    ct reply ip daddr 192.168.1.227 return comment "zapret-ct-bypass-227-pre"
     ct reply ip daddr 192.168.1.133 return comment "zapret-ct-bypass-133-pre"
     ct reply ip daddr 192.168.1.214 return comment "zapret-ct-bypass-214-pre"
     ct reply ip daddr 192.168.50.0/24 return comment "zapret-ct-bypass-srv-pre"
@@ -226,7 +226,7 @@ chain prenat {
 
 ### Per-device bypass для zapret
 
-Сейчас bypass включён для **`192.168.1.116`** (`phoneserver`, postmarketOS; wlan0 MAC `02:00:89:de:af:ce`, DHCP-резервация `scripts/openwrt/reserve-phoneserver-dhcp.sh`), **`192.168.1.133`** (`pundef-pc`, Win + WSL mirrored — см. [zapret-bypass-pundef-pc-2026-05-27.md](incidents/zapret-bypass-pundef-pc-2026-05-27.md)), **`192.168.1.214`** (`xiaomi-13t-pro`, Android), **`192.168.50.0/24`** (srv-сегмент). Ранее был Android `Redmi-Note-9-Pro` на `.157` (MAC `18:87:40:44:CD:51`). Стабильность:
+Сейчас bypass включён для **`192.168.1.227`** (`phoneserver`, postmarketOS; eth0 MAC `dc:04:5a:58:5a:93`, DHCP-резервация `scripts/openwrt/reserve-phoneserver-dhcp.sh`), **`192.168.1.133`** (`pundef-pc`, Win + WSL mirrored — см. [zapret-bypass-pundef-pc-2026-05-27.md](incidents/zapret-bypass-pundef-pc-2026-05-27.md)), **`192.168.1.214`** (`xiaomi-13t-pro`, Android), **`192.168.50.0/24`** (srv-сегмент). Ранее был Android `Redmi-Note-9-Pro` на `.157` (MAC `18:87:40:44:CD:51`). Стабильность:
 
 - hook `INIT_FW_POST_UP_HOOK=/opt/zapret/custom.bypass_devices.sh` в `/opt/zapret/config`;
 - скрипт `/opt/zapret/custom.bypass_devices.sh` (исходник: [scripts/openwrt/custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh)) после каждого `zapret restart` досыпает правила `ct original/reply ... return`.
@@ -277,7 +277,7 @@ nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.240 return commen
 | -------------- | ----------------- | --------------- | ----------------------------------------------- |
 | `paul-mac`     | `26:C5:4C:20:C5:AD` | `192.168.1.198` | MacBook, pbr `workvpn`                          |
 | `pundef-pc`    | `9C:6B:00:8B:3F:18` | `192.168.1.133` | Win 11 + WSL mirrored, pbr `workvpn` + zapret bypass |
-| `phoneserver`  | `02:00:89:de:af:ce` | `192.168.1.116` | postmarketOS, zapret bypass                     |
+| `phoneserver`  | `dc:04:5a:58:5a:93` | `192.168.1.227` | postmarketOS (eth), zapret bypass               |
 | `xiaomi-13t-pro` | `2c:fe:4f:6b:de:aa` | `192.168.1.214` | Android, pbr `workvpn` + force-DNS + zapret bypass |
 
 
@@ -546,7 +546,7 @@ nft list table inet zapret
 | [scripts/openwrt/podkop-subnets-watchdog.sh](../../scripts/openwrt/podkop-subnets-watchdog.sh)           | Если `podkop_subnets` пуст — запустить `podkop list_update`. Cron: `*/15 * * * *`.                                                                                                  |
 | [scripts/openwrt/pbr-workvpn-watchdog.sh](../../scripts/openwrt/pbr-workvpn-watchdog.sh)               | Если `workvpn` up, а таблица `pbr_workvpn` пуста — `pbr restart`. Cron: `*/5 * * * *`.                                                                                              |
 | [scripts/openwrt/99-vpn-stack](../../scripts/openwrt/99-vpn-stack)                                       | Исходник hotplug-скрипта `/etc/hotplug.d/iface/99-vpn-stack`.                                                                                                                       |
-| [scripts/openwrt/custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh)               | Источник `/opt/zapret/custom.bypass_devices.sh`: per-IP bypass для `192.168.1.116` (phoneserver), `192.168.1.133` (pundef-pc), `192.168.1.214` (xiaomi-13t-pro) и per-subnet bypass `192.168.50.0/24` (srv). |
+| [scripts/openwrt/custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh)               | Источник `/opt/zapret/custom.bypass_devices.sh`: per-IP bypass для `192.168.1.227` (phoneserver), `192.168.1.133` (pundef-pc), `192.168.1.214` (xiaomi-13t-pro) и per-subnet bypass `192.168.50.0/24` (srv). |
 | [scripts/openwrt/etc-hosts](../../scripts/openwrt/etc-hosts)                                             | Источник `/etc/hosts` на роутере: SNI-proxy mappings для AI/Spotify/Telegram через `45.155.204.190` (см. ниже «SNI proxy via /etc/hosts»). Twitch специально без override. |
 | [scripts/openwrt/enable-workvpn-client.sh](../../scripts/openwrt/enable-workvpn-client.sh)               | DHCP-резервация + pbr policy `workvpn` + force-DNS для LAN-клиента (corp с телефона или ПК). Дефолт — `xiaomi-13t-pro` `.214`.                                                                                        |
 | [scripts/openwrt/enable_workvpn_client_safe.py](../../scripts/openwrt/enable_workvpn_client_safe.py)     | Безопасное включение corp-клиента: `check_stack` до/после, авто-откат; см. [router-resilience.md](router-resilience.md).                                                                                          |

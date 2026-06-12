@@ -5,7 +5,7 @@ Requires: venv at scripts/phoneserver/.venv-kuma (created by seed-kuma-monitors.
 Package: uptime-kuma-api-v2 (Kuma 2.x; lucasheld/uptime-kuma-api is 1.x only)
 
 Env:
-  KUMA_URL       default http://192.168.1.116:3001
+  KUMA_URL       default http://192.168.50.35:3001
   KUMA_USERNAME  admin login (required)
   KUMA_PASSWORD  admin password (required)
 
@@ -97,6 +97,8 @@ def seed_one_monitor(
         kwargs["maxretries"] = spec["maxretries"]
     if spec.get("ignoreTls") is not None:
         kwargs["ignoreTls"] = spec["ignoreTls"]
+    if spec.get("acceptedStatusCodes") is not None:
+        kwargs["accepted_statuscodes"] = spec["acceptedStatusCodes"]
     if spec.get("group") and spec["group"] in group_ids:
         kwargs["parent"] = group_ids[spec["group"]]
 
@@ -130,7 +132,7 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="print actions only")
     args = parser.parse_args()
 
-    url = os.environ.get("KUMA_URL", "http://192.168.1.116:3001")
+    url = os.environ.get("KUMA_URL", "http://192.168.50.35:3001")
     user = os.environ.get("KUMA_USERNAME")
     password = os.environ.get("KUMA_PASSWORD")
     if not user or not password:

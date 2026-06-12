@@ -1,10 +1,8 @@
 #!/bin/bash
-# After wifi is connected and DHCP got an IP:
-#   - make dhcpcd persistent in default runlevel
-#   - resize root fs to the full userdata partition
-#   - configure chrony, force time sync
-#   - drop a DNS-via-public-resolvers /etc/resolv.conf override (we don't
-#     want OpenWrt's dnsmasq with sing-box fake-IP for phoneserver)
+# After eth0 has DHCP (USB-Ethernet hub -> LAN switch):
+#   - dhcpcd in default runlevel
+#   - chrony NTP
+#   - public DNS in /etc/resolv.conf (not router dnsmasq / sing-box fake-IP)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../phone-defaults.sh
@@ -15,9 +13,6 @@ ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
     'echo === dhcpcd persistent ===
 sudo rc-update add dhcpcd default 2>&1
 sudo rc-service dhcpcd start 2>&1 | tail -3
-echo
-echo === wpa_supplicant per-interface ===
-sudo rc-update add wpa_supplicant default 2>&1 || true
 echo
 echo === resize root ===
 df -h / | head -2
@@ -38,5 +33,5 @@ cat /etc/resolv.conf
 echo
 echo === summary ===
 hostname; uname -r; uptime
-ip -4 addr show wlan0 | grep inet
+ip -4 addr show eth0 | grep inet
 ping -c 2 -W 2 1.1.1.1 | tail -2'

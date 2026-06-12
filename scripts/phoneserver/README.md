@@ -16,25 +16,25 @@
 - public-ключ для phoneserver лежит в `~/.ssh/phoneserver_nopass{,.pub}` (создаётся через `setup-ssh-key.sh`)
 - IP и хост по умолчанию — из [`hosts.yaml`](hosts.yaml) (`default_host` → `lan_ip`); переопределение: `PHONE_HOST=joyeuse`, `PHONE_IP=...`
 - `phone-defaults.sh` подставляет `PHONE_IP` / `SSH_KEY` во все shell-скрипты; `PHONE_DEFAULT=usb` для install/diag по USB
-- USB fallback — `172.16.42.1`; Wi-Fi/LAN — `192.168.1.116` (DHCP-резерв OpenWrt)
+- LAN eth — `192.168.1.227` (USB-Ethernet хаб → Mercusys, DHCP-резерв OpenWrt); USB fallback — `172.16.42.1`
 - USB-устройство при необходимости проброшено в WSL через `usbipd attach --wsl --busid <id>` (из PowerShell **от админа**)
 
 ### При обычной работе
 
 | Скрипт | Когда запускать |
 |---|---|
-| `wsl-usbnet-up.sh` | После переподключения USB / нового `usbipd attach` — поднимает USB-cdc интерфейс в WSL, ставит ему `172.16.42.2/24`, проверяет ssh до телефона. Не нужно если phoneserver уже доступен по Wi-Fi / LAN. |
-| `wifi-reconnect.sh` | **Fallback** после reboot если autostart не поднял Wi-Fi: `PHONE_IP=172.16.42.1 ./wifi-reconnect.sh` через USB. |
-| `wsl-share-internet.sh` | Когда телефону нужен интернет через WSL (например, до подключения Wi-Fi). Делает MASQUERADE из WSL в интернет, прописывает default route + 1.1.1.1 DNS на телефоне. |
+| `wsl-usbnet-up.sh` | После переподключения USB / нового `usbipd attach` — поднимает USB-cdc интерфейс в WSL, ставит ему `172.16.42.2/24`, проверяет ssh до телефона. Не нужно если phoneserver доступен по LAN `.227`. |
+| `wsl-share-internet.sh` | Только при первичной установке: интернет через WSL до появления eth в LAN. |
 | `status.sh` | Снять текущую сводку с телефона (kernel, uptime, диск, сервисы, сеть). |
-| `install-wifi-autostart.sh` | **Один раз:** OpenRC `phoneserver-wifi` — Wi-Fi сам поднимается после reboot (retry wpa+dhcp, chrony, DNS). |
-| `wifi-reconnect.sh` | **Fallback** если autostart не помог — ручной перезапуск wpa+dhcp (часто через USB). |
-| `install-uptime-kuma.sh` | Поставить Uptime Kuma 2.x (OpenRC, порт 3001). UI: `http://192.168.1.116:3001/`. |
-| `seed-kuma-monitors.sh` | Залить мониторы из `kuma-monitors.json` через API (`uptime-kuma-api-v2`, venv `.venv-kuma`). |
+| `fix-beszel-agent-lan.sh` | Убрать зависимость `phoneserver-wifi` с beszel-agent, перезапустить агент. |
+| `install-beszel-agent.ps1` / `.sh` | Переустановка Beszel agent (TOKEN из UI hub). |
+| `install-uptime-kuma.sh` | **Устарело на phoneserver** — Kuma живёт на `static-sites` (`192.168.50.35:3001`). См. `scripts/proxmox/install-uptime-kuma.sh`. |
+| `disable-uptime-kuma.sh` | Снять Kuma с phoneserver (`pkill`, не `rc-service stop`). |
+| `seed-kuma-monitors.sh` | Залить мониторы из `kuma-monitors.json` → `http://192.168.50.35:3001/` (venv `.venv-kuma`). |
 | `pin-dns-and-ntp.sh` | Публичный DNS (1.1.1.1), не dnsmasq роутера; `chronyc makestep`. |
 | `fix-kuma-monitors-phone.sh` | На phoneserver: `/etc/hosts` для `*.mooo.com` → `192.168.50.34` + перезапуск Kuma. |
 
-Не добавляй в Kuma мониторы с target `192.168.1.116` / `127.0.0.1` — Kuma на том же телефоне не может проверять сам себя (см. «Известные особенности» ниже).
+Kuma на `192.168.50.35` — не добавляй self-ping мониторы на `127.0.0.1`.
 
 ### При первичной установке (по порядку)
 
@@ -46,29 +46,31 @@
 | 4 | `pmbootstrap install --no-fde --password changemenow --split --add device-xiaomi-miatoll-kernel-joyeuse_tianma` | Сборка boot.img (~18 MB sparse, 128 MiB partition) и rootfs.img (570 MB → растягиваем потом). |
 | 5 | `fastboot erase dtbo; pmbootstrap flasher flash_kernel; sudo fastboot flash userdata ~/.local/var/pmbootstrap/chroot_native/home/pmos/rootfs/xiaomi-miatoll-root.img; fastboot reboot` | Прошить и перезагрузить. `dtbo erase` обязателен — иначе Xiaomi overlay ломает наш DTB. |
 | 6 | `setup-ssh-key.sh` | Сгенерировать `~/.ssh/phoneserver_nopass`, положить в `pmos@phoneserver:~/.ssh/authorized_keys`. |
-| 7 | `wsl-share-internet.sh` | Дать phone интернет через WSL, пока Wi-Fi не настроен. |
+| 7 | `wsl-share-internet.sh` | Дать phone интернет через WSL до появления eth в LAN. |
 | 8 | `install/enable-passwordless-doas.sh` | Pmos v25.06 ставит `doas+doas-sudo-shim`, наш `sudo -S` не работает. Скрипт ставит настоящий sudo, удаляет shim, кладёт `/etc/sudoers.d/pmos-nopasswd`. После этого все остальные `sudo $cmd` через ssh-key работают без password. |
 | 9 | `install/resize-root.sh` | Расширить ext4 на `/dev/sda18` до 103 GiB. На v25.06 pmOS делает это сам при первом mount, скрипт скорее no-op. |
-| 10 | `install/wifi-scan.sh` | Сканирует Wi-Fi-сети, чтобы убедиться что wlan0 поднимается и radio работает. |
-| 11 | `install/wifi-connect.sh` | Подключить wlan0 к WPA2-сети: `WIFI_SSID=... WIFI_PSK=... ./wifi-connect.sh`. Кладёт `/etc/wpa_supplicant/wpa_supplicant.conf`, стартует wpa_supplicant + dhcpcd, делает их persistent. |
-| 12 | `install/post-wifi-setup.sh` | После того как Wi-Fi заработал: dhcpcd в default runlevel, chrony NTP, фиксированный `/etc/resolv.conf` (1.1.1.1). |
-| 13 | `pin-dns-and-ntp.sh` | Запретить dhcpcd перезаписывать resolv.conf (`nohook resolv.conf` в `dhcpcd.conf`) — иначе при renew возвращается 192.168.1.1 (dnsmasq на OpenWrt с fake-IP от sing-box). |
-| 14 | `fix-routes.sh` | Убрать stale default через USB-net когда phone уже работает по Wi-Fi — иначе трафик уходит в WSL даже когда тот не делает MASQUERADE. |
-| 15 | `fix-dns-and-apk.sh` | На случай если apk завис из-за подкопа / fake-IP — переставляет DNS и поднимает базовые tools (`curl`). |
+| 10 | `install/lan-setup.sh` | После DHCP на eth0: dhcpcd в default runlevel, chrony NTP, public DNS в `/etc/resolv.conf`. |
+| 11 | `pin-dns-and-ntp.sh` | Запретить dhcpcd перезаписывать resolv.conf (`nohook resolv.conf` в `dhcpcd.conf`). |
+| 12 | `fix-dns-and-apk.sh` | На случай если apk завис из-за подкопа / fake-IP — переставляет DNS и поднимает базовые tools (`curl`). |
 
 ---
 
 ## Uptime Kuma (seed)
 
-```bash
-cd scripts/phoneserver
+**Windows (рекомендуется, без WSL):**
 
-# один раз: admin в UI http://192.168.1.116:3001/
-KUMA_USERNAME=admin KUMA_PASSWORD='...' ./seed-kuma-monitors.sh --dry-run
-KUMA_USERNAME=admin KUMA_PASSWORD='...' ./seed-kuma-monitors.sh
+```powershell
+# из корня репо d:\repositories\home-server
+# 1) admin в http://192.168.50.35:3001/
+$env:KUMA_USERNAME = 'admin'
+$env:KUMA_PASSWORD = '...'
+.\scripts\phoneserver\seed-kuma-monitors.ps1
+# -DryRun — только показать, что добавится
 ```
 
-Пакет: `uptime-kuma-api-v2` (не `uptime-kuma-api` 1.x — только Kuma 1.21–1.23). После смены DNS/hosts на phone: `./fix-kuma-monitors-phone.sh` через ssh или `PHONE_IP=192.168.1.116` + scp/ssh вручную.
+**WSL/Linux** (если есть venv): `KUMA_URL=http://192.168.50.35:3001 KUMA_USERNAME=admin KUMA_PASSWORD='...' ./seed-kuma-monitors.sh`
+
+Пакет: `uptime-kuma-api-v2` (не `uptime-kuma-api` 1.x — только Kuma 1.21–1.23).
 
 **OwnCord без пароля API** (hosts + три монитора в `kuma.db`, idempotent):
 
@@ -79,7 +81,7 @@ bash scripts/phoneserver/run-owncord-kuma-remote.sh
 
 Полный seed из `kuma-monitors.json` по-прежнему через `seed-kuma-monitors.sh` (нужен `KUMA_USERNAME` / `KUMA_PASSWORD`).
 
-**Проверить:** в UI мониторы Public HTTPS зелёные; нет мониторов на `192.168.1.116` / `127.0.0.1`.
+**Проверить:** в UI мониторы Public HTTPS зелёные.
 
 ---
 
@@ -103,7 +105,7 @@ bash scripts/phoneserver/run-owncord-kuma-remote.sh
 
 Docker на pmOS: `/etc/docker/daemon.json` с `"iptables": false` (см. `fix-docker-iptables.sh`) — host network, роутер не трогаем.
 
-UI: `http://192.168.1.227:8123/` (eth) или `.116` (Wi‑Fi).
+UI: `http://192.168.1.227:8123/`
 
 Погода в Assist: `sudo python3 /tmp/expose-ha-weather.py` (из `expose-ha-weather.py`).
 
@@ -152,8 +154,8 @@ UI: `http://192.168.1.227:8123/` (eth) или `.116` (Wi‑Fi).
 ## Короткая шпаргалка
 
 ```bash
-# Подключиться по Wi-Fi (когда phoneserver в LAN):
-ssh -i ~/.ssh/phoneserver_nopass pmos@192.168.1.116
+# Подключиться по LAN:
+ssh -i ~/.ssh/phoneserver_nopass pmos@192.168.1.227
 
 # Подключиться по USB (резерв; когда USB проброшен в WSL):
 ssh -i ~/.ssh/phoneserver_nopass pmos@172.16.42.1
@@ -169,15 +171,13 @@ ssh -i ~/.ssh/phoneserver_nopass pmos@172.16.42.1
 
 ## Известные особенности
 
-- **Wi-Fi после reboot** — OpenRC-сервис `phoneserver-wifi` (retry wpa+dhcp, chrony, DNS). Ставится через `install-wifi-autostart.sh`. Ручной `wifi-reconnect.sh` — только fallback через USB.
-- **Wi-Fi работает только на pmaports `v25.06`.** На `main` (edge) — `ath10k_snoc` не делает firmware download, и заодно сломалась EFI/systemd-boot схема загрузки. Не возвращаться на edge без необходимости.
+- **Сеть после reboot** — eth0 через USB-Ethernet хаб; `dhcpcd` в default runlevel. Beszel agent зависит только от `net`, не от Wi-Fi.
 - **`/etc/resolv.conf`** на phone должен указывать на **public DNS** (1.1.1.1 / 8.8.8.8), а не на dnsmasq роутера. Иначе срабатывает sing-box-подкоп для некоторых доменов и часть apk/curl-запросов зависает.
 - **doas vs sudo.** v25.06 по умолчанию `doas`. Запускай `install/enable-passwordless-doas.sh` сразу после первой установки, иначе остальные скрипты будут падать на `sudo -S`.
 - **Зарядка** работает только от полноценного USB-C PD-источника. ПК через USB-A или короткий «попытался зарядить» от PC USB-C — не работает, Type-C port уходит в `source` role (Linux mainline driver `qcom,pmic-typec` пока без write-callback для role-switch).
 - **RTC battery отсутствует** — после reboot часы откатываются в 1975 год. `chrony` синхронизирует за секунды после поднятия сети.
-- **Uptime Kuma** на phoneserver (`uptime-kuma`, порт 3001, данные `/var/lib/uptime-kuma`). Язык UI: Settings → Appearance → Language → English.
-- **Kuma: не мониторить сам phoneserver.** Мониторы с target `192.168.1.116` / `127.0.0.1` (SSH, :3001, Beszel :45876) с Kuma **на том же телефоне** всегда красные — это ограничение архитектуры. Живость phoneserver — в **Beszel**; доступность Kuma с ПК — `http://192.168.1.116:3001/`.
-- **Kuma: HTTPS `*.mooo.com`.** Публичный DNS для homelab-доменов часто указывает на старый VPS (`5.189.245.251`). На phoneserver в `/etc/hosts` (прописывает `phoneserver-wifi` и `fix-kuma-monitors-phone.sh`): `192.168.50.34 cloud-pundef.mooo.com apps-pundef.mooo.com owncord-pundef.mooo.com`. Иначе мониторы Public HTTPS — self-signed / 403 / wrong host.
+- **Uptime Kuma** на **static-sites LXC** (`192.168.50.35:3001`), не на phoneserver. Установка: `scripts/proxmox/install-uptime-kuma.sh`. На phoneserver — `disable-uptime-kuma.sh` если ещё не сняли.
+- **Kuma: HTTPS `*.mooo.com`.** На LXC в `/etc/hosts` (`fix-kuma-monitors-lxc.sh`): `192.168.50.34 cloud-pundef.mooo.com apps-pundef.mooo.com owncord-pundef.mooo.com`.
 - **Beszel agent** на phoneserver — WebSocket к hub (`192.168.50.35`), порт **45876 не слушается** (это нормально, не port-monitor).
 - **VPS NL (`45.154.35.222`)** — ICMP с phoneserver не проходит (фаервол хостера); в `kuma-monitors.json` — **Port :22**, не Ping.
 

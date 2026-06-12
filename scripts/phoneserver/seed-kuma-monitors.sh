@@ -2,7 +2,7 @@
 # Seed Uptime Kuma monitors from kuma-monitors.json.
 #
 # Prerequisites:
-#   - Admin account created in Kuma UI (http://192.168.1.116:3001/)
+#   - Admin account created in Kuma UI (http://192.168.50.35:3001/)
 #   - Creates scripts/phoneserver/.venv-kuma on first run (PEP 668 safe)
 #
 # Usage:
@@ -15,7 +15,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SCRIPT_DIR="${REPO_ROOT}/scripts/phoneserver"
 SCRIPT="${SCRIPT_DIR}/seed-kuma-monitors.py"
 VENV="${SCRIPT_DIR}/.venv-kuma"
-KUMA_URL="${KUMA_URL:-http://192.168.1.116:3001}"
+KUMA_URL="${KUMA_URL:-http://192.168.50.35:3001}"
 
 if [[ -z "${KUMA_USERNAME:-}" || -z "${KUMA_PASSWORD:-}" ]]; then
     echo "usage: KUMA_USERNAME=admin KUMA_PASSWORD='...' $0 [--dry-run]" >&2

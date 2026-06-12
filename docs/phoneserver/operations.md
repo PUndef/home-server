@@ -3,15 +3,15 @@
 > **Статус:** living reference  
 > **Связано:** [pmos-setup.md](pmos-setup.md), [scripts/phoneserver/README.md](../../scripts/phoneserver/README.md)
 
-Phoneserver — узел в сегменте `lan` (`192.168.1.116`), не в `srv`. Его падение **не роняет** Proxmox, но отключает Uptime Kuma и часть мониторинга.
+Phoneserver — узел в сегменте `lan` (`192.168.1.227`, eth через USB-Ethernet хаб), не в `srv`. Его падение **не роняет** Proxmox, но отключает Beszel agent и Home Assistant.
 
 ---
 
 ## Быстрые проверки
 
 ```bash
-# SSH по Wi-Fi:
-ssh -i ~/.ssh/phoneserver_nopass pmos@192.168.1.116
+# SSH по LAN (из WSL — ключ ~/.ssh/phoneserver_nopass):
+ssh -i ~/.ssh/phoneserver_nopass pmos@192.168.1.227
 
 # Сводка (PHONE_IP из hosts.yaml по умолчанию):
 ./scripts/phoneserver/status.sh
@@ -24,10 +24,10 @@ python start.py check_stack
 
 ## После reboot телефона
 
-1. Подождать ~1–2 мин (OpenRC `phoneserver-wifi`).
-2. `ping 192.168.1.116` с ПК.
-3. Если нет ответа — USB fallback: `usbipd attach`, `./wsl-usbnet-up.sh`, `PHONE_IP=172.16.42.1 ./wifi-reconnect.sh`.
-4. Kuma: `http://192.168.1.116:3001/` — мониторы могут краснеть до поднятия Wi-Fi/DNS.
+1. Подождать ~30 с (dhcpcd на eth0).
+2. `ping 192.168.1.227` с ПК.
+3. Если нет ответа — проверить кабель хаб → Mercusys; USB fallback: `usbipd attach`, `./wsl-usbnet-up.sh`, `PHONE_IP=172.16.42.1`.
+4. Beszel agent: `./scripts/phoneserver/fix-beszel-agent-lan.sh` если в UI offline.
 
 ---
 
@@ -41,12 +41,10 @@ python start.py check_stack
 
 ## Критичность для homelab
 
-
-| Сервис на phoneserver | Если упал                                                |
-| --------------------- | -------------------------------------------------------- |
-| Uptime Kuma           | Нет внешних HTTP-probe; Proxmox/Nextcloud могут работать |
-| Beszel agent          | Пропадают метрики телефона в Beszel UI                   |
-| Wi-Fi                 | Нет SSH/Kuma; инфра на `srv` не затронута                |
-
+| Сервис на phoneserver | Если упал |
+| --------------------- | --------- |
+| Uptime Kuma | **снят** — Kuma на `192.168.50.35` |
+| Beszel agent | Пропадают метрики телефона в Beszel UI |
+| Home Assistant | Голос / автоматизации на phoneserver недоступны |
 
 Полный runbook по отказоустойчивости **роутера и srv**: [router-resilience.md](../network/router-resilience.md).

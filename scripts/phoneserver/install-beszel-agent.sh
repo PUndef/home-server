@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # WSL/Linux orchestrator for Beszel agent on phoneserver.
 # Usage: ./install-beszel-agent.sh <TOKEN>
-#   PHONE_IP=192.168.1.116 ./install-beszel-agent.sh <TOKEN>
+#   PHONE_IP=192.168.1.227 ./install-beszel-agent.sh <TOKEN>
 
 set -euo pipefail
 

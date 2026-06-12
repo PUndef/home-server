@@ -1,14 +1,16 @@
 #!/bin/sh
-# Pin phoneserver (postmarketOS on Redmi joyeuse) to a fixed LAN IP on OpenWrt.
+# Pin phoneserver (postmarketOS on Redmi joyeuse) to a fixed IP on OpenWrt.
+# phoneserver eth0 (USB-Ethernet hub) plugs into srv segment (Mercusys -> lan2).
+#
 # Run on the router as root, or via: ssh root@192.168.1.1 'sh -s' < reserve-phoneserver-dhcp.sh
 #
-# pmOS wlan0 MAC (stable, no Android randomization): 02:00:89:de:af:ce
+# USB-Ethernet hub MAC: dc:04:5a:58:5a:93
 
 set -eu
 
 NAME="${PHONESERVER_DHCP_NAME:-phoneserver}"
-MAC="${PHONESERVER_MAC:-02:00:89:de:af:ce}"
-IP="${PHONESERVER_IP:-192.168.1.116}"
+MAC="${PHONESERVER_MAC:-dc:04:5a:58:5a:93}"
+IP="${PHONESERVER_IP:-192.168.50.127}"
 
 idx=""
 i=0

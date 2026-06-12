@@ -7,7 +7,7 @@ hosts:
     device: xiaomi-miatoll
     kernel: joyeuse_tianma
     pmaports_channel: v25.06
-    lan_ip: 192.168.1.116
+    lan_ip: 192.168.50.127
     usb_ip: 172.16.42.1
     ssh_user: pmos
     ssh_key: phoneserver_nopass

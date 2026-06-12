@@ -42,7 +42,7 @@
 
 | Имя           | Железо                                     | ОС                                            | Назначение / статус                                                                                                                                                                                                                                                                                                                       |
 | ------------- | ------------------------------------------ | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `phoneserver` | Xiaomi Redmi Note 9 Pro Global (`joyeuse`) | postmarketOS **v25.06** stable, no UI, OpenRC | Headless-узел (8× aarch64, 6 ГБ RAM, 103 GiB root). Wi-Fi `192.168.1.116` (DHCP-резерв OpenWrt), USB fallback `172.16.42.1`. Сервисы: **Beszel agent** (WebSocket → hub), **Uptime Kuma 2.3.2** (`:3001`). Подробно: [pmos-setup.md](../phoneserver/pmos-setup.md), [scripts/phoneserver/README.md](../../scripts/phoneserver/README.md). |
+| `phoneserver` | Xiaomi Redmi Note 9 Pro Global (`joyeuse`) | postmarketOS **v25.06** stable, no UI, OpenRC | Headless-узел (8× aarch64, 6 ГБ RAM, 103 GiB root). Eth `192.168.50.127` (USB-Ethernet хаб → Mercusys/srv), USB gadget `172.16.42.1`. Сервисы: **HA Docker**, **Beszel agent**, Voice PE satellite. Подробно: [pmos-setup.md](../phoneserver/pmos-setup.md), [voice-assistant.md](../phoneserver/voice-assistant.md). |
 
 
 ---
@@ -56,7 +56,7 @@
 | ONLYOFFICE Document Server | nextcloud-vm (101), Docker    | образ `onlyoffice/documentserver`, контейнер `onlyoffice-documentserver`, `127.0.0.1:9980→80`; Docker `29.3.0`.                        |
 | Home Assistant             | haos17.0 (100)                | HA OS `17.2`; ядро `6.12.77-haos`; data на `/dev/sda8` (`/mnt/data`, 62 ГБ, занято ~14 ГБ).                                            |
 | MariaDB                    | nextcloud-vm (101)            | `10.11.14-MariaDB-0+deb12u2` (Debian 12).                                                                                              |
-| Uptime Kuma                | phoneserver (`192.168.1.116`) | `2.3.2`, OpenRC, `:3001`; мониторы homelab с LAN. См. [scripts/phoneserver/README.md](../../scripts/phoneserver/README.md).            |
+| Uptime Kuma                | static-sites LXC (`192.168.50.35`) | `2.3.2`, systemd, `:3001`; мониторы homelab (LAN+srv). См. [scripts/proxmox/install-uptime-kuma.sh](../../scripts/proxmox/install-uptime-kuma.sh). |
 | Beszel agent               | phoneserver                   | WebSocket → hub на `192.168.50.35`; метрики в Beszel UI.                                                                               |
 | Beszel hub                 | static-sites LXC (102)        | `127.0.0.1:8090`, UI: `https://apps-pundef.mooo.com/beszel/`. См. [beszel-monitoring-setup.md](../proxmox/beszel-monitoring-setup.md). |
 | Caddy + static apps        | static-sites LXC (102)        | `warframe`, `requiem`, `wf-farm`; LAN `*.home`, path `/warframe/` и т.д. См. [static-sites/README.md](../../static-sites/README.md).   |
@@ -160,5 +160,5 @@
 - Один физический диск: все ВМ на LVM thin в одном пуле — при апгрейде/бэкапах учитывать отсутствие отдельного хранилища.
 - На хосте 4 ядра; nextcloud-vm занимает 4 vCPU — при пиковой нагрузке возможна конкуренция с haos17.0 (2 vCPU). При желании можно ограничить nextcloud-vm до 2–3 vCPU и смотреть по нагрузке.
 - haos17.0: по Proxmox память ~81% (≈4.9 ГБ из 6 ГБ) — при добавлении интеграций/надстроек следить за RAM.
-- **phoneserver** (Redmi Note 9 Pro / `joyeuse`) — postmarketOS на `lan` (`192.168.1.116`, DHCP-резерв). Не в Proxmox-кластере. Beszel agent + Uptime Kuma. USB fallback через WSL. Скрипты и Kuma: [scripts/phoneserver/README.md](../../scripts/phoneserver/README.md).
+- **phoneserver** (Redmi Note 9 Pro / `joyeuse`) — postmarketOS в `srv` (`192.168.50.127`, eth MAC `dc:04:5a:58:5a:93`, DHCP-резерв). Beszel agent + HA; Uptime Kuma на `static-sites` (`.35`). Скрипты: [scripts/phoneserver/README.md](../../scripts/phoneserver/README.md).
 

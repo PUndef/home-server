@@ -1,5 +1,5 @@
 {
-  "_note": "HAOS VM 100 stopped (onboot 0). Home Assistant monitors moved to monitors_paused.",
+  "_note": "Lean set for Kuma on static-sites (.35). No duplicate LAN+public checks for same service.",
   "groups": [
     "Public HTTPS",
     "srv (Proxmox / VMs)",
@@ -13,14 +13,18 @@
       "name": "Nextcloud",
       "url": "https://cloud-pundef.mooo.com/",
       "interval": 60,
-      "maxretries": 3
+      "maxretries": 3,
+      "ignoreTls": true,
+      "acceptedStatusCodes": ["200-299", "300-399"]
     },
     {
       "group": "Public HTTPS",
       "type": "http",
       "name": "Beszel hub",
       "url": "https://apps-pundef.mooo.com/beszel/api/health",
-      "interval": 60
+      "interval": 60,
+      "ignoreTls": true,
+      "acceptedStatusCodes": ["200-299"]
     },
     {
       "group": "Public HTTPS",
@@ -28,14 +32,17 @@
       "name": "OwnCord",
       "url": "https://owncord-pundef.mooo.com/api/health",
       "interval": 60,
-      "maxretries": 3
+      "maxretries": 3,
+      "ignoreTls": true,
+      "acceptedStatusCodes": ["200-299"]
     },
     {
-      "group": "Public HTTPS",
+      "group": "srv (Proxmox / VMs)",
       "type": "http",
       "name": "Requiem (static)",
-      "url": "https://apps-pundef.mooo.com/requiem/",
-      "interval": 120
+      "url": "http://192.168.50.35/requiem/",
+      "interval": 120,
+      "acceptedStatusCodes": ["200-299"]
     },
     {
       "group": "srv (Proxmox / VMs)",
@@ -61,20 +68,6 @@
     },
     {
       "group": "srv (Proxmox / VMs)",
-      "type": "http",
-      "name": "Nextcloud (LAN)",
-      "url": "http://192.168.50.34/",
-      "interval": 120
-    },
-    {
-      "group": "srv (Proxmox / VMs)",
-      "type": "ping",
-      "name": "static-sites LXC",
-      "hostname": "192.168.50.35",
-      "interval": 120
-    },
-    {
-      "group": "srv (Proxmox / VMs)",
       "type": "ping",
       "name": "owncord LXC",
       "hostname": "192.168.50.36",
@@ -82,17 +75,33 @@
     },
     {
       "group": "srv (Proxmox / VMs)",
-      "type": "http",
-      "name": "OwnCord backend (LAN)",
-      "url": "http://192.168.50.36:3001/api/health",
-      "interval": 120
+      "type": "ping",
+      "name": "phoneserver",
+      "hostname": "192.168.50.127",
+      "interval": 60
+    },
+    {
+      "group": "LAN",
+      "type": "port",
+      "name": "OpenWrt router SSH",
+      "hostname": "192.168.1.1",
+      "port": 22,
+      "interval": 60
     },
     {
       "group": "LAN",
       "type": "ping",
-      "name": "OpenWrt router",
-      "hostname": "192.168.1.1",
+      "name": "Voice PE",
+      "hostname": "192.168.1.171",
       "interval": 60
+    },
+    {
+      "group": "srv (Proxmox / VMs)",
+      "type": "http",
+      "name": "Home Assistant (phoneserver)",
+      "url": "http://192.168.50.127:8123/",
+      "interval": 120,
+      "acceptedStatusCodes": ["200-299", "300-399"]
     },
     {
       "group": "VPS",
@@ -114,17 +123,9 @@
     {
       "group": "srv (Proxmox / VMs)",
       "type": "ping",
-      "name": "Home Assistant",
+      "name": "Home Assistant haos17",
       "hostname": "192.168.50.51",
       "interval": 60,
-      "_reason": "VM 100 haos17.0 stopped, onboot 0"
-    },
-    {
-      "group": "srv (Proxmox / VMs)",
-      "type": "http",
-      "name": "Home Assistant UI",
-      "url": "http://192.168.50.51:8123/",
-      "interval": 120,
       "_reason": "VM 100 haos17.0 stopped, onboot 0"
     }
   ]

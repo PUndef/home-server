@@ -2,7 +2,7 @@
 # Route phoneserver Groq egress via awg1 (if awg2 IP blocked by Cloudflare 1010).
 set -eu
 
-PHONE_IP="${PHONE_IP:-192.168.1.227}"
+PHONE_IP="${PHONE_IP:-192.168.50.127}"
 POLICY_NAME="phoneserver AI via awg2"
 IFACE="awg1"
 
