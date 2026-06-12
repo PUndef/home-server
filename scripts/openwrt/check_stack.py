@@ -530,6 +530,13 @@ def main() -> int:
         ),
         (
             "phoneserver",
+            "phoneserver-wlan-dhcp-reserved",
+            "uci show dhcp 2>/dev/null | grep -q \"phoneserver-wlan\" "
+            "&& uci show dhcp 2>/dev/null | grep -A2 phoneserver-wlan | grep -q '192.168.1.227'",
+            "phoneserver wlan DHCP reserved: 02:00:89:de:af:ce -> 192.168.1.227",
+        ),
+        (
+            "phoneserver",
             "phoneserver-ping",
             "ping -c 1 -W 3 192.168.50.127 >/dev/null 2>&1",
             "phoneserver responds to ping on 192.168.50.127",
@@ -541,6 +548,33 @@ def main() -> int:
             "echo \"kuma-3001 code=$code\"; "
             "[ \"$code\" != \"000\" ]",
             "Uptime Kuma http://192.168.50.35:3001/ answers",
+        ),
+        (
+            "phoneserver",
+            "phoneserver-groq-pbr-policy",
+            "nft list chain inet fw4 pbr_prerouting 2>/dev/null "
+            "| grep -q '192.168.50.127' "
+            "&& nft list chain inet fw4 pbr_prerouting 2>/dev/null "
+            "| grep -q '192.168.1.227'",
+            "phoneserver PBR policy covers srv (.127) and wlan (.227) IPs",
+        ),
+        (
+            "phoneserver",
+            "phoneserver-groq-nftset",
+            "set_name=$(nft list ruleset 2>/dev/null "
+            "| awk '/set pbr_awg2_4_dst_ip/{s=$2} /phoneserver AI via awg2/{print s; exit}'); "
+            "[ -n \"$set_name\" ] "
+            "&& nft list set inet fw4 \"$set_name\" 2>/dev/null "
+            "| grep -qE '8\\.(6|47)\\.|104\\.18\\.(18|19)\\.'",
+            "phoneserver Groq nftset seeded (not empty after pbr restart)",
+        ),
+        (
+            "phoneserver",
+            "phoneserver-groq-watchdog-installed",
+            "[ -f /opt/pbr-phoneserver-groq-watchdog.sh ] "
+            "&& [ -f /opt/seed-phoneserver-groq-ips.sh ] "
+            "&& grep -qF 'pbr-phoneserver-groq-watchdog' /etc/crontabs/root",
+            "phoneserver Groq self-heal scripts + cron installed on router",
         ),
     ]
 

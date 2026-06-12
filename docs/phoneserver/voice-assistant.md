@@ -1,7 +1,7 @@
 # Голосовой ассистент (Voice PE + HA на phoneserver)
 
 > **Статус:** рабочая конфигурация, 2026-06-11  
-> **HA UI:** `http://192.168.1.227:8123/` (eth) · Voice PE: `192.168.1.171`  
+> **HA UI:** `http://192.168.50.127:8123/` (srv eth) · `http://192.168.1.227:8123/` (wlan, Voice PE internal_url) · Voice PE: `192.168.1.171`  
 > **Скрипты:** [scripts/phoneserver/](../../scripts/phoneserver/README.md)
 
 ---
@@ -39,7 +39,7 @@ Voice PE (Okay Nabu)
 | TTS | `tts.yandex_speechkit`, `marina` | то же |
 | LLM | `conversation.groq_cloud_api`, 70b | то же + интеграция Groq |
 | Локальные команды | вкл. | `prefer_local_intents: true` |
-| internal_url HA | `http://192.168.1.227:8123` | Настройки → Система → Сеть |
+| internal_url HA | `http://192.168.1.227:8123` (wlan, DHCP reserved) | Настройки → Система → Сеть |
 
 **Проверить:** «Okay Nabu» → «проверка» (intent_script) · «какая погода» · «расскажи короткий анекдот».
 
@@ -187,21 +187,33 @@ STT/TTS — как сейчас (Yandex); Groq — только болтовня
 
 ## OpenWrt и Groq
 
-Трафик **с IP phoneserver** (`192.168.1.227`) к AI должен идти через **awg2** (NL), иначе Groq даёт `403`.
+Трафик **с IP phoneserver** (`192.168.50.127` eth / `192.168.1.227` wlan) к Groq/Yandex AI должен идти через **awg2** (NL), иначе Groq даёт `403`.
+
+DHCP-резервации: `scripts/openwrt/reserve-phoneserver-dhcp.sh` (srv + wlan).
+
+**Почему отваливается повторно:** pbr 1.2.2 не заполняет nftset для `*.groq.com`; phoneserver резолвит `api.groq.com` через `1.1.1.1` → реальные Cloudflare IP вне dnsmasq nftset. После любого `pbr restart` (hotplug `99-vpn-stack`, `pbr-workvpn-watchdog`) set пустеет.
+
+**Устойчивость (на роутере):**
+
+- `enable-phoneserver-ai-pbr.sh` — политика + установка `/opt/seed-phoneserver-groq-ips.sh`
+- `pbr-phoneserver-groq-watchdog.sh` — cron `*/5`, пересеивает IP если set пуст
+- `99-vpn-stack` — seed сразу после `pbr restart`
 
 ```bash
-# На роутере
-sh /tmp/enable-phoneserver-ai-pbr.sh   # scripts/openwrt/enable-phoneserver-ai-pbr.sh
+# Первичная настройка / восстановление (залить все 3 скрипта в /tmp/, затем):
+sh /tmp/enable-phoneserver-ai-pbr.sh
 ```
+
+**Проверить:** `python scripts/openwrt/check_stack.py` → группа `phoneserver` (groq-nftset, watchdog-installed).
 
 **Проверить с phoneserver:**
 
 ```bash
-wget -qO- https://ifconfig.me/ip          # ожидается NL IP awg2, не 5.189.x
-sudo python3 /tmp/test-groq-api.py        # models.list: OK
+curl -sS -o /dev/null -w '%{http_code}\n' -H 'Authorization: Bearer x' https://api.groq.com/openai/v1/models
+# ожидается 401 (не 403)
 ```
 
-При `403 error code: 1010` — новый ключ в [console.groq.com](https://console.groq.com) → HA → Groq → Перенастроить.
+При `403 error code: 1010` — новый ключ в [console.groq.com](https://console.groq.com) → HA → Groq → Перенастроить. При просто `403` без 1010 — почти всегда пустой nftset: `sh /opt/seed-phoneserver-groq-ips.sh` на роутере.
 
 ---
 

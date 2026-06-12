@@ -22,7 +22,8 @@
 | Hostname          | `phoneserver`                                                                                                            |
 | Пользователь      | `pmos`, **NOPASSWD sudo** через `/etc/sudoers.d/pmos-nopasswd` (доступ только по SSH-ключу)                              |
 | SSH-ключ от WSL   | `~/.ssh/phoneserver_nopass` (ed25519, без passphrase)                                                                    |
-| LAN (eth0)        | USB-C хаб с RJ45 → Mercusys → OpenWrt `lan`; DHCP `**192.168.1.227**`, MAC `dc:04:5a:58:5a:93`                           |
+| srv (eth0)        | USB-C хаб с RJ45 → Mercusys → X3000T `lan2`; DHCP **`192.168.50.127`**, MAC `dc:04:5a:58:5a:93`                         |
+| lan Wi‑Fi (wlan0) | 2.4 GHz; DHCP **`192.168.1.227`** (Voice PE / HA `internal_url`), MAC `02:00:89:de:af:ce`                               |
 | USB-сеть          | `usb0` 172.16.42.1/16 — резервный канал при прямом USB к ПК (usbipd)                                                     |
 | DNS               | `1.1.1.1, 8.8.8.8` (в обход dnsmasq роутера / sing-box, через `/etc/resolv.conf` + `nohook resolv.conf` в `dhcpcd.conf`) |
 | Swap              | 8.2 GiB zram                                                                                                             |
@@ -46,7 +47,7 @@
 1. **SSH-ключ от WSL** положен в `pmos@phoneserver:~/.ssh/authorized_keys`.
 2. **Реальный sudo вместо doas-sudo-shim** + `/etc/sudoers.d/pmos-nopasswd` (см. [`enable-passwordless-doas.sh`](../../scripts/phoneserver/install/enable-passwordless-doas.sh)). По умолчанию в pmOS v25.06 стоит `doas + doas-sudo-shim`, в котором нет `sudo -S` — это ломает скрипты с `echo $pass | sudo -S`. Замена на настоящий `sudo` + NOPASSWD убирает проблему.
 3. `**resize2fs /dev/sda18`** — root до 103 GiB.
-4. **LAN (eth0)**: USB-Ethernet хаб, `dhcpcd` на eth0, IP `192.168.1.227`. DHCP-резервация: `scripts/openwrt/reserve-phoneserver-dhcp.sh`.
+4. **Сеть**: eth0 → srv `192.168.50.127`, wlan0 → lan `192.168.1.227`. DHCP-резервации: `scripts/openwrt/reserve-phoneserver-dhcp.sh`.
 5. **DNS pinned**: `/etc/resolv.conf` → `1.1.1.1, 8.8.8.8`; `nohook resolv.conf` в `/etc/dhcpcd.conf` чтобы dhcpcd при ренью не возвращал dnsmasq роутера (с sing-box подкопом).
 6. `**chrony`** + `chrony-openrc` в default runlevel — время синхронизируется при загрузке.
 7. **Internet sharing через WSL** (`MASQUERADE`) нужен только при первичной установке до появления eth в LAN. В штатной эксплуатации phoneserver в сети через хаб.

@@ -23,7 +23,8 @@ if [[ -z "${PHONE_IP:-}" ]]; then
     if [[ "$_phone_default" == "usb" ]]; then
       PHONE_IP="$(_yaml_ip usb_ip)"
     else
-      PHONE_IP="$(_yaml_ip lan_ip)"
+      PHONE_IP="$(_yaml_ip srv_ip)"
+      PHONE_IP="${PHONE_IP:-$(_yaml_ip lan_ip)}"
     fi
     export PHONE_IP="${PHONE_IP:-172.16.42.1}"
   else

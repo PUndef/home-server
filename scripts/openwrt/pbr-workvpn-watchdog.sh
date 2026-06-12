@@ -23,6 +23,7 @@ fi
 logger -t "$LOG_TAG" "pbr_workvpn table empty while workvpn is up; restarting pbr"
 /etc/init.d/pbr restart
 RC=$?
+sh /opt/seed-phoneserver-groq-ips.sh 2>/dev/null || true
 logger -t "$LOG_TAG" "pbr restart finished with rc=$RC"
 
 exit 0

@@ -11,7 +11,8 @@ CONFIG = Path("/opt/homeassistant/config/.storage")
 CORE = CONFIG / "core.config"
 ENTRIES = CONFIG / "core.config_entries"
 GROQ_ENTRY = "01KTVY5V5Y3M66AQWZK8VQ3K6K"
-HA_INTERNAL_URL = os.environ.get("HA_INTERNAL_URL", "http://192.168.50.127:8123")
+# Voice PE is on lan (192.168.1.x); srv eth (192.168.50.127) is not reachable from wlan.
+HA_INTERNAL_URL = os.environ.get("HA_INTERNAL_URL", "http://192.168.1.227:8123")
 
 GROQ_PROMPT = """Ты голосовой помощник. Отвечай по-русски.
 Максимум 1–2 коротких предложения, до 15 слов. Полный ответ, не обрывай мысль на полуслове.

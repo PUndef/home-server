@@ -16,10 +16,12 @@ case "$INTERFACE" in
     /etc/init.d/podkop restart 2>/dev/null
     /etc/init.d/zapret restart
     /etc/init.d/pbr restart
+    sh /opt/seed-phoneserver-groq-ips.sh 2>/dev/null || true
     ;;
   workvpn)
     # Rebuild pbr_workvpn routes after OpenConnect reconnect; full stack not needed.
     sleep 5
     /etc/init.d/pbr restart
+    sh /opt/seed-phoneserver-groq-ips.sh 2>/dev/null || true
     ;;
 esac
