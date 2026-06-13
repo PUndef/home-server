@@ -1,7 +1,7 @@
 # Beszel — мониторинг всей инфраструктуры
 
 > **Статус:** completed setup  
-> **Последняя проверка:** 2026-05-28
+> **Последняя проверка:** 2026-06-12
 
 Лёгкий «единый дашборд» по всем узлам: Proxmox-host, ВМ/LXC, phoneserver, VPS. Hub живёт в существующем LXC `static-sites` (102), наружу прокидывается через тот же Caddy + Apache по path-based схеме (`https://apps-pundef.mooo.com/beszel/`). Опенсорс, без облака — [henrygd/beszel](https://github.com/henrygd/beszel).
 
@@ -38,7 +38,7 @@
  pundef    nextcloud-vm   static-      phone-   fin-VPS    sweet-VPS
  (Proxmox)  (101, Debian) sites self  server   (Ubuntu)   (Ubuntu)
             +Docker meta              (pmOS,
-                                       OpenRC)
+                                       systemd)
 ```
 
 Ключевые свойства:
@@ -59,7 +59,7 @@
 | Hub listen | `127.0.0.1:8090` (только локально, Caddy проксирует) |
 | Agent listen | `0.0.0.0:45876/tcp` на каждом узле |
 | Установка Hub | нативный binary + systemd unit (без Docker) |
-| Установка Agent | нативный binary + systemd unit (на phoneserver — OpenRC) |
+| Установка Agent | нативный binary + **systemd** unit (phoneserver v25.12 — systemd) |
 | Данные Hub | `/opt/beszel/` (бинарь) + `/var/lib/beszel/` (SQLite) |
 
 **Узлы под наблюдением** (стартовый набор; имя в Beszel UI — слева):
@@ -69,7 +69,7 @@
 | `Proxmox` | `pundef` (Proxmox host) | `192.168.50.9` | systemd |
 | `nextcloud-vm` | `nextcloud-vm` (VM 101) | `192.168.50.34` | systemd |
 | `static-sites` | `static-sites` (LXC 102, self-monitor) | `127.0.0.1` | systemd |
-| `phoneserver` | `phoneserver` (Redmi/pmOS) | `192.168.1.227` (eth/LAN) | OpenRC |
+| `phoneserver` | `phoneserver` (Redmi/pmOS) | `192.168.50.127` (eth srv; wlan `.227`; USB `172.16.42.1`) | systemd |
 | `fin-sweet-home-vps` | `fin-sweet-home-vps` | `89.44.76.52` | systemd |
 | `sweet-home-vps` | `customer55224` (hostname) | `45.154.35.222` | systemd |
 
@@ -93,7 +93,7 @@
 | 6 | Установить агент на сам LXC 102 (self-monitor) | ✅ |
 | 7 | Установить агент на Proxmox host (`pundef`, имя в UI: `Proxmox`) | ✅ |
 | 8 | Установить агент на `nextcloud-vm` (с docker-метриками) | ✅ |
-| 9 | Установить агент на `phoneserver` (OpenRC init) | ✅ |
+| 9 | Установить агент на `phoneserver` (systemd) | ✅ |
 | 10a | SSH-ключ для VPS + helpers в `scripts/vps/` | ✅ |
 | 10b | Установить агенты на оба VPS | ✅ |
 
@@ -608,40 +608,35 @@ python scripts/proxmox/proxmox_exec.py "qm guest exec 101 --timeout 5 -- bash -l
 
 ---
 
-## Шаг 9. Агент на `phoneserver` (OpenRC) — ✅ сделано
+## Шаг 9. Агент на `phoneserver` (systemd) — ✅ сделано
 
-**Цель.** Нативный `beszel-agent` на postmarketOS (arm64), без HAOS и без Docker.
+**Цель.** Нативный `beszel-agent` на postmarketOS v25.12 (arm64), без HAOS и без Docker.
 
 **От оператора (один раз в UI).**
 
 1. [https://apps-pundef.mooo.com/beszel/](https://apps-pundef.mooo.com/beszel/) → `+ Add System`:
    - Name: `phoneserver`
-   - Host: `192.168.1.227` (USB fallback: `172.16.42.1`)
+   - Host: `192.168.50.127` (wlan `.227`; USB `172.16.42.1`)
    - Port: `45876`
-2. Из модалки `docker run …` скопировать **только `TOKEN=`** (UUID). `KEY` и `HUB_URL` уже зашиты в установщик).
+2. Из модалки скопировать **только `TOKEN=`** (UUID).
 
 **Предусловия на телефоне.**
 
-- SSH по ключу: `pmos@192.168.1.227` (ключ в WSL `~/.ssh/phoneserver_nopass`).
-- Телефон видит hub по LAN: `curl -fsS -m 5 http://192.168.50.35/beszel/` → HTTP 200 (маршрут `lan→srv` на X3000T).
+- SSH: `user@192.168.50.127` (ключ `~/.ssh/phoneserver_nopass`) или jump через Proxmox.
+- Hub доступен: `curl -fsS -m 5 http://192.168.50.35/beszel/` → HTTP 200.
 
-**Установка (Windows или WSL, из корня репо).**
+**Установка (из корня репо).**
 
 ```powershell
-# WSL (рекомендуется — ключ ~/.ssh/phoneserver_nopass):
-wsl bash scripts/phoneserver/install-beszel-agent.sh "<uuid-из-ui>"
-
-# PowerShell (если ключ в %USERPROFILE%\.ssh\ или WSL):
-.\scripts\phoneserver\install-beszel-agent.ps1 -Token "<uuid-из-ui>"
+wsl bash scripts/phoneserver/beszel-agent-install-systemd.sh "<uuid-из-ui>"
+# или legacy OpenRC (v25.06): install-beszel-agent.sh
 ```
-
-Скрипты: [`install-beszel-agent.ps1`](../../scripts/phoneserver/install-beszel-agent.ps1) (оркестратор), [`beszel-agent-install.sh`](../../scripts/phoneserver/beszel-agent-install.sh) (OpenRC на телефоне). Tarball: `beszel-agent_linux_arm64.tar.gz` v0.18.7. **`HUB_URL` по умолчанию внутренний** `http://192.168.50.35/beszel` (без hairpin через публичный домен).
 
 **Проверить.**
 
-- UI: система `phoneserver` **online**.
-- На телефоне: `sudo tail -20 /var/log/beszel-agent.log` → `WebSocket connected`.
-- `sudo rc-service beszel-agent status` → started.
+- UI: `phoneserver` **online**.
+- На телефоне: `journalctl -u beszel-agent -n 20` → `WebSocket connected`.
+- `systemctl is-active beszel-agent` → `active`.
 
 **Батарея в UI.** Beszel 0.18.x **не показывает %**, если в sysfs `status=Unknown` (так отдаёт `qcom_qg` на joyeuse). Обход: [`scripts/phoneserver/beszel-battery-status-fix.sh`](../../scripts/phoneserver/beszel-battery-status-fix.sh) — bind-mount `Charging`/`Discharging` по `tcpm-source …/online` перед стартом агента. Установка: `wsl bash scripts/phoneserver/install-beszel-battery-fix.sh`. Проверка: `cat /sys/class/power_supply/qcom_qg/status` → не `Unknown`.
 

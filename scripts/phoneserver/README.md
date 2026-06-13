@@ -2,9 +2,12 @@
 
 Скрипты для установки и сопровождения второго узла домашней инфраструктуры — Xiaomi Redmi Note 9 Pro Global (codename `joyeuse`, SoC SM7125), переделанного под headless-сервер на postmarketOS.
 
-Подробная история установки и текущий статус железа: [`docs/phoneserver/pmos-setup.md`](../../docs/phoneserver/pmos-setup.md).
+Подробная история и текущий статус: [`docs/phoneserver/pmos-setup.md`](../../docs/phoneserver/pmos-setup.md).  
+Миграция / переустановка **v25.12**: [`migrate-v2512/README.md`](migrate-v2512/README.md).
 
-Целевая конфигурация — pmaports **`v25.06`** stable, `device-xiaomi-miatoll-kernel-joyeuse_tianma`, Linux 6.12.1, классический Android boot.img в стандартный `boot` partition. Возня с edge-схемой (кастомный boot.img из EFI zboot, патчи pmbootstrap и т.п.) теперь не нужна — оставлена как fallback в [`diag/`](diag/).
+**Текущая конфигурация (2026-06-12):** pmaports **`v25.12`**, ядро **6.14.7-sm7125** (asidko), **fastboot-bootpart** (`cache`=kernel, `boot`=U-Boot), панель **Huaxing**, пользователь SSH **`user`**, systemd. Зарядка и PD — **pm6150-charger v0.6.2**, лимит батареи **80%**.
+
+Legacy **v25.06** / 6.12.1 / OpenRC / `pmos` — только [`install/`](install/) (историческая схема Android boot.img).
 
 ---
 
@@ -14,17 +17,19 @@
 
 - `pmbootstrap` 3.x установлен в WSL и инициализирован
 - public-ключ для phoneserver лежит в `~/.ssh/phoneserver_nopass{,.pub}` (создаётся через `setup-ssh-key.sh`)
-- IP и хост по умолчанию — из [`hosts.yaml`](hosts.yaml) (`default_host` → `lan_ip`); переопределение: `PHONE_HOST=joyeuse`, `PHONE_IP=...`
-- `phone-defaults.sh` подставляет `PHONE_IP` / `SSH_KEY` во все shell-скрипты; `PHONE_DEFAULT=usb` для install/diag по USB
-- LAN eth — `192.168.1.227` (USB-Ethernet хаб → Mercusys, DHCP-резерв OpenWrt); USB fallback — `172.16.42.1`
+- IP и хост по умолчанию — из [`hosts.yaml`](hosts.yaml) (`srv_ip` → `wifi_ip`); переопределение: `PHONE_HOST=joyeuse`, `PHONE_IP=...`, `PHONE_DEFAULT=usb`
+- `phone-defaults.sh` подставляет `PHONE_IP`, `SSH_USER`, `SSH_REMOTE` (`user@…` по умолчанию)
+- **eth (srv):** `192.168.50.127` — основной (HA UI, Kuma, Beszel, SSH с Proxmox)
+- **wlan (lan):** `192.168.1.227` — Voice PE `internal_url`, Groq PBR
+- USB fallback — `172.16.42.1` (`PHONE_DEFAULT=usb`)
 - USB-устройство при необходимости проброшено в WSL через `usbipd attach --wsl --busid <id>` (из PowerShell **от админа**)
 
 ### При обычной работе
 
 | Скрипт | Когда запускать |
 |---|---|
-| `wsl-usbnet-up.sh` | После переподключения USB / нового `usbipd attach` — поднимает USB-cdc интерфейс в WSL, ставит ему `172.16.42.2/24`, проверяет ssh до телефона. Не нужно если phoneserver доступен по LAN `.227`. |
-| `wsl-share-internet.sh` | Только при первичной установке: интернет через WSL до появления eth в LAN. |
+| `disable-usb-gadget.sh` + `.service` | Освободить UDC для USB host (хаб eth + PD). Установить на телефон при post-flash. |
+| `wsl-usbnet-up.sh` | После `usbipd attach` — USB-cdc в WSL, ssh до `172.16.42.1`. |
 | `status.sh` | Снять текущую сводку с телефона (kernel, uptime, диск, сервисы, сеть). |
 | `fix-beszel-agent-lan.sh` | Убрать зависимость `phoneserver-wifi` с beszel-agent, перезапустить агент. |
 | `install-beszel-agent.ps1` / `.sh` | Переустановка Beszel agent (TOKEN из UI hub). |
@@ -36,22 +41,11 @@
 
 Kuma на `192.168.50.35` — не добавляй self-ping мониторы на `127.0.0.1`.
 
-### При первичной установке (по порядку)
+### При первичной установке / переустановке
 
-| Шаг | Скрипт | Что делает |
-|---|---|---|
-| 1 | `install/pmbootstrap-init.exp` | Прогон `pmbootstrap init` non-interactively с правильными ответами для joyeuse (UI=none, hostname=phoneserver, kernel=joyeuse_tianma). |
-| 2 | вручную: `cd ~/.local/var/pmbootstrap/cache_git/pmaports && git checkout v25.06` | Переключить pmaports на stable канал — на `main` (edge) у `xiaomi-miatoll` сейчас регрессии (см. setup-doc). |
-| 3 | вручную: `pmbootstrap config kernel joyeuse_tianma; pmbootstrap config boot_size 128` | Подогнать конфиг под joyeuse. |
-| 4 | `pmbootstrap install --no-fde --password changemenow --split --add device-xiaomi-miatoll-kernel-joyeuse_tianma` | Сборка boot.img (~18 MB sparse, 128 MiB partition) и rootfs.img (570 MB → растягиваем потом). |
-| 5 | `fastboot erase dtbo; pmbootstrap flasher flash_kernel; sudo fastboot flash userdata ~/.local/var/pmbootstrap/chroot_native/home/pmos/rootfs/xiaomi-miatoll-root.img; fastboot reboot` | Прошить и перезагрузить. `dtbo erase` обязателен — иначе Xiaomi overlay ломает наш DTB. |
-| 6 | `setup-ssh-key.sh` | Сгенерировать `~/.ssh/phoneserver_nopass`, положить в `pmos@phoneserver:~/.ssh/authorized_keys`. |
-| 7 | `wsl-share-internet.sh` | Дать phone интернет через WSL до появления eth в LAN. |
-| 8 | `install/enable-passwordless-doas.sh` | Pmos v25.06 ставит `doas+doas-sudo-shim`, наш `sudo -S` не работает. Скрипт ставит настоящий sudo, удаляет shim, кладёт `/etc/sudoers.d/pmos-nopasswd`. После этого все остальные `sudo $cmd` через ssh-key работают без password. |
-| 9 | `install/resize-root.sh` | Расширить ext4 на `/dev/sda18` до 103 GiB. На v25.06 pmOS делает это сам при первом mount, скрипт скорее no-op. |
-| 10 | `install/lan-setup.sh` | После DHCP на eth0: dhcpcd в default runlevel, chrony NTP, public DNS в `/etc/resolv.conf`. |
-| 11 | `pin-dns-and-ntp.sh` | Запретить dhcpcd перезаписывать resolv.conf (`nohook resolv.conf` в `dhcpcd.conf`). |
-| 12 | `fix-dns-and-apk.sh` | На случай если apk завис из-за подкопа / fake-IP — переставляет DNS и поднимает базовые tools (`curl`). |
+**Актуальный путь — v25.12:** см. [`migrate-v2512/README.md`](migrate-v2512/README.md) (сборка на Proxmox, fastboot, asidko charger, smoke-test, restore HA).
+
+**Legacy v25.06** (Android boot.img, OpenRC, `pmos`): [`install/README.md`](install/README.md) — только для истории / отката.
 
 ---
 
@@ -99,13 +93,13 @@ bash scripts/phoneserver/run-owncord-kuma-remote.sh
 | Wake / железо | **Voice PE** + Okay Nabu |
 | Локальный Wyoming | **не используется** (профиль `local` в compose — только для экспериментов) |
 
-Установка HA: `PHONE_IP=192.168.1.227 bash scripts/phoneserver/install-homeassistant.sh` (из WSL).
+Установка HA: `PHONE_IP=192.168.50.127 bash scripts/phoneserver/install-homeassistant.sh` (или wlan `.227` при первичной настройке до eth).
 
-Остановить старые whisper/piper на уже развёрнутом узле: `bash scripts/phoneserver/stop-local-voice-backends.sh`.
+Остановить старые whisper/piper: `bash scripts/phoneserver/stop-local-voice-backends.sh`.
 
-Docker на pmOS: `/etc/docker/daemon.json` с `"iptables": false` (см. `fix-docker-iptables.sh`) — host network, роутер не трогаем.
+Docker: `/etc/docker/daemon.json` с `"iptables": false` — `fix-docker-iptables.sh`.
 
-UI: `http://192.168.1.227:8123/`
+**UI:** `http://192.168.50.127:8123/` (основной) · wlan `http://192.168.1.227:8123/` (Voice PE `internal_url`)
 
 Погода в Assist: `sudo python3 /tmp/expose-ha-weather.py` (из `expose-ha-weather.py`).
 
@@ -154,42 +148,35 @@ UI: `http://192.168.1.227:8123/`
 ## Короткая шпаргалка
 
 ```bash
-# Подключиться по LAN:
-ssh -i ~/.ssh/phoneserver_nopass pmos@192.168.1.227
+# eth (srv, по умолчанию в hosts.yaml):
+ssh -i ~/.ssh/phoneserver_nopass user@192.168.50.127
 
-# Подключиться по USB (резерв; когда USB проброшен в WSL):
-ssh -i ~/.ssh/phoneserver_nopass pmos@172.16.42.1
+# wlan (Voice PE / из lan):
+ssh -i ~/.ssh/phoneserver_nopass user@192.168.1.227
 
-# Снять статус:
+# USB (резерв):
+ssh -i ~/.ssh/phoneserver_nopass user@172.16.42.1
+
+# Статус:
 ./status.sh
-
-# Если phone сменил IP / переустановили pmOS:
-./setup-ssh-key.sh
 ```
 
 ---
 
 ## Известные особенности
 
-- **Сеть после reboot** — eth0 через USB-Ethernet хаб; `dhcpcd` в default runlevel. Beszel agent зависит только от `net`, не от Wi-Fi.
-- **`/etc/resolv.conf`** на phone должен указывать на **public DNS** (1.1.1.1 / 8.8.8.8), а не на dnsmasq роутера. Иначе срабатывает sing-box-подкоп для некоторых доменов и часть apk/curl-запросов зависает.
-- **doas vs sudo.** v25.06 по умолчанию `doas`. Запускай `install/enable-passwordless-doas.sh` сразу после первой установки, иначе остальные скрипты будут падать на `sudo -S`.
-- **Зарядка** работает только от полноценного USB-C PD-источника. ПК через USB-A или короткий «попытался зарядить» от PC USB-C — не работает, Type-C port уходит в `source` role (Linux mainline driver `qcom,pmic-typec` пока без write-callback для role-switch).
-- **RTC battery отсутствует** — после reboot часы откатываются в 1975 год. `chrony` синхронизирует за секунды после поднятия сети.
-- **Uptime Kuma** на **static-sites LXC** (`192.168.50.35:3001`), не на phoneserver. Установка: `scripts/proxmox/install-uptime-kuma.sh`. На phoneserver — `disable-uptime-kuma.sh` если ещё не сняли.
-- **Kuma: HTTPS `*.mooo.com`.** На LXC в `/etc/hosts` (`fix-kuma-monitors-lxc.sh`): `192.168.50.34 cloud-pundef.mooo.com apps-pundef.mooo.com owncord-pundef.mooo.com`.
-- **Beszel agent** на phoneserver — WebSocket к hub (`192.168.50.35`), порт **45876 не слушается** (это нормально, не port-monitor).
-- **VPS NL (`45.154.35.222`)** — ICMP с phoneserver не проходит (фаервол хостера); в `kuma-monitors.json` — **Port :22**, не Ping.
+- **Dual-homed:** eth `.127` (srv) + wlan `.227` (lan). Разные роли — см. [operations.md](../../docs/phoneserver/operations.md).
+- **USB gadget vs host:** без `phoneserver-disable-usb-gadget` хаб не поднимет eth0.
+- **Перетык хаба** после cold boot часто обязателен для xhci.
+- **`/etc/resolv.conf`** — public DNS (1.1.1.1 / 8.8.8.8), не dnsmasq роутера.
+- **Зарядка 24/7:** `term_capacity=80` в `pm6150_chgr_minimal`; PD-хаб с passthrough.
+- **RTC нет** — `chronyd` после boot.
+- **Uptime Kuma** на LXC `192.168.50.35:3001`, не на телефоне.
+- **Beszel agent** — systemd, WebSocket к hub; порт 45876 не слушается (норма).
+- **Legacy-скрипты** с `pmos@` — постепенно заменяются на `SSH_REMOTE` из `phone-defaults.sh`.
 
 ---
 
-## Edge-only скрипты (как fallback)
+## Edge-only / legacy скрипты
 
-Лежат в [`install/`](install/). Не нужны при штатной установке на `v25.06`, но **могут пригодиться** если pmaports опять перейдут на edge-схему:
-
-| Скрипт | Зачем |
-|---|---|
-| `install/build-bootimg.sh` | Собирает Android boot.img из артефактов pmOS вручную через `mkbootimg-osm0sis` в `pmbootstrap chroot`. На v25.06 pmbootstrap сам это делает. |
-| `install/extract-kernel-from-zboot.py` | Распаковывает Linux Image из EFI zboot wrapper (PE/COFF + gzip-payload). |
-| `install/flash-bootimg-via-ssh.sh` | Заливает boot.img на phone и пишет dd в `/dev/disk/by-partlabel/boot`. |
-| `install/patch-pmbootstrap-bootsize.sh` | Снимает hardcoded sanity-check `boot_size >= 512 MiB` в `pmbootstrap 3.10.1`. |
+[`install/`](install/) — **v25.06** (Android boot.img). [`migrate-v2512/`](migrate-v2512/) — **текущая** v25.12. [`diag/`](diag/) — диагностика Type-C, зарядки, NTP.

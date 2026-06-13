@@ -1,6 +1,7 @@
 # Голосовой ассистент (Voice PE + HA на phoneserver)
 
-> **Статус:** рабочая конфигурация, 2026-06-11  
+> **Статус:** рабочая конфигурация  
+> **Последняя проверка:** 2026-06-12  
 > **HA UI:** `http://192.168.50.127:8123/` (srv eth) · `http://192.168.1.227:8123/` (wlan, Voice PE internal_url) · Voice PE: `192.168.1.171`  
 > **Скрипты:** [scripts/phoneserver/](../../scripts/phoneserver/README.md)
 
@@ -17,7 +18,7 @@
 | 2026-06 | **Yandex SpeechKit** — STT `ru-RU` + TTS голос `marina` (облако) |
 | 2026-06 | **Groq** `llama-3.3-70b-versatile` — умные ответы (облако, egress phoneserver через awg2) |
 | 2026-06 | **prefer_local_intents: true** — таймеры/свет без Groq |
-| 2026-06 | OpenWrt pbr **`phoneserver AI via awg2`** для `192.168.1.227` |
+| 2026-06-12 | Миграция **v25.12** / 6.14.7; eth HA UI `192.168.50.127`; wlan `internal_url` `.227`; pbr для **обоих** IP |
 | 2026-06 | Whisper/Piper **сняты** из compose — локальный STT/TTS на телефоне не использовались |
 
 ---
@@ -39,7 +40,8 @@ Voice PE (Okay Nabu)
 | TTS | `tts.yandex_speechkit`, `marina` | то же |
 | LLM | `conversation.groq_cloud_api`, 70b | то же + интеграция Groq |
 | Локальные команды | вкл. | `prefer_local_intents: true` |
-| internal_url HA | `http://192.168.1.227:8123` (wlan, DHCP reserved) | Настройки → Система → Сеть |
+| internal_url HA | `http://192.168.1.227:8123` (wlan, static) | Настройки → Система → Сеть |
+| HA UI (браузер, Kuma) | `http://192.168.50.127:8123` (eth srv) | Основной адрес с homelab |
 
 **Проверить:** «Okay Nabu» → «проверка» (intent_script) · «какая погода» · «расскажи короткий анекдот».
 

@@ -112,7 +112,7 @@ curl.exe -fsS https://owncord-pundef.mooo.com/api/health
 | OwnCord | HTTP (Public HTTPS) | `https://owncord-pundef.mooo.com/api/health` — ждёт `{"ok":true}` |
 | OwnCord backend (LAN) | HTTP | `http://192.168.50.36:3001/api/health` |
 
-**Автоматически** (из WSL/Linux, если админ Kuma уже создан на `http://192.168.1.116:3001/`):
+**Автоматически** (Kuma на LXC `http://192.168.50.35:3001/`):
 
 ```bash
 cd scripts/phoneserver
@@ -122,18 +122,13 @@ KUMA_USERNAME=admin KUMA_PASSWORD='...' ./seed-kuma-monitors.sh
 
 Скрипт идемпотентен по имени: существующие не дублирует, **OwnCord** добавит, если его ещё нет.
 
-**Важно для Public HTTPS:** phoneserver резолвит `*.mooo.com` через публичный DNS → старый VPS. Нужна строка в `/etc/hosts` на phone:
-
-```text
-192.168.50.34 owncord-pundef.mooo.com
-```
-
-Скрипт: залить и выполнить на phoneserver [`fix-kuma-monitors-phone.sh`](../scripts/phoneserver/fix-kuma-monitors-phone.sh) (добавляет cloud/apps/owncord → `.34`).
+**Важно для Public HTTPS:** на **LXC Kuma** (`192.168.50.35`) в `/etc/hosts` — см. `scripts/proxmox/fix-kuma-monitors-lxc.sh` (cloud/apps/owncord → `.34`).
 
 **Проверить:**
 
 ```bash
-ssh pmos@192.168.1.116 'getent hosts owncord-pundef.mooo.com; curl -fsS https://owncord-pundef.mooo.com/api/health'
+curl -fsS http://192.168.50.35:3001/api/health  # Kuma UI
+curl -fsS https://owncord-pundef.mooo.com/api/health
 ```
 
 В UI Kuma: группа **Public HTTPS** — **OwnCord** зелёный; **srv** — ping `owncord LXC` + **OwnCord backend (LAN)**.

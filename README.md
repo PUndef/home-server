@@ -16,7 +16,7 @@
 | 102 | static-sites (LXC) | 192.168.50.35 | Caddy, Warframe apps, Beszel hub |
 | 103 | owncord (LXC) | 192.168.50.36 | OwnCord — [owncord/setup.md](owncord/setup.md) |
 | — | pundef (Proxmox host) | 192.168.50.9 | Гипервизор |
-| — | phoneserver | 192.168.1.116 | postmarketOS: Beszel agent, Uptime Kuma |
+| — | phoneserver | eth `192.168.50.127`, wlan `192.168.1.227` | postmarketOS v25.12: HA Docker, Beszel agent, Voice PE backend |
 | — | OpenWrt X3000T | 192.168.1.1 / 192.168.50.1 | Роутер, VPN, NAT, DDNS |
 
 Публичные URL static-sites: `https://apps-pundef.mooo.com/warframe/`, `/requiem/`, `/wf-farm/`, `/beszel/`  

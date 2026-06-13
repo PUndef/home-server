@@ -5,7 +5,9 @@ hosts:
   joyeuse:
     codename: joyeuse
     device: xiaomi-miatoll
-    kernel: joyeuse_tianma
+    panel: huaxing
+    kernel: linux-postmarketos-qcom-sm7125
+    kernel_release: 6.14.7-sm7125
     pmaports_channel: v25.12
     srv_ip: 192.168.50.127
     wifi_ip: 192.168.1.227

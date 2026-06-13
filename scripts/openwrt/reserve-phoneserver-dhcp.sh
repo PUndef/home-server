@@ -2,7 +2,7 @@
 # Pin phoneserver interfaces to fixed IPs on OpenWrt.
 #
 #   eth0 (USB-Ethernet hub → srv / lan2): 192.168.50.127  MAC dc:04:5a:58:5a:93
-#   wlan0 (2.4 GHz, Voice PE / Groq lan path): 192.168.1.227  MAC 02:00:89:de:af:ce
+#   wlan0 (2.4 GHz, Voice PE / Groq lan path): 192.168.1.227  MAC 22:84:8d:3d:5d:8e
 #
 # Run on the router as root, or via:
 #   ssh root@192.168.1.1 'sh -s' < reserve-phoneserver-dhcp.sh
@@ -46,7 +46,7 @@ reserve_host "${PHONESERVER_SRV_NAME:-phoneserver}" \
 
 # lan Wi-Fi — HA internal_url for Voice PE, Groq PBR src
 reserve_host "${PHONESERVER_WLAN_NAME:-phoneserver-wlan}" \
-  "${PHONESERVER_WLAN_MAC:-02:00:89:de:af:ce}" \
+  "${PHONESERVER_WLAN_MAC:-22:84:8d:3d:5d:8e}" \
   "${PHONESERVER_WLAN_IP:-192.168.1.227}"
 
 uci commit dhcp

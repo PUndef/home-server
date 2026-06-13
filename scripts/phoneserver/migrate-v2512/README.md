@@ -45,11 +45,17 @@ ARTIFACT_DIR=/root/.local/var/pmbootstrap/chroot_native/home/pmos/rootfs \
 
 ```bash
 PHONE_IP=192.168.1.227 bash migrate-v2512/post-flash-setup.sh
-scp migrate-v2512/install-asidko-charger-v062.sh pmos@$PHONE_IP:/tmp/
-ssh pmos@$PHONE_IP sudo sh /tmp/install-asidko-charger-v062.sh
-# reboot, подключить хаб (LAN + питание)
-ssh pmos@$PHONE_IP sudo sh smoke-test-post-flash.sh
+scp migrate-v2512/install-asidko-charger-v062.sh user@$PHONE_IP:/tmp/
+ssh user@$PHONE_IP sudo sh /tmp/install-asidko-charger-v062.sh
+# reboot, подключить хаб (LAN + PD)
+# USB gadget disable (обязательно для host mode хаба):
+sudo install -m755 disable-usb-gadget.sh /usr/local/sbin/phoneserver-disable-usb-gadget.sh
+sudo install -m644 disable-usb-gadget.service /etc/systemd/system/phoneserver-disable-usb-gadget.service
+sudo systemctl enable --now phoneserver-disable-usb-gadget.service
+ssh user@$PHONE_IP sudo sh smoke-test-post-flash.sh
 ```
+
+Лимит батареи 80% задаётся в `install-asidko-charger-v062.sh` (`term_capacity=80`).
 
 ## Restore HA
 

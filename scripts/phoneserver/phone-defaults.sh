@@ -1,6 +1,6 @@
 #!/bin/bash
-# Default PHONE_IP / SSH_KEY from hosts.yaml unless already exported.
-# PHONE_DEFAULT=lan|usb — which IP when PHONE_IP is unset (default: lan).
+# Default PHONE_IP / SSH_KEY / SSH_USER from hosts.yaml unless already exported.
+# PHONE_DEFAULT=lan|usb — which IP when PHONE_IP is unset (default: lan → srv_ip).
 # PHONE_HOST=<id> — host block in hosts.yaml (default: default_host).
 # Usage: source /path/to/phone-defaults.sh
 
@@ -24,7 +24,7 @@ if [[ -z "${PHONE_IP:-}" ]]; then
       PHONE_IP="$(_yaml_ip usb_ip)"
     else
       PHONE_IP="$(_yaml_ip srv_ip)"
-      PHONE_IP="${PHONE_IP:-$(_yaml_ip lan_ip)}"
+      PHONE_IP="${PHONE_IP:-$(_yaml_ip wifi_ip)}"
     fi
     export PHONE_IP="${PHONE_IP:-172.16.42.1}"
   else
@@ -33,3 +33,6 @@ if [[ -z "${PHONE_IP:-}" ]]; then
 fi
 
 export SSH_KEY="${SSH_KEY:-$HOME/.ssh/phoneserver_nopass}"
+export SSH_USER="${SSH_USER:-$(_yaml_ip ssh_user)}"
+SSH_USER="${SSH_USER:-user}"
+export SSH_REMOTE="${SSH_USER}@${PHONE_IP}"

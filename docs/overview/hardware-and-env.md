@@ -1,7 +1,7 @@
 # Железо и окружение home-server
 
 > **Статус:** living reference  
-> **Последняя проверка:** 2026-05-28  
+> **Последняя проверка:** 2026-06-12  
 > Главный контекст для ответов по серверу (ресурсы, миграции, настройки). Перед правкой таблиц — `python scripts/proxmox/check_vms.py`.
 
 ---
@@ -42,7 +42,7 @@
 
 | Имя           | Железо                                     | ОС                                            | Назначение / статус                                                                                                                                                                                                                                                                                                                       |
 | ------------- | ------------------------------------------ | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `phoneserver` | Xiaomi Redmi Note 9 Pro Global (`joyeuse`) | postmarketOS **v25.06** stable, no UI, OpenRC | Headless-узел (8× aarch64, 6 ГБ RAM, 103 GiB root). Eth `192.168.50.127` (USB-Ethernet хаб → Mercusys/srv), USB gadget `172.16.42.1`. Сервисы: **HA Docker**, **Beszel agent**, Voice PE satellite. Подробно: [pmos-setup.md](../phoneserver/pmos-setup.md), [voice-assistant.md](../phoneserver/voice-assistant.md). |
+| `phoneserver` | Xiaomi Redmi Note 9 Pro Global (`joyeuse`, **Huaxing**) | postmarketOS **v25.12**, systemd, headless | 8× aarch64, 6 ГБ RAM, ~103 GiB root. **eth** `192.168.50.127` (USB-C PD-хаб → srv), **wlan** `192.168.1.227` (Voice PE). Сервисы: **HA Docker**, **Beszel agent**. Подробно: [pmos-setup.md](../phoneserver/pmos-setup.md), [voice-assistant.md](../phoneserver/voice-assistant.md). |
 
 
 ---
@@ -54,10 +54,10 @@
 | -------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | Nextcloud                  | nextcloud-vm (101)            | `33.0.0` (build `33.0.0.16`); PHP `8.4.18`, OPcache; Apache `2.4.66`. `occ` в `/var/www/nextcloud/`.                                   |
 | ONLYOFFICE Document Server | nextcloud-vm (101), Docker    | образ `onlyoffice/documentserver`, контейнер `onlyoffice-documentserver`, `127.0.0.1:9980→80`; Docker `29.3.0`.                        |
-| Home Assistant             | haos17.0 (100)                | HA OS `17.2`; ядро `6.12.77-haos`; data на `/dev/sda8` (`/mnt/data`, 62 ГБ, занято ~14 ГБ).                                            |
+| Home Assistant             | **phoneserver** (Docker)      | HA Container на `192.168.50.127:8123`; VM haos17.0 **остановлена** (onboot 0). Голос: Voice PE + Yandex + Groq — [voice-assistant.md](../phoneserver/voice-assistant.md). |
 | MariaDB                    | nextcloud-vm (101)            | `10.11.14-MariaDB-0+deb12u2` (Debian 12).                                                                                              |
 | Uptime Kuma                | static-sites LXC (`192.168.50.35`) | `2.3.2`, systemd, `:3001`; мониторы homelab (LAN+srv). См. [scripts/proxmox/install-uptime-kuma.sh](../../scripts/proxmox/install-uptime-kuma.sh). |
-| Beszel agent               | phoneserver                   | WebSocket → hub на `192.168.50.35`; метрики в Beszel UI.                                                                               |
+| Beszel agent               | phoneserver                   | systemd; WebSocket → hub `192.168.50.35`; мониторинг по eth `.127`.                                                                  |
 | Beszel hub                 | static-sites LXC (102)        | `127.0.0.1:8090`, UI: `https://apps-pundef.mooo.com/beszel/`. См. [beszel-monitoring-setup.md](../proxmox/beszel-monitoring-setup.md). |
 | Caddy + static apps        | static-sites LXC (102)        | `warframe`, `requiem`, `wf-farm`; LAN `*.home`, path `/warframe/` и т.д. См. [static-sites/README.md](../../static-sites/README.md).   |
 | OwnCord                    | owncord LXC (103)             | `https://owncord-pundef.mooo.com`, backend `:3001`, Apache edge на VM 101; опц. coturn. См. [owncord/setup.md](../../owncord/setup.md). |
@@ -80,7 +80,7 @@
 | Клиентский сегмент `lan` | 192.168.1.0/24 — ПК, Mac, телефоны. Шлюз `192.168.1.1` (порты `lan3 lan4` X3000T + WiFi). pbr / podkop / zapret / awg1 / awg2 / workvpn — здесь.                                                                                                                                                  |
 | Хост Proxmox             | 192.168.50.9/24 (статика), gateway `192.168.50.1` = X3000T. DNS: `1.1.1.1`, `8.8.8.8`.                                                                                                                                                                                                            |
 | ВМ/LXC (DHCP-резервация) | nextcloud-vm `192.168.50.34`, haos17 `192.168.50.51`, static-sites `192.168.50.35`. leasetime `infinite`.                                                                                                                                                                                         |
-| Основной ПК пользователя | `pundef-pc`, MAC `9C:6B:00:8B:3F:18` → DHCP `192.168.1.133`; Windows 11 + WSL2 (`networkingMode=mirrored`, тот же IP). zapret bypass + pbr `workvpn` для corp. Cursor Remote SSH с Mac — см. [zapret-bypass-pundef-pc-2026-05-27.md](../network/incidents/zapret-bypass-pundef-pc-2026-05-27.md). |
+| Основной ПК пользователя | `pundef-pc`, eth `9C:6B:00:8B:3F:18` → `192.168.1.133`, Wi‑Fi `192.168.1.208`; Win 11 + WSL2 mirrored. Игровые маршруты: [gaming-pc-routes.md](../network/gaming-pc-routes.md). zapret bypass + pbr `workvpn` для corp. |
 | Рабочий MacBook          | `paul-mac`, MAC `26:C5:4C:20:C5:AD` → DHCP `192.168.1.198`; pbr `workvpn` для corp.                                                                                                                                                                                                               |
 | Xiaomi 13T Pro           | `xiaomi-13t-pro`, MAC `2c:fe:4f:6b:de:aa` → DHCP `192.168.1.214`; pbr `workvpn` + force-DNS + zapret bypass. Включить снова: `scripts/openwrt/enable_workvpn_client_safe.py` (или `enable-workvpn-client.sh`).                                                                                                                            |
 
@@ -160,5 +160,5 @@
 - Один физический диск: все ВМ на LVM thin в одном пуле — при апгрейде/бэкапах учитывать отсутствие отдельного хранилища.
 - На хосте 4 ядра; nextcloud-vm занимает 4 vCPU — при пиковой нагрузке возможна конкуренция с haos17.0 (2 vCPU). При желании можно ограничить nextcloud-vm до 2–3 vCPU и смотреть по нагрузке.
 - haos17.0: по Proxmox память ~81% (≈4.9 ГБ из 6 ГБ) — при добавлении интеграций/надстроек следить за RAM.
-- **phoneserver** (Redmi Note 9 Pro / `joyeuse`) — postmarketOS в `srv` (`192.168.50.127`, eth MAC `dc:04:5a:58:5a:93`, DHCP-резерв). Beszel agent + HA; Uptime Kuma на `static-sites` (`.35`). Скрипты: [scripts/phoneserver/README.md](../../scripts/phoneserver/README.md).
+- **phoneserver** (Redmi Note 9 Pro / `joyeuse`, Huaxing) — postmarketOS **v25.12**, eth srv `192.168.50.127`, wlan `192.168.1.227`. HA + Beszel; Kuma на `static-sites` (`.35`). Скрипты: [scripts/phoneserver/README.md](../../scripts/phoneserver/README.md), миграция: [migrate-v2512/README.md](../../scripts/phoneserver/migrate-v2512/README.md).
 

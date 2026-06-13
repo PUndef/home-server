@@ -49,7 +49,7 @@
 
 Формат: idempotent `grep -q comment \|\| nft insert …`, shell-комментарий с описанием устройства, короткий nft comment. Host — один IP, subnet — CIDR `/24`. На роутере порядок в `postnat`: `srv` → `.133` → `.116` (порядок не критичен — все до WAN-правил zapret).
 
-> Legacy: Android `.157`, phoneserver wlan `.116` — только в истории; phoneserver сейчас eth `.227`.
+> Legacy: Android `.157`, phoneserver wlan `.116` — только в истории; phoneserver сейчас eth `.127` + wlan `.227`.
 
 ---
 
