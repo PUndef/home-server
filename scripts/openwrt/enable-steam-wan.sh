@@ -3,12 +3,14 @@
 # Policy must sit BEFORE "pundef-pc games via awg2" (0.0.0.0/0) in pbr chain.
 #
 # Run on router: sh enable-steam-wan.sh
-# Or from PC: ssh root@192.168.1.1 'sh -s' < enable-steam-wan.sh
+# Or from PC: py -3 scripts/openwrt/switch_steam_route.py wan
+# Toggle:    py -3 scripts/openwrt/switch_steam_route.py awg2  (Steam + Destiny -> tunnel)
 
 set -eu
 
 POLICY_NAME="pundef-pc steam via wan"
 PC_IP="${STEAM_PC_IP:-192.168.1.133}"
+PC_IP2="${STEAM_PC_IP2:-192.168.1.208}"
 IFACE="wan"
 
 # Store/API/CDN; *.steamstatic.com covers cdn/client-update.akamai.steamstatic.com
@@ -62,7 +64,9 @@ upsert_policy() {
   uci set "pbr.@policy[${idx}].name=${POLICY_NAME}"
   uci set "pbr.@policy[${idx}].interface=${IFACE}"
   uci set "pbr.@policy[${idx}].enabled=1"
-  uci set "pbr.@policy[${idx}].src_addr=${PC_IP}"
+  uci delete "pbr.@policy[${idx}].src_addr" 2>/dev/null || true
+  uci add_list "pbr.@policy[${idx}].src_addr=${PC_IP}/32"
+  uci add_list "pbr.@policy[${idx}].src_addr=${PC_IP2}/32"
 
   uci delete "pbr.@policy[${idx}].dest_addr" 2>/dev/null || true
   for d in ${STEAM_DOMAINS}; do

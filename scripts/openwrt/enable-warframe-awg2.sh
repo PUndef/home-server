@@ -1,9 +1,8 @@
 #!/bin/sh
 # Route Warframe / Soulframe traffic via primary AmneziaWG tunnel (awg2 by default).
 # - Global policy: game-related domains -> primary tunnel (all LAN clients).
-# - PC policy: all egress from pundef-pc (192.168.1.133) -> primary tunnel
-#   (fixes chat/relay UDP to IPs not seen in DNS; corp kpb.lt stays on workvpn
-#   because those policies match earlier in pbr chain).
+# PC-specific routes (Steam WAN, Destiny, Nexus, Discord DNS) — apply-pundef-pc-routes.sh.
+# This script only maintains the global Warframe domain policy.
 #
 # Run on router: sh enable-warframe-awg2.sh
 # Or from PC: ssh root@192.168.1.1 'sh -s' < enable-warframe-awg2.sh
@@ -22,8 +21,6 @@ if ! ifstatus "${PRIMARY}" | grep -q '"up": true'; then
 fi
 
 GLOBAL_POLICY="Warframe via ${PRIMARY}"
-PC_POLICY="pundef-pc games via ${PRIMARY}"
-PC_IP="${WARFRAME_PC_IP:-192.168.1.133}"
 
 # Launcher/API/CDN; chat often uses IPs resolved outside these names — PC policy covers that.
 GAME_DOMAINS="warframe.com *.warframe.com api.warframe.com content.warframe.com \
@@ -32,8 +29,7 @@ GAME_DOMAINS="warframe.com *.warframe.com api.warframe.com content.warframe.com 
 upsert_policy() {
   policy_name="$1"
   iface="$2"
-  src_addr="${3:-}"
-  dest_list="$4"
+  dest_list="$3"
 
   idx=""
   i=0
@@ -54,12 +50,7 @@ upsert_policy() {
   uci set "pbr.@policy[${idx}].interface=${iface}"
   uci set "pbr.@policy[${idx}].enabled=1"
 
-  if [ -n "${src_addr}" ]; then
-    uci set "pbr.@policy[${idx}].src_addr=${src_addr}"
-  else
-    uci delete "pbr.@policy[${idx}].src_addr" 2>/dev/null || true
-  fi
-
+  uci delete "pbr.@policy[${idx}].src_addr" 2>/dev/null || true
   uci delete "pbr.@policy[${idx}].dest_addr" 2>/dev/null || true
   for d in ${dest_list}; do
     uci add_list "pbr.@policy[${idx}].dest_addr=${d}"
@@ -70,8 +61,17 @@ upsert_policy() {
 
 echo "=== enable Warframe/Soulframe via ${PRIMARY} ==="
 
-upsert_policy "${GLOBAL_POLICY}" "${PRIMARY}" "" "${GAME_DOMAINS}"
-upsert_policy "${PC_POLICY}" "${PRIMARY}" "${PC_IP}" "0.0.0.0/0"
+upsert_policy "${GLOBAL_POLICY}" "${PRIMARY}" "${GAME_DOMAINS}"
+delete_games=0
+i=0
+while uci -q get "pbr.@policy[${i}]" >/dev/null 2>&1; do
+  name="$(uci -q get "pbr.@policy[${i}].name" 2>/dev/null || true)"
+  case "${name}" in
+    "pundef-pc games via "*) uci delete "pbr.@policy[${i}]"; delete_games=1; i=0; continue ;;
+  esac
+  i=$((i + 1))
+done
+[ "${delete_games}" -eq 1 ] && echo "[enable-warframe-awg2] removed catch-all ${PC_POLICY:-games}"
 
 uci commit pbr
 /etc/init.d/pbr restart

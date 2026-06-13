@@ -370,7 +370,7 @@ def main() -> int:
                     current = next(iter(current_ifaces))
                     if current != best_iface:
                         print(f"  Steam uses {current}, but {best_iface} was faster in this test.")
-                        print("  Run: py -3 scripts/openwrt/enable_steam_wan_safe.py")
+                        print("  Run: py -3 scripts/openwrt/switch_steam_route.py wan")
                     else:
                         print("  Current route matches the fastest path in this test.")
             else:

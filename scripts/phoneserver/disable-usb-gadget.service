@@ -1,0 +1,12 @@
+[Unit]
+Description=Disable USB gadget so Type-C hub can use host mode
+After=local-fs.target
+Before=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/phoneserver-disable-usb-gadget.sh
+
+[Install]
+WantedBy=multi-user.target

@@ -9,6 +9,7 @@ set -eu
 
 POLICY_NAME="pundef-pc nexus via wan"
 PC_IP="${NEXUS_PC_IP:-192.168.1.133}"
+PC_IP2="${NEXUS_PC_IP2:-192.168.1.208}"
 IFACE="wan"
 
 # Site + CDN/API; *.nexusmods.com covers staticdelivery/data/users/etc.
@@ -57,7 +58,9 @@ upsert_policy() {
   uci set "pbr.@policy[${idx}].name=${POLICY_NAME}"
   uci set "pbr.@policy[${idx}].interface=${IFACE}"
   uci set "pbr.@policy[${idx}].enabled=1"
-  uci set "pbr.@policy[${idx}].src_addr=${PC_IP}"
+  uci delete "pbr.@policy[${idx}].src_addr" 2>/dev/null || true
+  uci add_list "pbr.@policy[${idx}].src_addr=${PC_IP}/32"
+  uci add_list "pbr.@policy[${idx}].src_addr=${PC_IP2}/32"
 
   uci delete "pbr.@policy[${idx}].dest_addr" 2>/dev/null || true
   for d in ${NEXUS_DOMAINS}; do

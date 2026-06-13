@@ -1,5 +1,6 @@
 #!/bin/sh
-# Remove Steam WAN pbr policy added by enable-steam-wan.sh
+# Remove Steam-specific pbr policy (WAN or tunnel).
+# Steam then follows "pundef-pc games via awg2" catch-all with Destiny.
 
 set -eu
 
@@ -8,7 +9,7 @@ i=0
 while uci -q get "pbr.@policy[${i}]" >/dev/null 2>&1; do
   name="$(uci -q get "pbr.@policy[${i}].name" 2>/dev/null || true)"
   case "${name}" in
-    "pundef-pc steam via wan")
+    "pundef-pc steam via wan"|"pundef-pc steam via awg1"|"pundef-pc steam via awg2")
       echo "[rollback-steam-wan] delete: ${name}"
       uci delete "pbr.@policy[${i}]"
       removed=$((removed + 1))
