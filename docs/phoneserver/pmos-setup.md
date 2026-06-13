@@ -129,7 +129,6 @@ cat /sys/class/typec/port0/power_role   # ожидается dual при PD-ха
 | низкий | Сменить пароль `user` | Сейчас дефолт образа; sudo NOPASSWD, но пароль для recovery |
 | низкий | DHCP-резерв wlan MAC | Фактический MAC `22:84:8d:3d:5d:8e` (static IP в NM уже держит `.227`) |
 | низкий | Beszel battery % | Опционально `beszel-battery-status-fix.sh` если qcom_qg `status=Unknown` |
-| низкий | Обновить legacy-скрипты `pmos@` → `user@` | Часть оркестраторов ещё с старым логином; см. `hosts.yaml` `ssh_user` |
 
 ---
 
@@ -145,10 +144,6 @@ cat /sys/class/typec/port0/power_role   # ожидается dual при PD-ха
 | Модули зарядки | `/lib/modules/6.14.7-sm7125/extra/` |
 | PD DTB | `/boot/dtbs/qcom/sm7125-xiaomi-joyeuse-huaxing-pd.dtb`, `deviceinfo_dtb` в `/etc/deviceinfo` |
 | Бэкап HA (pre-migration) | Proxmox `/root/backups/phoneserver-pre-v2512/` |
-
-### Legacy: v25.06 / 6.12.1
-
-Старая схема (Android boot.img в `boot`, OpenRC, `pmos`, `joyeuse_tianma`) — [install/README.md](../../scripts/phoneserver/install/README.md), [install-pm6150-charger.sh](../../scripts/phoneserver/install-pm6150-charger.sh). **Не использовать** для текущего узла.
 
 ---
 

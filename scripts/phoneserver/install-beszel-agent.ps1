@@ -1,9 +1,9 @@
-# Install Beszel agent on phoneserver (postmarketOS / OpenRC).
+# Install Beszel agent on phoneserver (postmarketOS v25.12 / systemd).
 #
 # Prerequisites:
 #   - SSH key: %USERPROFILE%\.ssh\phoneserver_nopass (or WSL ~/.ssh/phoneserver_nopass)
-#   - In Beszel UI: + Add System "phoneserver", host 192.168.1.227, port 45876 → copy TOKEN
-#   - phoneserver reachable on eth 192.168.1.227 (or USB 172.16.42.1 fallback)
+#   - In Beszel UI: + Add System "phoneserver", host 192.168.50.127, port 45876 → copy TOKEN
+#   - phoneserver reachable on eth 192.168.50.127 (or USB 172.16.42.1 fallback)
 #
 # Usage:
 #   .\scripts\phoneserver\install-beszel-agent.ps1 -Token "<uuid-from-beszel-ui>"
@@ -11,14 +11,12 @@
 
 param(
     [string]$Token = $env:BESZEL_PHONESERVER_TOKEN,
-    [string]$PhoneIp = $(if ($env:PHONE_IP) { $env:PHONE_IP } else { "192.168.1.227" }),
-    [string]$SshUser = "pmos",
+    [string]$PhoneIp = $(if ($env:PHONE_IP) { $env:PHONE_IP } else { "192.168.50.127" }),
+    [string]$SshUser = "user",
     [string]$SshKey = "$env:USERPROFILE\.ssh\phoneserver_nopass",
 
     [string]$HubKey = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH9I03DG8DciIm5AklgrMF1GMQoIlYibQxKWbzzdFv3W',
-    # Internal URL: phoneserver on lan, hub on srv (no NAT hairpin).
     [string]$HubUrl = "http://192.168.50.35/beszel",
-
     [string]$BeszelVersion = "v0.18.7"
 )
 
@@ -62,7 +60,8 @@ HUB_URL=$HubUrl
 LISTEN=45876
 "@ | Set-Content -Path $envFile -Encoding utf8NoBOM -NoNewline
 
-$installSh = Join-Path $RepoRoot "scripts\phoneserver\beszel-agent-install.sh"
+$installSh = Join-Path $RepoRoot "scripts\phoneserver\beszel-agent-install-systemd.sh"
+$batteryFix = Join-Path $RepoRoot "scripts\phoneserver\beszel-battery-status-fix.sh"
 $sshOpts = @("-i", $SshKey, "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=NUL")
 $remote = "${SshUser}@${PhoneIp}"
 
@@ -74,10 +73,11 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 scp @sshOpts $TarLocal "${remote}:/tmp/$TarName"
-scp @sshOpts $installSh "${remote}:/tmp/beszel-agent-install.sh"
+scp @sshOpts $installSh "${remote}:/tmp/beszel-agent-install-systemd.sh"
+scp @sshOpts $batteryFix "${remote}:/tmp/beszel-battery-status-fix.sh"
 scp @sshOpts $envFile "${remote}:/tmp/beszel-agent.env"
 
-ssh @sshOpts $remote "chmod 755 /tmp/beszel-agent-install.sh; chmod 600 /tmp/beszel-agent.env; sudo /tmp/beszel-agent-install.sh"
+ssh @sshOpts $remote "chmod 755 /tmp/beszel-agent-install-systemd.sh; chmod 600 /tmp/beszel-agent.env; sudo /tmp/beszel-agent-install-systemd.sh"
 
 Remove-Item $envFile -Force -ErrorAction SilentlyContinue
 Write-Host "Done. Check https://apps-pundef.mooo.com/beszel/ - phoneserver should be online." -ForegroundColor Green

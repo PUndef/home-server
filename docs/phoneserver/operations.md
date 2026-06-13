@@ -41,7 +41,7 @@ cat /sys/class/power_supply/battery/status
 2. `ping 192.168.50.127` с Proxmox или `ping 192.168.1.227` с lan.
 3. Если **eth0 нет** — переткнуть USB-C хаб (host mode + PD); проверить `systemctl status phoneserver-disable-usb-gadget`.
 4. USB fallback: `usbipd attach`, `./wsl-usbnet-up.sh`, `PHONE_IP=172.16.42.1 PHONE_DEFAULT=usb ./status.sh`.
-5. Beszel offline в UI — перерегистрация fingerprint/token в hub DB или `./scripts/phoneserver/beszel-agent-install-systemd.sh`.
+5. Beszel offline в UI — перерегистрация fingerprint/token в hub DB или `./scripts/phoneserver/install-beszel-agent.sh <TOKEN>`.
 
 ---
 

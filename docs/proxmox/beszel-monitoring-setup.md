@@ -628,8 +628,8 @@ python scripts/proxmox/proxmox_exec.py "qm guest exec 101 --timeout 5 -- bash -l
 **Установка (из корня репо).**
 
 ```powershell
-wsl bash scripts/phoneserver/beszel-agent-install-systemd.sh "<uuid-из-ui>"
-# или legacy OpenRC (v25.06): install-beszel-agent.sh
+wsl bash scripts/phoneserver/install-beszel-agent.sh "<uuid-из-ui>"
+# или: .\scripts\phoneserver\install-beszel-agent.ps1 -Token "<uuid-из-ui>"
 ```
 
 **Проверить.**

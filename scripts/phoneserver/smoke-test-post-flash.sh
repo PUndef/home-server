@@ -1,6 +1,6 @@
 #!/bin/sh
 # Post-flash smoke test BEFORE restoring Home Assistant.
-# Run on phoneserver as root, or: ssh pmos@IP sudo sh smoke-test-post-flash.sh
+# Run on phoneserver as root, or: ssh user@IP sudo sh smoke-test-post-flash.sh
 #
 # Exit 0 = all critical checks passed → safe to restore HA.
 # Exit 1 = something failed → fix before HA.

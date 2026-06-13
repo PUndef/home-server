@@ -157,52 +157,13 @@ EOF'
 sudo chmod 600 /root/.nextcloud-mysql-backup.cnf
 ```
 
-Содержимое скрипта — актуальная версия в репозитории: [`nextcloud-vm/nextcloud-backup.sh`](../../nextcloud-vm/nextcloud-backup.sh). Ниже устаревший пример (ротация по `-mtime +21`); на ВМ использовать файл из репо:
+Содержимое скрипта — актуальная версия в репозитории: [`nextcloud-vm/nextcloud-backup.sh`](../../nextcloud-vm/nextcloud-backup.sh). Скопировать на ВМ:
 
 ```bash
-#!/bin/bash
-set -e
-NC_PATH="/var/www/nextcloud"
-NC_DATA="/var/www/nextcloud-data"
-BACKUP_ROOT="/backup/nextcloud"
-MYSQL_CNF="/root/.nextcloud-mysql-backup.cnf"
-DATE=$(date +%Y%m%d_%H%M%S)
-APP_BKP="${BACKUP_ROOT}/app_${DATE}.tar.gz"
-DATA_BKP="${BACKUP_ROOT}/data_${DATE}.tar.gz"
-SQL_BKP="${BACKUP_ROOT}/nextcloud-sqlbkp_${DATE}.bak.gz"
-
-log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
-
-log "=== Nextcloud backup start ==="
-
-log "Enabling maintenance mode..."
-sudo -u www-data php "$NC_PATH/occ" maintenance:mode --on
-log "Maintenance on."
-
-log "Backing up app (tar.gz)..."
-tar czf "$APP_BKP" -C /var/www nextcloud
-log "App backup done: $(du -h "$APP_BKP" | cut -f1)"
-
-log "Backing up data (tar.gz)..."
-tar czf "$DATA_BKP" -C /var/www nextcloud-data
-log "Data backup done: $(du -h "$DATA_BKP" | cut -f1)"
-
-log "Dumping database (gzip)..."
-mysqldump --defaults-extra-file="$MYSQL_CNF" --single-transaction --default-character-set=utf8mb4 nextcloud | gzip > "$SQL_BKP"
-log "Database dump done: $(du -h "$SQL_BKP" | cut -f1)"
-
-log "Disabling maintenance mode..."
-sudo -u www-data php "$NC_PATH/occ" maintenance:mode --off
-log "Maintenance off."
-
-log "Rotating old backups (keep last ~3 weeks)..."
-find "$BACKUP_ROOT" -maxdepth 1 -name 'app_*.tar.gz' -type f -mtime +21 -delete
-find "$BACKUP_ROOT" -maxdepth 1 -name 'data_*.tar.gz' -type f -mtime +21 -delete
-find "$BACKUP_ROOT" -maxdepth 1 -name 'nextcloud-sqlbkp_*.bak.gz' -type f -mtime +21 -delete
-log "Rotation done."
-
-log "=== Nextcloud backup finished ==="
+sudo install -m755 /path/to/nextcloud-backup.sh /usr/local/bin/nextcloud-backup.sh
 ```
+
+(Или залить через `scp` / `proxmox_exec.py` из репозитория.)
 
 Сделать скрипт исполняемым и при необходимости ограничить доступ (пароль БД не светить):
 

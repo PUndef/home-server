@@ -4,7 +4,7 @@ PHONE_DEFAULT=usb source "${SCRIPT_DIR}/../phone-defaults.sh"
 SUDO_PASS=${SUDO_PASS:-changemenow}
 
 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    -i "$SSH_KEY" "pmos@${PHONE_IP}" \
+    -i "$SSH_KEY" "${SSH_REMOTE}" \
     "echo '=== /sys/class/typec/port0 contents ==='
 ls -la /sys/class/typec/port0/ 2>/dev/null
 echo

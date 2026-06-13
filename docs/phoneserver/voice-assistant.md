@@ -233,8 +233,6 @@ curl -sS -o /dev/null -w '%{http_code}\n' -H 'Authorization: Bearer x' https://a
 | `expose-ha-weather.py` | Погода в Assist |
 | `test-groq-api.py` | Диагностика ключа с phoneserver |
 
-Устарело (локальный Wyoming): `tune-voice-pipeline.py`, `switch-tts-yandex.py`.
-
 ---
 
 ## Альтернативы, если Groq снова отвалится

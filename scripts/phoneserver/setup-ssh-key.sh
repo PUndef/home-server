@@ -1,7 +1,6 @@
 #!/bin/bash
 # Generate a dedicated, passwordless ed25519 key for phoneserver and install it
-# into pmos@phoneserver:~/.ssh/authorized_keys. Mirrors the style of
-# ~/.ssh/proxmox_pundef_nopass used for the Proxmox host.
+# into user@phoneserver:~/.ssh/authorized_keys.
 
 set -e
 
@@ -27,10 +26,10 @@ sshpass -p "$INITIAL_PASS" ssh-copy-id \
     -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null \
     -i "$KEY.pub" \
-    "pmos@${PHONE_IP}"
+    "${SSH_REMOTE}"
 
 echo
 echo "=== passwordless test ==="
 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    -i "$KEY" "pmos@${PHONE_IP}" \
+    -i "$KEY" "${SSH_REMOTE}" \
     'whoami; hostname'

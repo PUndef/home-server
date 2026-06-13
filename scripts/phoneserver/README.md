@@ -7,8 +7,6 @@
 
 **Текущая конфигурация (2026-06-12):** pmaports **`v25.12`**, ядро **6.14.7-sm7125** (asidko), **fastboot-bootpart** (`cache`=kernel, `boot`=U-Boot), панель **Huaxing**, пользователь SSH **`user`**, systemd. Зарядка и PD — **pm6150-charger v0.6.2**, лимит батареи **80%**.
 
-Legacy **v25.06** / 6.12.1 / OpenRC / `pmos` — только [`install/`](install/) (историческая схема Android boot.img).
-
 ---
 
 ## Когда что запускать
@@ -19,7 +17,7 @@ Legacy **v25.06** / 6.12.1 / OpenRC / `pmos` — только [`install/`](insta
 - public-ключ для phoneserver лежит в `~/.ssh/phoneserver_nopass{,.pub}` (создаётся через `setup-ssh-key.sh`)
 - IP и хост по умолчанию — из [`hosts.yaml`](hosts.yaml) (`srv_ip` → `wifi_ip`); переопределение: `PHONE_HOST=joyeuse`, `PHONE_IP=...`, `PHONE_DEFAULT=usb`
 - `phone-defaults.sh` подставляет `PHONE_IP`, `SSH_USER`, `SSH_REMOTE` (`user@…` по умолчанию)
-- **eth (srv):** `192.168.50.127` — основной (HA UI, Kuma, Beszel, SSH с Proxmox)
+- **eth (srv):** `192.168.50.127` — основной (HA UI, Beszel, SSH с Proxmox)
 - **wlan (lan):** `192.168.1.227` — Voice PE `internal_url`, Groq PBR
 - USB fallback — `172.16.42.1` (`PHONE_DEFAULT=usb`)
 - USB-устройство при необходимости проброшено в WSL через `usbipd attach --wsl --busid <id>` (из PowerShell **от админа**)
@@ -31,21 +29,17 @@ Legacy **v25.06** / 6.12.1 / OpenRC / `pmos` — только [`install/`](insta
 | `disable-usb-gadget.sh` + `.service` | Освободить UDC для USB host (хаб eth + PD). Установить на телефон при post-flash. |
 | `wsl-usbnet-up.sh` | После `usbipd attach` — USB-cdc в WSL, ssh до `172.16.42.1`. |
 | `status.sh` | Снять текущую сводку с телефона (kernel, uptime, диск, сервисы, сеть). |
-| `fix-beszel-agent-lan.sh` | Убрать зависимость `phoneserver-wifi` с beszel-agent, перезапустить агент. |
+| `fix-beszel-agent-lan.sh` | Beszel agent offline после смены сети — перезапуск systemd unit. |
 | `install-beszel-agent.ps1` / `.sh` | Переустановка Beszel agent (TOKEN из UI hub). |
-| `install-uptime-kuma.sh` | **Устарело на phoneserver** — Kuma живёт на `static-sites` (`192.168.50.35:3001`). См. `scripts/proxmox/install-uptime-kuma.sh`. |
-| `disable-uptime-kuma.sh` | Снять Kuma с phoneserver (`pkill`, не `rc-service stop`). |
 | `seed-kuma-monitors.sh` | Залить мониторы из `kuma-monitors.json` → `http://192.168.50.35:3001/` (venv `.venv-kuma`). |
+| `run-owncord-kuma-remote.sh` | Hosts + TLS fix для Kuma на LXC (`fix-kuma-monitors-lxc.sh` через Proxmox). |
 | `pin-dns-and-ntp.sh` | Публичный DNS (1.1.1.1), не dnsmasq роутера; `chronyc makestep`. |
-| `fix-kuma-monitors-phone.sh` | На phoneserver: `/etc/hosts` для `*.mooo.com` → `192.168.50.34` + перезапуск Kuma. |
 
-Kuma на `192.168.50.35` — не добавляй self-ping мониторы на `127.0.0.1`.
+Kuma на `192.168.50.35` — не добавляй self-ping мониторы на `127.0.0.1`. Установка Kuma: `scripts/proxmox/install-uptime-kuma.sh`.
 
 ### При первичной установке / переустановке
 
 **Актуальный путь — v25.12:** см. [`migrate-v2512/README.md`](migrate-v2512/README.md) (сборка на Proxmox, fastboot, asidko charger, smoke-test, restore HA).
-
-**Legacy v25.06** (Android boot.img, OpenRC, `pmos`): [`install/README.md`](install/README.md) — только для истории / отката.
 
 ---
 
@@ -66,14 +60,13 @@ $env:KUMA_PASSWORD = '...'
 
 Пакет: `uptime-kuma-api-v2` (не `uptime-kuma-api` 1.x — только Kuma 1.21–1.23).
 
-**OwnCord без пароля API** (hosts + три монитора в `kuma.db`, idempotent):
+**OwnCord / split-horizon hosts** (без пароля Kuma API):
 
 ```bash
-# из WSL на ПК:
 bash scripts/phoneserver/run-owncord-kuma-remote.sh
 ```
 
-Полный seed из `kuma-monitors.json` по-прежнему через `seed-kuma-monitors.sh` (нужен `KUMA_USERNAME` / `KUMA_PASSWORD`).
+Полный seed из `kuma-monitors.json` — через `seed-kuma-monitors.sh` (нужен `KUMA_USERNAME` / `KUMA_PASSWORD`).
 
 **Проверить:** в UI мониторы Public HTTPS зелёные.
 
@@ -173,10 +166,10 @@ ssh -i ~/.ssh/phoneserver_nopass user@172.16.42.1
 - **RTC нет** — `chronyd` после boot.
 - **Uptime Kuma** на LXC `192.168.50.35:3001`, не на телефоне.
 - **Beszel agent** — systemd, WebSocket к hub; порт 45876 не слушается (норма).
-- **Legacy-скрипты** с `pmos@` — постепенно заменяются на `SSH_REMOTE` из `phone-defaults.sh`.
 
 ---
 
-## Edge-only / legacy скрипты
+## Диагностика и миграция
 
-[`install/`](install/) — **v25.06** (Android boot.img). [`migrate-v2512/`](migrate-v2512/) — **текущая** v25.12. [`diag/`](diag/) — диагностика Type-C, зарядки, NTP.
+[`migrate-v2512/`](migrate-v2512/) — **текущая** v25.12 (fastboot, asidko charger, restore HA).  
+[`diag/`](diag/) — диагностика Type-C, зарядки, NTP.

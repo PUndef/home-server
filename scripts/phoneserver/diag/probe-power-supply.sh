@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PHONE_DEFAULT=usb source "${SCRIPT_DIR}/../phone-defaults.sh"
 
 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    -i "$SSH_KEY" "pmos@${PHONE_IP}" \
+    -i "$SSH_KEY" "${SSH_REMOTE}" \
     'echo "=== /sys/class/power_supply/ entries ==="
 ls /sys/class/power_supply/
 echo

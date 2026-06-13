@@ -33,7 +33,7 @@ for i in $(seq 1 30); do
            -o UserKnownHostsFile=/dev/null \
            -o ConnectTimeout=2 \
            -i "$SSH_KEY" \
-           "pmos@${PHONE_IP}" 'true' 2>/dev/null; then
+           "${SSH_REMOTE}" 'true' 2>/dev/null; then
         echo "phone responds (try $i)"
         break
     fi
@@ -41,5 +41,5 @@ for i in $(seq 1 30); do
 done
 
 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    -i "$SSH_KEY" "pmos@${PHONE_IP}" \
+    -i "$SSH_KEY" "${SSH_REMOTE}" \
     'hostname; uname -r; uptime'

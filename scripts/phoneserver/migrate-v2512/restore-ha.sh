@@ -24,24 +24,25 @@ fi
 SSH_OPTS=(-o StrictHostKeyChecking=no -i "$SSH_KEY")
 
 echo "[restore-ha] smoke-test gate..."
-ssh "${SSH_OPTS[@]}" "pmos@${PHONE_IP}" "sudo sh -s" < "${SCRIPT_DIR}/../smoke-test-post-flash.sh" || {
+ssh "${SSH_OPTS[@]}" "${SSH_REMOTE}" "sudo sh -s" < "${SCRIPT_DIR}/../smoke-test-post-flash.sh" || {
     echo "[restore-ha] ABORT: smoke-test failed — fix base system first"
     exit 1
 }
 
 echo "[restore-ha] uploading backup..."
 if [[ "$BACKUP" == /* ]] && ssh -i "$JUMP_KEY" "$JUMP" "test -f '$BACKUP'" 2>/dev/null; then
-    ssh -i "$JUMP_KEY" "$JUMP" "cat '$BACKUP'" | ssh "${SSH_OPTS[@]}" "pmos@${PHONE_IP}" \
+    ssh -i "$JUMP_KEY" "$JUMP" "cat '$BACKUP'" | ssh "${SSH_OPTS[@]}" "${SSH_REMOTE}" \
         "cat > /tmp/ha-restore.tar.gz"
 else
-    scp "${SSH_OPTS[@]}" "$BACKUP" "pmos@${PHONE_IP}:/tmp/ha-restore.tar.gz"
+    scp "${SSH_OPTS[@]}" "$BACKUP" "${SSH_REMOTE}:/tmp/ha-restore.tar.gz"
 fi
 
-ssh "${SSH_OPTS[@]}" "pmos@${PHONE_IP}" bash -s <<'REMOTE'
+ssh "${SSH_OPTS[@]}" "${SSH_REMOTE}" bash -s <<REMOTE
 set -euo pipefail
+SSH_USER=${SSH_USER}
 sudo mkdir -p /opt/homeassistant
 sudo tar xzf /tmp/ha-restore.tar.gz -C /opt/homeassistant
-sudo chown -R pmos:pmos /opt/homeassistant
+sudo chown -R "$SSH_USER:$SSH_USER" /opt/homeassistant
 rm -f /tmp/ha-restore.tar.gz
 REMOTE
 

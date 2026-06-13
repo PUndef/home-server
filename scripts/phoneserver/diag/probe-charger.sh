@@ -6,7 +6,7 @@ PHONE_DEFAULT=usb source "${SCRIPT_DIR}/../phone-defaults.sh"
 SUDO_PASS=${SUDO_PASS:-changemenow}
 
 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    -i "$SSH_KEY" "pmos@${PHONE_IP}" \
+    -i "$SSH_KEY" "${SSH_REMOTE}" \
     "echo '=== dmesg | grep charger / pd / typec / pm6150 ==='
 echo '$SUDO_PASS' | sudo -S dmesg 2>/dev/null | grep -iE 'charg|tcpm|typec|pm6150|smb|pd_|pmic_glink|extcon|usb-c' | head -40
 echo

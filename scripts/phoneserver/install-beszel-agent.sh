@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# WSL/Linux orchestrator for Beszel agent on phoneserver.
+# WSL/Linux orchestrator for Beszel agent on phoneserver (v25.12 / systemd).
 # Usage: ./install-beszel-agent.sh <TOKEN>
-#   PHONE_IP=192.168.1.227 ./install-beszel-agent.sh <TOKEN>
+#   PHONE_IP=192.168.50.127 ./install-beszel-agent.sh <TOKEN>
 
 set -euo pipefail
 
@@ -26,12 +26,11 @@ fi
 
 SSH=(ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}")
 SCP=(scp -o StrictHostKeyChecking=no -i "${SSH_KEY}")
-REMOTE="pmos@${PHONE_IP}"
 TAR="/tmp/beszel-agent_linux_arm64.tar.gz"
 TAR_URL="https://github.com/henrygd/beszel/releases/download/${BESZEL_VERSION}/beszel-agent_linux_arm64.tar.gz"
 
-echo "=== phoneserver Beszel agent (${PHONE_IP}) ==="
-"${SSH[@]}" "${REMOTE}" "curl -fsS -m 8 -o /dev/null -w 'hub_http=%{http_code}\n' '${HUB_URL}/' || echo hub_unreachable"
+echo "=== phoneserver Beszel agent (${SSH_REMOTE}) ==="
+"${SSH[@]}" "${SSH_REMOTE}" "curl -fsS -m 8 -o /dev/null -w 'hub_http=%{http_code}\n' '${HUB_URL}/' || echo hub_unreachable"
 
 if [[ ! -f "${TAR}" ]]; then
     echo "downloading ${TAR_URL}"
@@ -48,9 +47,14 @@ LISTEN=45876
 EOF
 chmod 600 "${ENV_FILE}"
 
-"${SCP[@]}" "${TAR}" "${REPO_ROOT}/scripts/phoneserver/beszel-agent-install.sh" \
-    "${REPO_ROOT}/scripts/phoneserver/beszel-battery-status-fix.sh" "${ENV_FILE}" "${REMOTE}:/tmp/"
-"${SSH[@]}" "${REMOTE}" "mv /tmp/beszel-agent-phoneserver.env /tmp/beszel-agent.env; chmod 755 /tmp/beszel-agent-install.sh; chmod 600 /tmp/beszel-agent.env; sudo /tmp/beszel-agent-install.sh"
+"${SCP[@]}" "${TAR}" \
+    "${REPO_ROOT}/scripts/phoneserver/beszel-agent-install-systemd.sh" \
+    "${REPO_ROOT}/scripts/phoneserver/beszel-battery-status-fix.sh" \
+    "${ENV_FILE}" "${SSH_REMOTE}:/tmp/"
+"${SSH[@]}" "${SSH_REMOTE}" \
+    "mv /tmp/beszel-agent-phoneserver.env /tmp/beszel-agent.env; \
+     chmod 755 /tmp/beszel-agent-install-systemd.sh; chmod 600 /tmp/beszel-agent.env; \
+     sudo /tmp/beszel-agent-install-systemd.sh"
 rm -f "${ENV_FILE}"
 
 echo "done - check Beszel UI for phoneserver online"

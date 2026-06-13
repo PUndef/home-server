@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/phone-defaults.sh"
 
 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    -i "$SSH_KEY" "pmos@${PHONE_IP}" \
+    -i "$SSH_KEY" "${SSH_REMOTE}" \
     'echo "=== dhcpcd nohook resolv.conf ==="
 if ! sudo grep -q "^nohook resolv.conf" /etc/dhcpcd.conf; then
     echo "nohook resolv.conf" | sudo tee -a /etc/dhcpcd.conf
@@ -18,7 +18,7 @@ sudo sh -c "printf \"nameserver 1.1.1.1\nnameserver 8.8.8.8\n\" > /etc/resolv.co
 cat /etc/resolv.conf
 echo
 echo "=== force NTP step ==="
-sudo rc-service chronyd restart
+sudo rc-service chronyd restart 2>/dev/null || sudo systemctl restart chronyd 2>/dev/null || true
 sleep 3
 sudo chronyc -a makestep
 sleep 2

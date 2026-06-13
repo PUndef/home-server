@@ -13,9 +13,9 @@ REMOTE_CONFIG=/opt/homeassistant/config
 SSH_OPTS=(-o StrictHostKeyChecking=no -i "$SSH_KEY")
 REPO_ZIP=https://github.com/black-roland/homeassistant-yandex-speechkit/archive/refs/heads/master.zip
 
-echo "[yandex-sk] target pmos@${PHONE_IP}"
+echo "[yandex-sk] target ${SSH_REMOTE}"
 
-ssh "${SSH_OPTS[@]}" "pmos@${PHONE_IP}" sh -s <<REMOTE
+ssh "${SSH_OPTS[@]}" "${SSH_REMOTE}" sh -s <<REMOTE
 set -eu
 REMOTE_CONFIG=${REMOTE_CONFIG}
 REPO_ZIP=${REPO_ZIP}
@@ -27,11 +27,11 @@ wget -q -O yandex-sk.zip "\${REPO_ZIP}" || curl -fsSL -o yandex-sk.zip "\${REPO_
 unzip -q -o yandex-sk.zip
 sudo rm -rf "\${REMOTE_CONFIG}/custom_components/yandex_speechkit"
 sudo cp -r homeassistant-yandex-speechkit-master/custom_components/yandex_speechkit "\${REMOTE_CONFIG}/custom_components/"
-sudo chown -R pmos:pmos "\${REMOTE_CONFIG}/custom_components"
+sudo chown -R ${SSH_USER}:${SSH_USER} "\${REMOTE_CONFIG}/custom_components"
 rm -rf homeassistant-yandex-speechkit-master yandex-sk.zip
 echo "[yandex-sk] installed custom_components/yandex_speechkit"
 REMOTE
 
-ssh "${SSH_OPTS[@]}" "pmos@${PHONE_IP}" "cd /opt/homeassistant && sudo docker compose restart homeassistant"
+ssh "${SSH_OPTS[@]}" "${SSH_REMOTE}" "cd /opt/homeassistant && sudo docker compose restart homeassistant"
 echo "[yandex-sk] homeassistant restarted"
 echo "[yandex-sk] next: add integration in UI with Yandex Cloud API key"

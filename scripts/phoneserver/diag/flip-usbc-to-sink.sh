@@ -7,7 +7,7 @@ PHONE_DEFAULT=usb source "${SCRIPT_DIR}/../phone-defaults.sh"
 SUDO_PASS=${SUDO_PASS:-changemenow}
 
 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    -i "$SSH_KEY" "pmos@${PHONE_IP}" \
+    -i "$SSH_KEY" "${SSH_REMOTE}" \
     "echo === before ===
 cat /sys/class/typec/port0/{port_type,power_role,data_role}
 cat /sys/class/power_supply/qcom_qg/{capacity,current_now}

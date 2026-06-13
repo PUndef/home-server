@@ -12,7 +12,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PHONE_DEFAULT=usb source "${SCRIPT_DIR}/phone-defaults.sh"
-SUDO_PASS=${SUDO_PASS:-changemenow}    # initial pmos sudo password
+SUDO_PASS=${SUDO_PASS:-changemenow}    # initial user sudo password
 IFACE_WAN=${IFACE_WAN:-eth0}
 
 IFACE_USB=$(ip -4 link show | grep -oP 'enx[a-f0-9]+' | head -1)
@@ -37,7 +37,7 @@ sudo iptables -C FORWARD -i "$IFACE_WAN" -o "$IFACE_USB" \
 
 echo "=== applying default route + DNS on phone ==="
 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-    -i "$SSH_KEY" "pmos@${PHONE_IP}" \
+    -i "$SSH_KEY" "${SSH_REMOTE}" \
     "echo '$SUDO_PASS' | sudo -S sh -c '
         ip route del default 2>/dev/null || true
         ip route add default via 172.16.42.2

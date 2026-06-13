@@ -9,9 +9,9 @@ PHONE_DEFAULT=lan source "${SCRIPT_DIR}/phone-defaults.sh"
 
 SSH_OPTS=(-o StrictHostKeyChecking=no -i "$SSH_KEY")
 
-echo "[stop-local] target pmos@${PHONE_IP}"
+echo "[stop-local] target ${SSH_REMOTE}"
 
-ssh "${SSH_OPTS[@]}" "pmos@${PHONE_IP}" sh -s <<'REMOTE'
+ssh "${SSH_OPTS[@]}" "${SSH_REMOTE}" sh -s <<'REMOTE'
 set -eu
 cd /opt/homeassistant
 
