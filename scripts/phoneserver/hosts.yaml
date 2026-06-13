@@ -6,9 +6,9 @@ hosts:
     codename: joyeuse
     device: xiaomi-miatoll
     kernel: joyeuse_tianma
-    pmaports_channel: v25.06
+    pmaports_channel: v25.12
     srv_ip: 192.168.50.127
     wifi_ip: 192.168.1.227
     usb_ip: 172.16.42.1
-    ssh_user: pmos
+    ssh_user: user
     ssh_key: phoneserver_nopass

@@ -46,6 +46,22 @@ fi
 sudo docker info >/dev/null
 echo "[install-ha] docker ok"
 
+# pmOS nftables drops inbound by default; SSH is open, HA (8123) is not.
+HA_NFT=/etc/nftables.d/52_homeassistant.nft
+if [ ! -f "$HA_NFT" ]; then
+  sudo tee "$HA_NFT" >/dev/null <<'NFT'
+#!/usr/sbin/nft -f
+table inet filter {
+	chain input {
+		iifname "wlan*" tcp dport 8123 accept comment "Home Assistant UI on wlan"
+		iifname "eth*" tcp dport 8123 accept comment "Home Assistant UI on eth"
+	}
+}
+NFT
+  sudo rc-service nftables reload 2>/dev/null || sudo systemctl reload nftables 2>/dev/null || sudo nft -f /etc/nftables.nft
+  echo "[install-ha] opened tcp/8123 in nftables"
+fi
+
 cd "$REMOTE_DIR"
 # pmos in docker group avoids sudo on every compose command
 sudo addgroup pmos docker 2>/dev/null || true

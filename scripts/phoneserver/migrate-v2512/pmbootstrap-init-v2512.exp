@@ -1,0 +1,61 @@
+#!/usr/bin/expect -f
+# Non-interactive pmbootstrap init for xiaomi-miatoll headless v25.12.
+# Run on Linux build host: expect pmbootstrap-init-v2512.exp
+
+set timeout 3600
+log_user 1
+
+set env(NO_COLOR) "1"
+set env(TERM)     "dumb"
+
+set pmb_cmd "pmbootstrap"
+if {[info exists env(PMB_AS_ROOT)] && $env(PMB_AS_ROOT) eq "1"} {
+    set pmb_cmd "pmbootstrap --as-root"
+}
+
+spawn -noecho {*}$pmb_cmd init
+
+expect {
+    -re {[Ww]ork path[^\n]*: }                  { send -- "\r"; exp_continue }
+    -re {pmaports path[^\n]*: }                 { send -- "\r"; exp_continue }
+    -re {[Cc]hannel[^\n]*: }                    { send -- "v25.12\r"; exp_continue }
+    -re {[Vv]endor[^\n]*: }                     { send -- "xiaomi\r"; exp_continue }
+    -re {create a new device port[^\n]*: }      { send -- "n\r"; exp_continue }
+    -re {[Dd]evice codename[^\n]*: }            { send -- "miatoll\r"; exp_continue }
+    -re {Device:[ \t]*$}                         { send -- "xiaomi-miatoll\r"; exp_continue }
+    -re {Device \[[^\]]*\]:[ \t]*$}              { send -- "xiaomi-miatoll\r"; exp_continue }
+    -re {non-?free firmware[^\n]*: }            { send -- "y\r"; exp_continue }
+    -re {non-?free userland[^\n]*: }            { send -- "n\r"; exp_continue }
+    -re {[Kk]ernel[^\n]*: }                     { send -- "\r"; exp_continue }
+    -re {[Uu]sername[^\n]*: }                   { send -- "pmos\r"; exp_continue }
+    -re {[Uu]ser interface[^\n]*: }             { send -- "none\r"; exp_continue }
+    -re {[Uu][Ii][- _]extras[^\n]*: }           { send -- "n\r"; exp_continue }
+    -re {Install systemd\?[^\n]*: }             { send -- "default\r"; exp_continue }
+    -re {[Aa]dditional packages[^\n]*: }        { send -- "\r"; exp_continue }
+    -re {build[^\n]*on install[^\n]*: }         { send -- "n\r"; exp_continue }
+    -re {[Hh]ostname[^\n]*: }                   { send -- "phoneserver\r"; exp_continue }
+    -re {[Tt]imezone[^\n]*: }                   { send -- "Asia/Krasnoyarsk\r"; exp_continue }
+    -re {[Kk]eymap[^\n]*: }                     { send -- "\r"; exp_continue }
+    -re {[Ll]ocale[^\n]*: }                     { send -- "C.UTF-8\r"; exp_continue }
+    -re {SSH key[^\n]*: }                       { send -- "n\r"; exp_continue }
+    -re {ssh.?keys[^\n]*: }                     { send -- "n\r"; exp_continue }
+    -re {Boot partition size[^\n]*: }           { send -- "256\r"; exp_continue }
+    -re {Extra space[^\n]*: }                   { send -- "\r"; exp_continue }
+    -re {[Pp]arallel jobs[^\n]*: }              { send -- "\r"; exp_continue }
+    -re {[Cc]cache size[^\n]*: }                { send -- "\r"; exp_continue }
+    -re {[Mm]irror[^\n]*: }                     { send -- "\r"; exp_continue }
+    -re {[Ss]udo timer[^\n]*: }                 { send -- "\r"; exp_continue }
+    -re {Use this timezone instead of GMT\?[^\n]*: } { send -- "y\r"; exp_continue }
+    -re {Change them\?[^\n]*: }                 { send -- "n\r"; exp_continue }
+    -re {Change mirror\?[^\n]*: }               { send -- "n\r"; exp_continue }
+    -re {Would you like to copy these public keys[^\n]*: } { send -- "n\r"; exp_continue }
+    -re {Build outdated packages[^\n]*: }       { send -- "n\r"; exp_continue }
+    -re {Zap existing chroots[^\n]*: }          { send -- "y\r"; exp_continue }
+    -re {Enable this package\?[^\n]*: }         { send -- "n\r"; exp_continue }
+    -re {Enable background timer[^\n]*: }       { send -- "n\r"; exp_continue }
+    -re {\(y/n\) \[[yn]\]: }                    { send -- "\r"; exp_continue }
+    -re {Provider[^\n]*: }                      { send -- "\r"; exp_continue }
+    -re {Extra packages[^\n]*: }                { send -- "\r"; exp_continue }
+    eof     { puts "\n--- EXPECT: EOF ---"; exit 0 }
+    timeout { puts "\n--- EXPECT: TIMEOUT ---"; exit 1 }
+}
