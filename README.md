@@ -32,6 +32,7 @@ home-server/
 ├── static-sites/          # Vite-приложения + Caddyfile + deploy
 ├── scripts/               # OpenWrt, Proxmox, phoneserver, VPS helpers
 ├── nextcloud-vm/          # Apache vhost для edge-прокси
+├── kb-remote-ui/          # Mac-side dashboard для Mutagen + autossh туннелей к WSL
 ├── start.py               # интерактивный запуск OpenWrt-скриптов
 └── README.md              # этот файл
 ```
