@@ -1,0 +1,202 @@
+#!/usr/bin/env bash
+# kb-remote-ui-service: install / control the LaunchAgent for kb-remote-ui.
+#
+# Subcommands:
+#   install     bootstrap into launchd (creates plist from template, loads it)
+#   uninstall   bootout from launchd (removes the runtime registration; leaves
+#               the plist on disk so re-install is a one-liner)
+#   restart     `launchctl kickstart -k` (re-exec the running process)
+#   status      print PID/state from `launchctl print`
+#   start       same as install (idempotent)
+#   stop        unload but leave the plist in place
+#   logs        tail -f the stdout+stderr logs
+#
+# The plist is regenerated from launchd/com.kupibilet.kb-remote-ui.plist.template
+# on every install so paths stay accurate when the repo moves or node is upgraded.
+
+set -euo pipefail
+
+LABEL="com.kupibilet.kb-remote-ui"
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+while [ -L "$SCRIPT_PATH" ]; do
+  dir="$(cd -P "$(dirname "$SCRIPT_PATH")" && pwd)"
+  SCRIPT_PATH="$(readlink "$SCRIPT_PATH")"
+  [[ "$SCRIPT_PATH" != /* ]] && SCRIPT_PATH="$dir/$SCRIPT_PATH"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_PATH")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+TEMPLATE="$ROOT_DIR/launchd/${LABEL}.plist.template"
+PLIST_DST="$HOME/Library/LaunchAgents/${LABEL}.plist"
+LOG_DIR="$HOME/Library/Logs/kb-remote-ui"
+UID_NUM="$(id -u)"
+SERVICE_TARGET="gui/${UID_NUM}/${LABEL}"
+
+ok()   { printf '\033[32m✓\033[0m %s\n' "$*"; }
+log()  { printf '\033[34m·\033[0m %s\n' "$*"; }
+warn() { printf '\033[33m!\033[0m %s\n' "$*" >&2; }
+die()  { printf '\033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
+
+# Resolve node by following the user's interactive shell PATH first (where nvm
+# would set it), then PATH from this process, then a couple of common fallbacks.
+discover_node() {
+  if command -v node >/dev/null 2>&1; then command -v node; return; fi
+  for cand in /opt/homebrew/bin/node /usr/local/bin/node; do
+    [[ -x "$cand" ]] && { echo "$cand"; return; }
+  done
+  return 1
+}
+
+cmd_install() {
+  [[ -f "$TEMPLATE" ]] || die "template not found: $TEMPLATE"
+
+  local node_bin server_js
+  node_bin="$(discover_node)" || die "node binary not found in PATH"
+  # Resolve through any symlinks (e.g. /usr/local/bin/node → /opt/homebrew/...).
+  # This pins us to a specific install so launchd doesn't end up running an
+  # unexpected node version after a brew/nvm switch.
+  node_bin="$(/usr/bin/python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$node_bin")"
+  server_js="$ROOT_DIR/server.js"
+  [[ -f "$server_js" ]] || die "server.js missing at $server_js"
+
+  local ssh_sock path_val
+  ssh_sock="$(launchctl getenv SSH_AUTH_SOCK 2>/dev/null || true)"
+  if [[ -z "$ssh_sock" ]]; then
+    warn "SSH_AUTH_SOCK is empty in launchd env — ssh-agent forwarding may not work."
+    warn "  fix: launchctl setenv SSH_AUTH_SOCK \"\$SSH_AUTH_SOCK\""
+    ssh_sock=""
+  fi
+  # PATH that includes our common locations + dir of the selected node.
+  path_val="$(dirname "$node_bin"):/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.local/bin"
+
+  mkdir -p "$(dirname "$PLIST_DST")" "$LOG_DIR"
+
+  log "rendering plist  → $PLIST_DST"
+  sed \
+    -e "s|__NODE_BIN__|${node_bin}|g" \
+    -e "s|__SERVER_JS__|${server_js}|g" \
+    -e "s|__WORKING_DIR__|${ROOT_DIR}|g" \
+    -e "s|__LOG_DIR__|${LOG_DIR}|g" \
+    -e "s|__SSH_AUTH_SOCK__|${ssh_sock}|g" \
+    -e "s|__PATH__|${path_val}|g" \
+    "$TEMPLATE" > "$PLIST_DST"
+  plutil -lint "$PLIST_DST" >/dev/null || die "plist lint failed"
+
+  # Make sure nothing is already bound to :4747 from a previous manual launch.
+  if lsof -nP -iTCP:4747 -sTCP:LISTEN >/dev/null 2>&1; then
+    warn "port 4747 already in use; will let launchd reuse it after bootout"
+  fi
+
+  if launchctl print "$SERVICE_TARGET" >/dev/null 2>&1; then
+    log "agent already loaded → bootout for a clean re-load"
+    launchctl bootout "$SERVICE_TARGET" 2>/dev/null || true
+    # launchd needs a beat to actually release the target; retry bootstrap
+    # below if the first attempt collides.
+  fi
+  log "bootstrap → $SERVICE_TARGET"
+  local attempts=0
+  while ! launchctl bootstrap "gui/${UID_NUM}" "$PLIST_DST" 2>/dev/null; do
+    attempts=$((attempts + 1))
+    if [[ $attempts -gt 5 ]]; then
+      die "bootstrap kept failing — run \`launchctl print $SERVICE_TARGET\` to diagnose"
+    fi
+    sleep 0.6
+    # If the previous bootout is still finalizing, try forcing it again before retrying.
+    launchctl bootout "$SERVICE_TARGET" 2>/dev/null || true
+  done
+  sleep 1.2
+
+  cmd_status
+  ok "installed. logs: ${LOG_DIR}/server.log"
+}
+
+cmd_uninstall() {
+  if launchctl print "$SERVICE_TARGET" >/dev/null 2>&1; then
+    log "bootout → $SERVICE_TARGET"
+    launchctl bootout "$SERVICE_TARGET"
+  else
+    log "agent not loaded — nothing to bootout"
+  fi
+  if [[ -f "$PLIST_DST" ]]; then
+    log "removing plist → $PLIST_DST"
+    rm -f "$PLIST_DST"
+  fi
+  ok "uninstalled. logs preserved at $LOG_DIR"
+}
+
+cmd_stop() {
+  if launchctl print "$SERVICE_TARGET" >/dev/null 2>&1; then
+    log "bootout → $SERVICE_TARGET"
+    launchctl bootout "$SERVICE_TARGET"
+    ok "stopped"
+  else
+    log "agent not loaded"
+  fi
+}
+
+cmd_restart() {
+  if launchctl print "$SERVICE_TARGET" >/dev/null 2>&1; then
+    log "kickstart -k → $SERVICE_TARGET"
+    launchctl kickstart -k "$SERVICE_TARGET"
+    sleep 0.6
+    cmd_status
+  else
+    warn "agent not loaded — running install instead"
+    cmd_install
+  fi
+}
+
+cmd_status() {
+  if ! launchctl print "$SERVICE_TARGET" >/dev/null 2>&1; then
+    warn "agent NOT loaded (target: $SERVICE_TARGET)"
+    return 1
+  fi
+  local pid state
+  # macOS awk treats \s as a literal, use [[:space:]] for portability.
+  pid="$(launchctl print "$SERVICE_TARGET" 2>/dev/null | awk '/^[[:space:]]*pid =/{print $3; exit}')"
+  state="$(launchctl print "$SERVICE_TARGET" 2>/dev/null | awk -F'= ' '/^[[:space:]]*state =/{print $2; exit}')"
+  printf "  label : %s\n  state : %s\n  pid   : %s\n  url   : http://127.0.0.1:4747\n" \
+    "$LABEL" "${state:-?}" "${pid:-?}"
+  if lsof -nP -iTCP:4747 -sTCP:LISTEN >/dev/null 2>&1; then
+    printf "  port  : listening\n"
+  else
+    printf "  port  : \033[33mnot listening (yet?)\033[0m\n"
+  fi
+}
+
+cmd_logs() {
+  mkdir -p "$LOG_DIR"
+  touch "$LOG_DIR/server.log" "$LOG_DIR/server.err.log"
+  exec tail -F "$LOG_DIR/server.log" "$LOG_DIR/server.err.log"
+}
+
+cmd_usage() {
+  cat <<EOF
+kb-remote-ui-service: control the launchd agent for kb-remote-ui.
+
+usage:
+  kb-remote-ui-service install     bootstrap the agent (re-render plist + load)
+  kb-remote-ui-service uninstall   remove from launchd + delete plist
+  kb-remote-ui-service start       alias for install
+  kb-remote-ui-service stop        bootout but keep the plist
+  kb-remote-ui-service restart     kickstart -k (or install if not loaded)
+  kb-remote-ui-service status      show pid/state + port liveness
+  kb-remote-ui-service logs        tail -F server.log + server.err.log
+
+paths:
+  plist   : $PLIST_DST
+  logs    : $LOG_DIR/
+  template: $TEMPLATE
+EOF
+}
+
+case "${1:-}" in
+  install|start)  cmd_install ;;
+  uninstall)      cmd_uninstall ;;
+  stop)           cmd_stop ;;
+  restart)        cmd_restart ;;
+  status)         cmd_status ;;
+  logs|log|tail)  cmd_logs ;;
+  ""|help|-h|--help) cmd_usage ;;
+  *) die "unknown subcommand: $1 (try: install/uninstall/restart/status/logs)" ;;
+esac
