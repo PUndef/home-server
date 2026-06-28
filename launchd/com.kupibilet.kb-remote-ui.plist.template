@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchAgent for kb-remote-ui.
+
+  Placeholders __NODE_BIN__, __SERVER_JS__, __WORKING_DIR__, __LOG_DIR__ are
+  substituted by `bin/kb-remote-ui-service install` at install time so the
+  loaded plist always contains absolute paths to the currently-installed
+  node binary and to this checkout.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.kupibilet.kb-remote-ui</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__NODE_BIN__</string>
+    <string>__SERVER_JS__</string>
+  </array>
+
+  <key>WorkingDirectory</key><string>__WORKING_DIR__</string>
+
+  <key>RunAtLoad</key><true/>
+
+  <!--
+    Always restart. We tried the dict form (SuccessfulExit=false + NetworkState)
+    but macOS Sequoia would stop respawning after a manual SIGTERM. For a
+    localhost-only UI process there's no reason to be conditional — if the
+    process exits for any reason, bring it back.
+  -->
+  <key>KeepAlive</key><true/>
+  <!--
+    Don't penalize quick exits during install. ThrottleInterval = 5 means
+    "at most one launch every 5s"; that's enough to avoid log-flood loops on
+    a hard crash without making manual restarts feel sluggish.
+  -->
+  <key>ThrottleInterval</key><integer>5</integer>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- Match the defaults baked into server.js; explicit here so it's obvious. -->
+    <key>HOST</key><string>127.0.0.1</string>
+    <key>PORT</key><string>4747</string>
+    <!--
+      Reuse the user's SSH agent socket from launchd so `ssh`/`git` calls
+      probes use the existing key. Path comes from `launchctl getenv SSH_AUTH_SOCK`
+      at install time and is baked in here.
+    -->
+    <key>SSH_AUTH_SOCK</key><string>__SSH_AUTH_SOCK__</string>
+    <!--
+      Surface our toolchain in PATH so `mutagen`, `kb-remote`, etc. resolve.
+      Order matches what a normal interactive shell would see.
+    -->
+    <key>PATH</key><string>__PATH__</string>
+  </dict>
+
+  <key>StandardOutPath</key><string>__LOG_DIR__/server.log</string>
+  <key>StandardErrorPath</key><string>__LOG_DIR__/server.err.log</string>
+</dict>
+</plist>

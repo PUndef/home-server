@@ -1,0 +1,321 @@
+/* =====================================================================
+ * Request Mock — design tokens
+ *
+ * shadcn/ui Neutral preset (https://ui.shadcn.com/create?preset=bIm4yTi)
+ * adapted to this extension. Each user-facing theme
+ * (system / light / dark / midnight / spotify / nord) is implemented as
+ * its own preset: it picks an accent color (--primary) and a surface
+ * family (--background / --card / --muted / --accent / …), but the
+ * token *names* and *roles* stay identical across themes.
+ *
+ * Theme is applied via [data-theme="<id>"] on <html>, set by
+ * src/lib/theme.js. Everything else (icon swap, popup, guide overlay)
+ * just reads the resulting tokens.
+ *
+ * ── Why complete colors instead of raw HSL triplets? ──
+ * The original shadcn convention stores tokens as raw triplets
+ * (`--primary: 217 91% 55%`) and wraps them in `hsl(var(--primary))`
+ * at the call site. The plugin's existing CSS predates the migration
+ * and uses `background: var(--primary)` directly, expecting a full
+ * color. To keep the legacy stylesheets working without a sweeping
+ * find-and-replace, we store complete colors here:
+ *   --primary:      hsl(217 91% 55%);
+ *   --primary-rgb:  59 130 246;          // for translucent variants
+ * Translucent variants are produced via `rgb(var(--primary-rgb) / α)`,
+ * which is supported in Chrome 65+. Both shapes are first-class.
+ *
+ * ===================================================================== */
+
+/* =====================================================================
+ * BASE — dark by default (matches the plugin's pre-paint behavior).
+ * Acts as the "dark" preset and as the fallback when [data-theme] is
+ * unset and the OS is in dark mode (the @media block at the bottom
+ * flips this to "light" for system+light-OS users).
+ * ===================================================================== */
+:root {
+  /* Surfaces & text. */
+  --background:           hsl(220 14% 7%);
+  --foreground:           hsl(220 9% 91%);
+  --card:                 hsl(220 14% 9%);
+  --card-foreground:      hsl(220 9% 91%);
+  --popover:              hsl(220 14% 9%);
+  --popover-foreground:   hsl(220 9% 91%);
+  --secondary:            hsl(220 12% 16%);
+  --secondary-foreground: hsl(220 9% 91%);
+  --muted:                hsl(220 12% 13%);
+  --muted-foreground:     hsl(220 9% 70%);
+  --accent:               hsl(220 12% 16%);
+  --accent-foreground:    hsl(220 9% 91%);
+  --border:               hsl(220 9% 22%);
+  --input:                hsl(220 9% 22%);
+
+  /* Accent and status. Each color also carries an `-rgb` companion
+     so translucent variants can be authored as `rgb(var(--*-rgb) / α)`
+     instead of pulling in color-mix. */
+  --primary:               hsl(217 91% 60%);   /* #3b82f6 */
+  --primary-rgb:           59 130 246;
+  --primary-foreground:    hsl(0 0% 100%);
+  --ring:                  var(--primary);
+
+  --destructive:           hsl(0 84% 60%);     /* #ef4444 */
+  --destructive-rgb:       239 68 68;
+  --destructive-foreground: hsl(0 0% 100%);
+
+  --success:               hsl(142 65% 50%);
+  --success-rgb:           42 209 113;
+  --success-foreground:    hsl(0 0% 100%);
+
+  --warning:               hsl(38 92% 60%);
+  --warning-rgb:           251 191 36;
+  --warning-foreground:    hsl(0 0% 100%);
+
+  --info:                  hsl(217 91% 60%);
+  --info-rgb:              59 130 246;
+  --info-foreground:       hsl(0 0% 100%);
+
+  /* Type-icon RGB triplets — used by .type-* badges in the rules list.
+     Override in light theme to keep enough contrast on white. */
+  --t-redirect:  96 165 250;
+  --t-block:     248 113 113;
+  --t-mod-req-h: 251 191 36;
+  --t-mod-res-h: 251 146 60;
+  --t-mod-req-b: 34 211 238;
+  --t-mod-res-b: 167 139 250;
+  --t-inject:    192 132 252;
+
+  /* Geometry, motion, type — shadcn-aligned, with our scale extensions. */
+  --radius: 0.625rem;          /* 10px — shadcn default */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  --shadow-2xs: 0 1px 2px 0 rgb(0 0 0 / 0.30);
+  --shadow-xs:  0 1px 2px 0 rgb(0 0 0 / 0.35);
+  --shadow-sm:  0 1px 3px 0 rgb(0 0 0 / 0.40), 0 1px 2px -1px rgb(0 0 0 / 0.35);
+  --shadow-md:  0 4px 6px -1px rgb(0 0 0 / 0.45), 0 2px 4px -2px rgb(0 0 0 / 0.40);
+  --shadow-lg:  0 10px 15px -3px rgb(0 0 0 / 0.50), 0 4px 6px -4px rgb(0 0 0 / 0.45);
+  --shadow-xl:  0 20px 25px -5px rgb(0 0 0 / 0.55), 0 8px 10px -6px rgb(0 0 0 / 0.45);
+
+  --motion-fast: 90ms cubic-bezier(0.2, 0, 0, 1);
+  --motion-med:  180ms cubic-bezier(0.2, 0, 0, 1);
+  --motion-slow: 280ms cubic-bezier(0.2, 0, 0, 1);
+
+  --font-sans: "Geist", "Inter", -apple-system, BlinkMacSystemFont,
+               "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace,
+               SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* =====================================================================
+ * THEME: Light  — shadcn Blue light. Default for system+light-OS too.
+ * ===================================================================== */
+:root[data-theme="light"] {
+  --background:           hsl(0 0% 100%);
+  --foreground:           hsl(224 71% 4%);
+  --card:                 hsl(0 0% 100%);
+  --card-foreground:      hsl(224 71% 4%);
+  --popover:              hsl(0 0% 100%);
+  --popover-foreground:   hsl(224 71% 4%);
+  --secondary:            hsl(220 14% 96%);
+  --secondary-foreground: hsl(224 71% 11%);
+  --muted:                hsl(220 14% 96%);
+  --muted-foreground:     hsl(220 9% 46%);
+  --accent:               hsl(220 14% 92%);
+  --accent-foreground:    hsl(224 71% 11%);
+  --border:               hsl(220 13% 88%);
+  --input:                hsl(220 13% 88%);
+
+  --primary:               hsl(217 91% 55%);
+  --primary-rgb:           37 110 240;
+  --primary-foreground:    hsl(0 0% 100%);
+
+  --destructive:           hsl(0 84% 55%);
+  --destructive-rgb:       227 47 47;
+
+  --success:               hsl(142 71% 38%);
+  --success-rgb:           28 167 87;
+
+  --warning:               hsl(38 92% 45%);
+  --warning-rgb:           221 137 5;
+
+  --info:                  hsl(217 91% 50%);
+  --info-rgb:              13 100 230;
+
+  --t-redirect:  2 132 199;
+  --t-block:     220 38 38;
+  --t-mod-req-h: 217 119 6;
+  --t-mod-res-h: 234 88 12;
+  --t-mod-req-b: 8 145 178;
+  --t-mod-res-b: 124 58 237;
+  --t-inject:    147 51 234;
+
+  --shadow-2xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-xs:  0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm:  0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  --shadow-md:  0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+  --shadow-lg:  0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.06);
+  --shadow-xl:  0 20px 25px -5px rgb(0 0 0 / 0.10), 0 8px 10px -6px rgb(0 0 0 / 0.08);
+}
+
+/* =====================================================================
+ * THEME: Dark  — explicit alias for the base. Matches the
+ * pre-paint dark fallback exactly.
+ * ===================================================================== */
+:root[data-theme="dark"] {
+  --background:           hsl(220 14% 7%);
+  --foreground:           hsl(220 9% 91%);
+  --card:                 hsl(220 14% 9%);
+  --card-foreground:      hsl(220 9% 91%);
+  --popover:              hsl(220 14% 9%);
+  --popover-foreground:   hsl(220 9% 91%);
+  --secondary:            hsl(220 12% 16%);
+  --secondary-foreground: hsl(220 9% 91%);
+  --muted:                hsl(220 12% 13%);
+  --muted-foreground:     hsl(220 9% 70%);
+  --accent:               hsl(220 12% 16%);
+  --accent-foreground:    hsl(220 9% 91%);
+  --border:               hsl(220 9% 22%);
+  --input:                hsl(220 9% 22%);
+  --primary:              hsl(217 91% 60%);
+  --primary-rgb:          59 130 246;
+  --primary-foreground:   hsl(0 0% 100%);
+}
+
+/* =====================================================================
+ * THEME: Midnight  — shadcn Violet dark on a deep indigo surface.
+ * ===================================================================== */
+:root[data-theme="midnight"] {
+  --background:           hsl(224 47% 7%);
+  --foreground:           hsl(240 13% 89%);
+  --card:                 hsl(230 38% 12%);
+  --card-foreground:      hsl(240 13% 89%);
+  --popover:              hsl(230 38% 12%);
+  --popover-foreground:   hsl(240 13% 89%);
+  --secondary:            hsl(232 33% 18%);
+  --secondary-foreground: hsl(240 13% 89%);
+  --muted:                hsl(232 33% 14%);
+  --muted-foreground:     hsl(232 18% 70%);
+  --accent:               hsl(232 33% 22%);
+  --accent-foreground:    hsl(240 13% 89%);
+  --border:               hsl(232 25% 30%);
+  --input:                hsl(232 25% 30%);
+
+  --primary:              hsl(263 90% 75%);   /* #a78bfa-ish */
+  --primary-rgb:          167 139 250;
+  --primary-foreground:   hsl(224 47% 7%);
+
+  --destructive:          hsl(0 84% 65%);
+  --destructive-rgb:      245 80 80;
+}
+
+/* =====================================================================
+ * THEME: Spotify  — shadcn Green on near-black.
+ * ===================================================================== */
+:root[data-theme="spotify"] {
+  --background:           hsl(0 0% 7%);
+  --foreground:           hsl(0 0% 100%);
+  --card:                 hsl(0 0% 9%);
+  --card-foreground:      hsl(0 0% 100%);
+  --popover:              hsl(0 0% 9%);
+  --popover-foreground:   hsl(0 0% 100%);
+  --secondary:            hsl(0 0% 16%);
+  --secondary-foreground: hsl(0 0% 100%);
+  --muted:                hsl(0 0% 12%);
+  --muted-foreground:     hsl(0 0% 70%);
+  --accent:               hsl(0 0% 18%);
+  --accent-foreground:    hsl(0 0% 100%);
+  --border:               hsl(0 0% 25%);
+  --input:                hsl(0 0% 25%);
+
+  --primary:              hsl(141 73% 48%);   /* #1ed760 */
+  --primary-rgb:          30 215 96;
+  --primary-foreground:   hsl(0 0% 0%);
+}
+
+/* =====================================================================
+ * THEME: Nord  — Slate-style on Polar Night, with Frost accent.
+ * ===================================================================== */
+:root[data-theme="nord"] {
+  --background:           hsl(220 16% 22%);   /* #2e3440 */
+  --foreground:           hsl(218 27% 94%);   /* #eceff4 */
+  --card:                 hsl(222 16% 28%);   /* #3b4252 */
+  --card-foreground:      hsl(218 27% 94%);
+  --popover:              hsl(222 16% 28%);
+  --popover-foreground:   hsl(218 27% 94%);
+  --secondary:            hsl(220 17% 32%);   /* #434c5e */
+  --secondary-foreground: hsl(218 27% 94%);
+  --muted:                hsl(222 16% 28%);
+  --muted-foreground:     hsl(219 28% 88%);
+  --accent:               hsl(220 17% 35%);
+  --accent-foreground:    hsl(218 27% 94%);
+  --border:               hsl(220 16% 36%);
+  --input:                hsl(220 16% 36%);
+
+  --primary:              hsl(193 43% 67%);   /* #88c0d0 */
+  --primary-rgb:          136 192 208;
+  --primary-foreground:   hsl(220 16% 22%);
+
+  --destructive:          hsl(354 42% 56%);   /* Aurora red #bf616a */
+  --destructive-rgb:      191 97 106;
+}
+
+/* =====================================================================
+ * SYSTEM theme — follow OS. We default to the dark base above; this
+ * block flips to the light palette only when the user explicitly picked
+ * "system" (or never picked anything) AND the OS is in light mode.
+ *
+ * Mirrors the [data-theme="light"] block. Two definitions are easier
+ * to grok than one block aliased through @media.
+ * ===================================================================== */
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"],
+  :root:not([data-theme]) {
+    --background:           hsl(0 0% 100%);
+    --foreground:           hsl(224 71% 4%);
+    --card:                 hsl(0 0% 100%);
+    --card-foreground:      hsl(224 71% 4%);
+    --popover:              hsl(0 0% 100%);
+    --popover-foreground:   hsl(224 71% 4%);
+    --secondary:            hsl(220 14% 96%);
+    --secondary-foreground: hsl(224 71% 11%);
+    --muted:                hsl(220 14% 96%);
+    --muted-foreground:     hsl(220 9% 46%);
+    --accent:               hsl(220 14% 92%);
+    --accent-foreground:    hsl(224 71% 11%);
+    --border:               hsl(220 13% 88%);
+    --input:                hsl(220 13% 88%);
+
+    --primary:               hsl(217 91% 55%);
+    --primary-rgb:           37 110 240;
+    --primary-foreground:    hsl(0 0% 100%);
+
+    --destructive:           hsl(0 84% 55%);
+    --destructive-rgb:       227 47 47;
+
+    --success:               hsl(142 71% 38%);
+    --success-rgb:           28 167 87;
+
+    --warning:               hsl(38 92% 45%);
+    --warning-rgb:           221 137 5;
+
+    --info:                  hsl(217 91% 50%);
+    --info-rgb:              13 100 230;
+
+    --t-redirect:  2 132 199;
+    --t-block:     220 38 38;
+    --t-mod-req-h: 217 119 6;
+    --t-mod-res-h: 234 88 12;
+    --t-mod-req-b: 8 145 178;
+    --t-mod-res-b: 124 58 237;
+    --t-inject:    147 51 234;
+
+    --shadow-2xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+    --shadow-xs:  0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-sm:  0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+    --shadow-md:  0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+    --shadow-lg:  0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.06);
+    --shadow-xl:  0 20px 25px -5px rgb(0 0 0 / 0.10), 0 8px 10px -6px rgb(0 0 0 / 0.08);
+  }
+}
