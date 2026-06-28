@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("all", "warframe", "requiem", "wf-farm")]
+    [ValidateSet("all", "warframe", "requiem", "wf-farm", "wf-twitch")]
     [string]$App = "all",
     [switch]$SkipBuild
 )
@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 $Root = $PSScriptRoot
 
 $apps = if ($App -eq "all") {
-    @("warframe", "requiem", "wf-farm")
+    @("warframe", "requiem", "wf-farm", "wf-twitch")
 } else {
     @($App)
 }

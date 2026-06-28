@@ -14,7 +14,8 @@ static-sites/
 ├── shared/             # общий код (@shared alias во всех apps)
 ├── warframe/           # разводящая страница (карточки)
 ├── requiem/            # Requiem Helper
-└── wf-farm/            # WF Farm Helper
+├── wf-farm/            # WF Farm Helper
+└── wf-twitch/          # WF Twitch Drops tracker
 ```
 
 Имена каталогов здесь **совпадают** с путями на сервере (`/srv/static-sites/<name>/`) и с path-префиксами Caddy (`/warframe/`, `/requiem/`, `/wf-farm/`).
@@ -27,6 +28,7 @@ static-sites/
 | `warframe/` | Hub, карточки ссылок | `http://warframe.home/` | `https://apps-pundef.mooo.com/warframe/` |
 | `requiem/`  | Requiem Helper       | `http://requiem.home/`  | `https://apps-pundef.mooo.com/requiem/`  |
 | `wf-farm/`  | Farm / Drops lookup  | `http://wffarm.home/`   | `https://apps-pundef.mooo.com/wf-farm/`  |
+| `wf-twitch/`| Twitch Drops schedule| `http://wftwitch.home/` | `https://apps-pundef.mooo.com/wf-twitch/` |
 
 
 Beszel hub (`/beszel/`) — не статика, reverse proxy на `127.0.0.1:8090`; см. [`docs/proxmox/beszel-monitoring-setup.md`](../docs/proxmox/beszel-monitoring-setup.md).
@@ -46,6 +48,7 @@ npm run dev
 ```powershell
 .\static-sites\requiem\scripts\deploy.ps1
 .\static-sites\wf-farm\scripts\deploy.ps1
+.\static-sites\wf-twitch\scripts\deploy.ps1
 .\static-sites\warframe\scripts\deploy.ps1
 ```
 
@@ -77,6 +80,7 @@ npm run dev
 uci add_list dhcp.@dnsmasq[0].address='/warframe.home/192.168.50.35'
 uci add_list dhcp.@dnsmasq[0].address='/requiem.home/192.168.50.35'
 uci add_list dhcp.@dnsmasq[0].address='/wffarm.home/192.168.50.35'
+uci add_list dhcp.@dnsmasq[0].address='/wftwitch.home/192.168.50.35'
 uci commit dhcp
 /etc/init.d/dnsmasq restart
 ```

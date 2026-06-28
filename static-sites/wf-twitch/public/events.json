@@ -1,0 +1,85 @@
+{
+  "updatedAt": "2026-06-24T18:00:32.522Z",
+  "timezone": "Asia/Krasnoyarsk",
+  "source": "https://forums.warframe.com/forum/113-livestreams.xml/",
+  "events": [
+    {
+      "id": "267f5bcaf7f1",
+      "type": "official",
+      "title": "Emisión Tenno",
+      "reward": "25x Crimson and Emerald Talents per 30 minutes for a total of 75 Talents of each kind!",
+      "channel": "warframeinternational",
+      "channelUrl": "https://www.twitch.tv/warframeinternational",
+      "start": "2026-06-24T19:00:00.000Z",
+      "end": "2026-06-24T21:00:00.000Z",
+      "watchMinutes": 30,
+      "sourceUrl": "https://forums.warframe.com/topic/1512729-community-stream-schedule-june-22nd-28th-2026/",
+      "sourceTitle": "Community Stream Schedule: June 22nd - 28th 2026"
+    },
+    {
+      "id": "8179f241b197",
+      "type": "raid",
+      "title": "Raid: Maomix_Games",
+      "reward": "Unity Decoration",
+      "channel": "Maomix_Games",
+      "channelUrl": "https://www.twitch.tv/Maomix_Games",
+      "start": "2026-06-24T20:00:00.000Z",
+      "end": "2026-06-24T21:30:00.000Z",
+      "watchMinutes": 30,
+      "sourceUrl": "https://forums.warframe.com/topic/1512729-community-stream-schedule-june-22nd-28th-2026/",
+      "sourceTitle": "Community Stream Schedule: June 22nd - 28th 2026"
+    },
+    {
+      "id": "418340ed440d",
+      "type": "official",
+      "title": "Pride Time",
+      "reward": "25x Crimson and Emerald Talents per 30 minutes for a total of 75 Talents of each kind!",
+      "channel": "warframe",
+      "channelUrl": "https://www.twitch.tv/warframe",
+      "start": "2026-06-25T22:00:00.000Z",
+      "end": "2026-06-26T00:00:00.000Z",
+      "watchMinutes": 30,
+      "sourceUrl": "https://forums.warframe.com/topic/1512729-community-stream-schedule-june-22nd-28th-2026/",
+      "sourceTitle": "Community Stream Schedule: June 22nd - 28th 2026"
+    },
+    {
+      "id": "5a807734e1c9",
+      "type": "raid",
+      "title": "Raid: EgirlTenno",
+      "reward": "Unity Decoration",
+      "channel": "EgirlTenno",
+      "channelUrl": "https://www.twitch.tv/EgirlTenno",
+      "start": "2026-06-26T00:00:00.000Z",
+      "end": "2026-06-26T01:30:00.000Z",
+      "watchMinutes": 30,
+      "sourceUrl": "https://forums.warframe.com/topic/1512729-community-stream-schedule-june-22nd-28th-2026/",
+      "sourceTitle": "Community Stream Schedule: June 22nd - 28th 2026"
+    },
+    {
+      "id": "8df466d2dd74",
+      "type": "creator",
+      "title": "VoiceQuills",
+      "reward": "Ostia Vasca Kavat Floof",
+      "channel": "voice_quills",
+      "channelUrl": "https://www.twitch.tv/voice_quills",
+      "start": "2026-06-26T18:00:00.000Z",
+      "end": "2026-06-26T20:00:00.000Z",
+      "watchMinutes": 30,
+      "sourceUrl": "https://forums.warframe.com/topic/1512729-community-stream-schedule-june-22nd-28th-2026/",
+      "sourceTitle": "Community Stream Schedule: June 22nd - 28th 2026"
+    },
+    {
+      "id": "fc3e2c0960ab",
+      "type": "creator",
+      "title": "LadyTheLaddy",
+      "reward": "Limbo Noggle",
+      "channel": "ladytheladdy",
+      "channelUrl": "https://www.twitch.tv/ladytheladdy",
+      "start": "2026-06-26T20:00:00.000Z",
+      "end": "2026-06-26T22:00:00.000Z",
+      "watchMinutes": 30,
+      "sourceUrl": "https://forums.warframe.com/topic/1512729-community-stream-schedule-june-22nd-28th-2026/",
+      "sourceTitle": "Community Stream Schedule: June 22nd - 28th 2026"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { IconArrowRight, IconSearch, IconSwords } from "@tabler/icons-react";
+import { IconArrowRight, IconBrandTwitch, IconSearch, IconSwords } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { siteUrl } from "@shared/site-urls";
@@ -21,6 +21,14 @@ const apps = [
     icon: IconSearch,
     accent: "border-amber-500/30 hover:ring-amber-500/20",
   },
+  {
+    id: "wfTwitch" as const,
+    title: "WF Twitch Drops",
+    description: "Расписание Twitch-дропов, напоминания и ссылки на стримы — по часовому поясу Красноярска.",
+    badge: "Twitch",
+    icon: IconBrandTwitch,
+    accent: "border-purple-500/30 hover:ring-purple-500/20",
+  },
 ] as const;
 
 export default function App() {
@@ -36,7 +44,7 @@ export default function App() {
         </p>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {apps.map((app) => (
           <a
             key={app.id}
