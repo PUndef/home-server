@@ -165,15 +165,17 @@ POST /api/actions/detach           # body {path, purgeMirror?: bool}: exec kb-re
 }
 ```
 
-Семантика per-folder state-полей (важна для интерпретации «Live»/«Installing» в UI):
+Семантика per-folder state-полей (важна для интерпретации «Live»/«Installing» в UI). Три **независимых** сигнала:
 
-- `listening` — Mac-сторона слышит autossh tunnel на 127.0.0.1:port (`lsof -i :port`). Туннель жив **независимо** от того, что происходит на WSL.
-- `devRunning` — на WSL существует tmux-сессия `<label>-dev`. Сама по себе не доказывает что dev-сервер реально слушает порт: пользователь может выйти из `next dev` и попасть в `exec bash -i` хвост — сессия живёт, сервер мёртв.
-- `devPortListening` — на WSL `ss -lntH` показывает LISTEN на `*:port` или `:::port`. Реальный сигнал «dev-сервер отдаёт HTTP».
-- `devActive` — `devRunning && devPortListening`. UI показывает «Live» только при `devActive === true`; иначе — `dev exited`/`stopped`.
-- `installRunning` — существует tmux-сессия `<label>-install` (deprecated сигнал, остался для back-compat).
-- `installActive` — pane сессии установки выполняет НЕ `sleep`/`bash` (т.е. реально что-то ставит). После завершения `pnpm install` хвост `sleep 600` остаётся, но `installActive === false`, потому что pane уже в `sleep`. UI берёт `installActive`, не `installRunning`.
-- `devReady` — зависит от `installActive` (нельзя стартовать dev пока ставятся deps), а не от `installRunning`.
+- `listening` — Mac-сторона слышит autossh tunnel на 127.0.0.1:port (`lsof -i :port`). Туннель жив независимо от того, что происходит на WSL.
+- `devRunning` / `installRunning` — на WSL существует tmux-сессия `<label>-dev` / `<label>-install`. Сама по себе сессия ничего не гарантирует: после выхода из `next dev`/`pnpm install` остаётся `exec bash -i` хвост или `sleep 600`, и сессия живёт пустой.
+- `devActive` / `installActive` — `<session>Running && pane_current_command — реальная работа` (НЕ `sleep`, НЕ `bash`, НЕ shell), через `tmux list-sessions -F '#{session_name}|#{pane_current_command}'` + `isActiveWorkCommand()`. Это сигнал «pane сейчас занят `next`/`node`/`pnpm`/etc», а не «сессия осталась пустой после exit'а».
+- `devPortListening` — `ss -lntH` на WSL показывает LISTEN на `*:port` или `:::port`. Реальный сигнал «кто-то на удалёнке слушает HTTP на этом порту».
+
+`devActive` и `devPortListening` могут расходиться: например `devActive=false` (pane в `bash` после exit'а) + `devPortListening=true` (zombie-процесс держит порт, или порт занял другой процесс). Это «session zombie», UI рисует `dev exited` с action=`stop-dev`.
+
+- `installRunning` — остался для back-compat; UI его не использует.
+- `devReady` — зависит от `installActive` (нельзя стартовать dev пока **реально** ставятся deps), а не от `installRunning`.
 
 
 POST-actions валидируют `body.path` против state-файла и шеллят бинарь с argv (без shell-строки) — путь из state не может уйти в инъекцию. `/api/actions/attach` — единственное исключение: путь ещё не в state, поэтому он отдельно проверяется на (а) существование как директория, (б) расположение под `$HOME`, (в) basename, матчащий kb-remote naming convention, (г) отсутствие в state. `attach` и `detach` сериализуются между собой через in-memory promise-queue — два concurrent запроса не вызывают параллельные `launchctl kickstart -k` на одном автоssh-агенте.
