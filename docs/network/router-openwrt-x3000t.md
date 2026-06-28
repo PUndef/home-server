@@ -1,7 +1,7 @@
 # Xiaomi X3000T (OpenWrt 24.10) — актуальная схема
 
 > **Статус:** living reference  
-> **Последняя проверка:** 2026-06-02
+> **Последняя проверка:** 2026-06-14
 
 Справочник по **текущей** домашней конфигурации. Ключи AmneziaWG, пароли и токены в репозиторий не копировать.
 
@@ -42,6 +42,7 @@ Primary tunnel (2026-06-02) → awg2 (Neth NL); awg1 (Fin) — backup
 Автообход блокировок        → podkop + sing-box → bind_interface=awg2 (primary)
 AI / Cursor домены          → pbr «AI Tools via awg2 (global)» → awg2
 Mangalib                    → pbr «Mangalib via awg2» → awg2
+Optimizely                  → pbr «Optimizely via awg2» → awg2
 Spotify                     → podkop → sing-box → awg2 (SNI proxy мёртв с 2026-05-20)
 Корпоративные домены        → pbr workvpn (paul-mac / pundef-pc / xiaomi-13t-pro)
 DPI                         → zapret / nfqws на WAN-потоках
@@ -276,8 +277,8 @@ nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.240 return commen
 | Имя | MAC | IP | Примечание |
 | --- | --- | -- | ---------- |
 | `paul-mac` | `26:C5:4C:20:C5:AD` | `192.168.1.198` | MacBook, pbr `workvpn` |
-| `pundef-pc` | `9C:6B:00:8B:3F:18` | `192.168.1.133` | Win eth, pbr games/corp — [gaming-pc-routes.md](gaming-pc-routes.md) |
-| `pundef-pc-wifi` | *(Wi‑Fi NIC)* | `192.168.1.208` | Win wlan, те же pbr src |
+| `pundef-pc` | `9C:6B:00:8B:3F:18` | `192.168.1.133` | Win eth **lan** (опционально; основной uplink — Mercusys srv `.50.133`) — [gaming-pc-routes.md](gaming-pc-routes.md) |
+| `pundef-pc-wifi` | *(Wi‑Fi NIC)* | `192.168.1.208` | Win wlan, те же pbr src (lan) |
 | `phoneserver-wlan` | `22:84:8d:3d:5d:8e` | `192.168.1.227` | pmOS wlan, Voice PE, Groq PBR (static в NM) |
 | `xiaomi-13t-pro` | `2c:fe:4f:6b:de:aa` | `192.168.1.214` | Android, pbr `workvpn` + zapret bypass |
 
@@ -286,7 +287,8 @@ nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.240 return commen
 
 | Имя | MAC | IP | Примечание |
 | --- | --- | -- | ---------- |
-| `phoneserver` | `dc:04:5a:58:5a:93` | `192.168.50.127` | pmOS eth (USB-C хаб → lan2), HA UI, Beszel |
+| `phoneserver` | `dc:04:5a:58:5a:93` | `192.168.50.127` | pmOS eth (USB-C хаб → Mercusys → lan2), HA UI, Beszel |
+| `pundef-pc-srv` | `9C:6B:00:8B:3F:18` | `192.168.50.133` | Win eth через **Mercusys**; pbr `srv default via awg2` — [`reserve-pundef-pc-dhcp.sh`](../../scripts/openwrt/reserve-pundef-pc-dhcp.sh) |
 | `nextcloud-vm` | `02:CC:61:7E:E7:7B` | `192.168.50.34` | VM 101 |
 | `haos17` | `02:DF:3B:CA:E9:AC` | `192.168.50.51` | VM 100 (остановлена) |
 | `static-sites` | *(LXC)* | `192.168.50.35` | LXC 102, Kuma, Beszel hub |
@@ -294,15 +296,13 @@ nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.240 return commen
 
 ### Серверный сегмент `srv` (отдельная firewall zone)
 
-`srv` физически — порт `lan2` X3000T. К нему: Proxmox (`192.168.50.9`), phoneserver eth (`192.168.50.127` через USB-хаб), ВМ/LXC.
+`srv` физически — порт `lan2` X3000T. К **Mercusys-коммутатору** в этом порту: Proxmox (`192.168.50.9`), phoneserver eth (`192.168.50.127`), игровой ПК eth (`192.168.50.133`), ВМ/LXC.
 
 Ключевые свойства:
 
-- **DHCP-резервации `infinite`** под MAC ВМ:
-  - `nextcloud-vm` MAC `02:CC:61:7E:E7:7B` → `192.168.50.34`;
-  - `haos17` MAC `02:DF:3B:CA:E9:AC` → `192.168.50.51`.
+- **DHCP-резервации `infinite`** — см. таблицу выше; скрипты: [`reserve-phoneserver-dhcp.sh`](../../scripts/openwrt/reserve-phoneserver-dhcp.sh), [`reserve-pundef-pc-dhcp.sh`](../../scripts/openwrt/reserve-pundef-pc-dhcp.sh).
 - **DNS для srv** выдаётся не через роутерный dnsmasq, а напрямую: `dhcp.srv.dhcp_option='6,8.8.8.8,1.1.1.1'`. Это намеренно — иначе Nextcloud резолвил бы community-домены через sing-box и получал fake-IP `198.18.x`.
-- **Firewall zone `srv`**: forwarding `srv→wan`, `lan→srv`, и **`srv→awg2`** (только OwnCord LXC `.36` / ghcr через pbr). **НЕТ** `srv→awg1` / `srv→workvpn` — остальные ВМ изолированы от туннелей.
+- **Firewall zone `srv`**: forwarding `srv→wan`, `lan→srv`, и **`srv→awg2`** (pbr: OwnCord LXC `.36` / ghcr; **`pundef-pc` `.50.133`** / Mercusys). **НЕТ** `srv→awg1` / `srv→workvpn`. С `srv` **нет** SSH/LuCI на роутер (input reject на `lan2`) — админка только с `lan`.
 - **Hairpin**: `dnsmasq.@dnsmasq[0].address='/cloud-pundef.mooo.com/192.168.50.34'` — клиенты `lan` резолвят домен сразу в локальный IP, без NAT loopback.
 - **Port-forwards** `wan: 80 → srv:192.168.50.34:80` и `wan: 443 → srv:192.168.50.34:443` (DNAT с `wan` в `srv`).
 - **zapret bypass для srv**: в [scripts/openwrt/custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh) добавлены `ct original ip saddr 192.168.50.0/24 return` (postnat) и зеркальное правило в `prenat`. Источник применяется автоматически через `INIT_FW_POST_UP_HOOK=/opt/zapret/custom.bypass_devices.sh` в `/opt/zapret/config`.
@@ -334,12 +334,16 @@ awg show awg2
 | --- | ---------------------------- | --------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 0   | `AI Tools via awg2 (global)` | `awg2`    | —               | Cursor, OpenAI, Anthropic, Claude, Groq, Google Generative API                                                                                                                                                                                                                 |
 | 1   | `paul-mac kpb via workvpn`   | `workvpn` | `192.168.1.198` | `kpb.lt`, `*.kpb.lt`, `gitlab.kpb.lt`, `10.0.160.0/22`, `10.0.17.0/24`                                                                                                                                                                                                       |
-| 2   | `Mangalib via awg2`          | `awg2`    | —               | `mangalib.me`, `lib.social`, `ranobelib.me`, `imglib.org`                                                                                                                                                                                                                      |
+| 2   | `Mangalib via awg2`          | `awg2`    | —               | Lib-family via VPN (см. [`enable-libsites-awg2.sh`](../../scripts/openwrt/enable-libsites-awg2.sh)); **исключение:** `v3/v5.animelib.org` → **`Lib DDG mirrors via wan`** — DDoS-Guard режет NL VPN IP, OAuth callback на v5 без WAN = 403 |
+| 2+  | `Optimizely via awg2`        | `awg2`    | —               | `cdn.optimizely.com`, `logx.optimizely.com`, `app.optimizely.com`, `api.optimizely.com`, `cdn-prod.optimizely-static.com`, `p13n-results-api.optimizely.com` — DNS bypass `8.8.8.8` на ключевые домены                                                                               |
 | 3   | `ai-frontend-ghcr-awg2`      | `awg2`    | `192.168.50.36` | ghcr / GitHub для OwnCord LXC через primary tunnel                                                                                                                                                                                                                               |
-| 4   | `pundef-pc kpb via workvpn`  | `workvpn` | `192.168.1.133` | те же corp dest, что у paul-mac (Win + WSL mirrored, Cursor Remote SSH)                                                                                                                                                                                                        |
+| 4   | `pundef-pc kpb via workvpn`  | `workvpn` | `192.168.1.133` | corp dest (Win + WSL mirrored); **только lan**, не srv `.50.133`                                                                                                                                                                                                               |
 | 5   | `xiaomi-13t-pro kpb via workvpn` | `workvpn` | `192.168.1.214` | те же corp dest; force-DNS + block DoT `:853` на роутере                                                                                                                                                                                                                       |
+| 6+  | `pundef-pc steam via wan`        | `wan`     | `.133` / `.208` / **`.50.133`** | Steam CDN — быстрые загрузки                                                                                                                                                                                                                                                    |
+| 6+  | `pundef-pc nexus via wan`        | `wan`     | `.133` / `.208` / **`.50.133`** | Nexus Mods                                                                                                                                                                                                                                                                    |
+| 6+  | `pundef-pc destiny via awg2`     | `awg2`    | `.133` / `.208` / **`.50.133`** | Bungie / TAPIR login                                                                                                                                                                                                                                                          |
+| 6+  | `pundef-pc srv default via awg2` | `awg2`    | **`192.168.50.133`** | `0.0.0.0/0` — только Mercusys/srv; YouTube, Discord, прочий egress                                                                                                                                                                                                            |
 | 6+  | `Warframe via awg2`              | `awg2`    | —               | `warframe.com`, `*.warframe.com`, `soulframe.com`, `*.soulframe.com`, `digitalextremes.com` — лаунчер/API                                                                                                                                                                       |
-| 6+  | `pundef-pc games via awg2`       | `awg2`    | `192.168.1.133` | `0.0.0.0/0` — весь egress с игрового ПК (чат/реле UDP на произвольные IP); corp `*.kpb.lt` остаётся на workvpn                                                                                                                                                                  |
 
 
 Полный список:
@@ -553,16 +557,19 @@ nft list table inet zapret
 | [scripts/openwrt/switch-primary-tunnel.sh](../../scripts/openwrt/switch-primary-tunnel.sh)               | Shell-логика переключения на роутере. |
 | [scripts/openwrt/trace_traffic.py](../../scripts/openwrt/trace_traffic.py)                               | Трассировка пути конкретного домена/IP через pbr/podkop/zapret.                                                                                                                     |
 | [scripts/openwrt/enable_warframe_awg2_safe.py](../../scripts/openwrt/enable_warframe_awg2_safe.py)       | Warframe/Soulframe через primary tunnel; baseline, проверка corp/workvpn, auto-rollback.                                                                                            |
-| [scripts/openwrt/rollback-warframe-awg2.sh](../../scripts/openwrt/rollback-warframe-awg2.sh)           | Откат политик Warframe / `pundef-pc games`.                                                                                                                                         |
+| [scripts/openwrt/enable_optimizely_awg2.py](../../scripts/openwrt/enable_optimizely_awg2.py)             | Optimizely (cdn/logx/app/api) через primary tunnel + DNS bypass.                                                                                                                  |
+| [scripts/openwrt/rollback-warframe-awg2.sh](../../scripts/openwrt/rollback-warframe-awg2.sh)           | Откат политик Warframe (устаревший `pundef-pc games` catch-all удаляется `apply-pundef-pc-routes.sh`).                                                                              |
 | [scripts/openwrt/podkop-subnets-watchdog.sh](../../scripts/openwrt/podkop-subnets-watchdog.sh)           | Если `podkop_subnets` пуст — запустить `podkop list_update`. Cron: `*/15 * * * *`.                                                                                                  |
 | [scripts/openwrt/pbr-workvpn-watchdog.sh](../../scripts/openwrt/pbr-workvpn-watchdog.sh)               | Если `workvpn` up, а таблица `pbr_workvpn` пуста — `pbr restart`. Cron: `*/5 * * * *`.                                                                                              |
 | [scripts/openwrt/99-vpn-stack](../../scripts/openwrt/99-vpn-stack)                                       | Исходник hotplug-скрипта `/etc/hotplug.d/iface/99-vpn-stack`.                                                                                                                       |
-| [scripts/openwrt/custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh)               | Источник `/opt/zapret/custom.bypass_devices.sh`: per-IP bypass для `192.168.1.227` (phoneserver), `192.168.1.133` (pundef-pc), `192.168.1.214` (xiaomi-13t-pro) и per-subnet bypass `192.168.50.0/24` (srv). |
+| [scripts/openwrt/custom.bypass_devices.sh](../../scripts/openwrt/custom.bypass_devices.sh)               | Источник `/opt/zapret/custom.bypass_devices.sh`: per-IP bypass для `192.168.1.227` (phoneserver), `192.168.1.133` (pundef-pc lan), `192.168.1.214` (xiaomi-13t-pro) и per-subnet bypass `192.168.50.0/24` (srv). |
 | [scripts/openwrt/etc-hosts](../../scripts/openwrt/etc-hosts)                                             | Источник `/etc/hosts` на роутере: SNI-proxy mappings для AI/Spotify/Telegram через `45.155.204.190` (см. ниже «SNI proxy via /etc/hosts»). Twitch специально без override. |
 | [scripts/openwrt/enable-workvpn-client.sh](../../scripts/openwrt/enable-workvpn-client.sh)               | DHCP-резервация + pbr policy `workvpn` + force-DNS для LAN-клиента (corp с телефона или ПК). Дефолт — `xiaomi-13t-pro` `.214`.                                                                                        |
 | [scripts/openwrt/enable_workvpn_client_safe.py](../../scripts/openwrt/enable_workvpn_client_safe.py)     | Безопасное включение corp-клиента: `check_stack` до/после, авто-откат; см. [router-resilience.md](router-resilience.md).                                                                                          |
 | [scripts/openwrt/rollback-workvpn-xiaomi-13t-pro.sh](../../scripts/openwrt/rollback-workvpn-xiaomi-13t-pro.sh) | Откат corp pbr-policy для `xiaomi-13t-pro` (`.214`); не трогает `paul-mac` / `pundef-pc`.                                                                          |
-| [scripts/openwrt/reserve-phoneserver-dhcp.sh](../../scripts/openwrt/reserve-phoneserver-dhcp.sh)         | Фиксированный IP для `phoneserver` (pmOS) на `lan`.                                                                                                                                 |
+| [scripts/openwrt/reserve-phoneserver-dhcp.sh](../../scripts/openwrt/reserve-phoneserver-dhcp.sh)         | DHCP srv `.127` + wlan `.227` для phoneserver.                                                                                                                                      |
+| [scripts/openwrt/reserve-pundef-pc-dhcp.sh](../../scripts/openwrt/reserve-pundef-pc-dhcp.sh)             | DHCP lan `.133` + srv **Mercusys** `.50.133` для `pundef-pc`.                                                                                                                       |
+| [scripts/openwrt/apply_pundef_pc_routes.py](../../scripts/openwrt/apply_pundef_pc_routes.py)             | Deploy `/opt/apply-pundef-pc-routes.sh`, DHCP, watchdog; **только с lan/Wi‑Fi** (не с srv). См. [gaming-pc-routes.md](gaming-pc-routes.md).                                       |
 
 
 Пример с ПК (PowerShell, дефолтный ключ `C:\Users\PUndef-PC\.ssh\openwrt_ax300t_nopass`):

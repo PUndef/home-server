@@ -1,7 +1,7 @@
 # Железо и окружение home-server
 
 > **Статус:** living reference  
-> **Последняя проверка:** 2026-06-12  
+> **Последняя проверка:** 2026-06-14  
 > Главный контекст для ответов по серверу (ресурсы, миграции, настройки). Перед правкой таблиц — `python scripts/proxmox/check_vms.py`.
 
 ---
@@ -76,11 +76,11 @@
 
 | Параметр                 | Значение                                                                                                                                                                                                                                                                                          |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Серверный сегмент `srv`  | 192.168.50.0/24 — Proxmox + ВМ. Шлюз `192.168.50.1` (порт `lan2` X3000T). DHCP с upstream DNS `8.8.8.8 / 1.1.1.1` (мимо подкопа).                                                                                                                                                                 |
+| Серверный сегмент `srv`  | 192.168.50.0/24 — Proxmox + ВМ + **Mercusys** (ПК, phoneserver eth). Шлюз `192.168.50.1` (порт `lan2` X3000T). DHCP с upstream DNS `8.8.8.8 / 1.1.1.1` (мимо подкопа). Исключение pbr: `pundef-pc` `.50.133` → awg2 — [gaming-pc-routes.md](../network/gaming-pc-routes.md). |
 | Клиентский сегмент `lan` | 192.168.1.0/24 — ПК, Mac, телефоны. Шлюз `192.168.1.1` (порты `lan3 lan4` X3000T + WiFi). pbr / podkop / zapret / awg1 / awg2 / workvpn — здесь.                                                                                                                                                  |
 | Хост Proxmox             | 192.168.50.9/24 (статика), gateway `192.168.50.1` = X3000T. DNS: `1.1.1.1`, `8.8.8.8`.                                                                                                                                                                                                            |
 | ВМ/LXC (DHCP-резервация) | nextcloud-vm `192.168.50.34`, haos17 `192.168.50.51`, static-sites `192.168.50.35`. leasetime `infinite`.                                                                                                                                                                                         |
-| Основной ПК пользователя | `pundef-pc`, eth `9C:6B:00:8B:3F:18` → `192.168.1.133`, Wi‑Fi `192.168.1.208`; Win 11 + WSL2 mirrored. Игровые маршруты: [gaming-pc-routes.md](../network/gaming-pc-routes.md). zapret bypass + pbr `workvpn` для corp. |
+| Основной ПК пользователя | `pundef-pc`, eth lan `9C:6B:00:8B:3F:18` → `192.168.1.133`, eth srv (**Mercusys** → lan2) → `192.168.50.133`, Wi‑Fi `192.168.1.208`; Win 11 + WSL2 mirrored. Игровые маршруты: [gaming-pc-routes.md](../network/gaming-pc-routes.md). zapret bypass + pbr `workvpn` — **только lan** (`.133`/`.208`). |
 | Рабочий MacBook          | `paul-mac`, MAC `26:C5:4C:20:C5:AD` → DHCP `192.168.1.198`; pbr `workvpn` для corp.                                                                                                                                                                                                               |
 | Xiaomi 13T Pro           | `xiaomi-13t-pro`, MAC `2c:fe:4f:6b:de:aa` → DHCP `192.168.1.214`; pbr `workvpn` + force-DNS + zapret bypass. Включить снова: `scripts/openwrt/enable_workvpn_client_safe.py` (или `enable-workvpn-client.sh`).                                                                                                                            |
 
@@ -88,7 +88,7 @@
 **Топология:** провайдер → **WAN Xiaomi X3000T** (OpenWrt 24.10.6, DHCP, белый IP `5.189.245.251`) → две зоны:
 
 - `lan` `192.168.1.0/24` — клиентский трафик, поверх него вся VPN/DPI-машинерия (pbr / podkop / sing-box / zapret / awg1 / awg2 / workvpn);
-- `srv` `192.168.50.0/24` — Proxmox + ВМ + LXC, **изолированно** от туннелей и DPI: forwarding только `srv→wan` и `lan→srv`, без `srv→awg1/awg2/workvpn`. zapret отдельно `bypass`-нут для подсети `192.168.50.0/24` через [`scripts/openwrt/custom.bypass_devices.sh`](../../scripts/openwrt/custom.bypass_devices.sh).
+- `srv` `192.168.50.0/24` — Proxmox + ВМ + LXC + **Mercusys** (игровой ПК eth, phoneserver eth). Forwarding `srv→wan`, `lan→srv`, **`srv→awg2`** (pbr: OwnCord ghcr, `pundef-pc` `.50.133`). **Нет** `srv→awg1` / `srv→workvpn`. Zapret bypass для всей подсети — [`custom.bypass_devices.sh`](../../scripts/openwrt/custom.bypass_devices.sh).
 
 Детали роутера: [`router-openwrt-x3000t.md`](../network/router-openwrt-x3000t.md).  
 **Отказоустойчивость и recovery после reboot:** [`router-resilience.md`](../network/router-resilience.md).
@@ -154,7 +154,7 @@
 ## Заметки
 
 - **Роутер:** OpenWrt X3000T — VPN/DPI (primary **`awg2`**, backup `awg1`, corp `workvpn`, podkop/sing-box, zapret). Failover: [`switch_primary_tunnel_safe.py`](../../scripts/openwrt/switch_primary_tunnel_safe.py). Подробно: [`router-openwrt-x3000t.md`](../network/router-openwrt-x3000t.md).
-- **Изоляция `srv`:** ВМ без туннелей, кроме **`srv→awg2`** для OwnCord LXC (ghcr). Zapret bypass: [`custom.bypass_devices.sh`](../../scripts/openwrt/custom.bypass_devices.sh). DNS ВМ — `8.8.8.8 / 1.1.1.1` (мимо dnsmasq роутера).
+- **Изоляция `srv`:** ВМ без произвольных туннелей; исключения pbr: **`srv→awg2`** для OwnCord LXC (ghcr) и **`pundef-pc` `.50.133`** (Mercusys, YouTube/Discord). Zapret bypass: [`custom.bypass_devices.sh`](../../scripts/openwrt/custom.bypass_devices.sh). DNS ВМ — `8.8.8.8 / 1.1.1.1` (мимо dnsmasq роутера).
 - **Корпоративный VPN на OpenWrt:** split-routing через `workvpn` для зоны `kpb.lt` (домены + подсети `10.0.160.0/22`, `10.0.17.0/24`) на клиентах `paul-mac` (`192.168.1.198`), `pundef-pc` (`192.168.1.133`, Win + WSL), `xiaomi-13t-pro` (`192.168.1.214`, Android). На Mac и телефоне — force-DNS redirect на роутерный `dnsmasq`; на Android дополнительно выключить Private DNS и Chrome Secure DNS.
 - **DNS:** централизованного DNS-фильтра на Proxmox нет; при необходимости — фильтрация на роутере или клиентские средства. Хост Proxmox смотрит на `1.1.1.1 / 8.8.8.8` напрямую (см. `/etc/resolv.conf`), не через роутерный dnsmasq.
 - Один физический диск: все ВМ на LVM thin в одном пуле — при апгрейде/бэкапах учитывать отсутствие отдельного хранилища.

@@ -14,7 +14,7 @@ import paramiko
 
 FAKE_IP = re.compile(r"^198\.18\.")
 
-CLIENTS = ("192.168.1.133", "192.168.1.208")
+CLIENTS = ("192.168.1.133", "192.168.1.208", "192.168.50.133")
 
 
 def load_private_key(key_path: str) -> paramiko.PKey:
@@ -85,6 +85,7 @@ def main() -> int:
         for policy in (
             "pundef-pc steam via wan",
             "pundef-pc nexus via wan",
+            "pundef-pc ru-local via wan",
             f"pundef-pc destiny via {primary}",
             f"Warframe via {primary}",
         ):
@@ -97,7 +98,7 @@ def main() -> int:
         # Destiny auth domains may have no public A record; pbr matches by name via nftset fill.
         DESTINY_NO_A = frozenset({"steamserver.net", "deadorbit.net", "gravityshavings.net"})
 
-        for host in ("discord.com", "bungie.net", "store.steampowered.com"):
+        for host in ("discord.com", "bungie.net", "store.steampowered.com", "2gis.ru"):
             ip = resolve(client, host)
             if not ip:
                 failures.append(f"dns: {host} unresolved")
@@ -122,6 +123,18 @@ def main() -> int:
                 print(f"[OK] steam path {client_ip} -> wan")
             else:
                 failures.append(f"steam path {client_ip}: {route or 'fail'}")
+
+        twogis_ip = resolve(client, "2gis.ru")
+        if twogis_ip and not FAKE_IP.match(twogis_ip):
+            for client_ip in CLIENTS:
+                code, route = run(
+                    client,
+                    f"ip route get {twogis_ip} from {client_ip} iif br-lan mark 0x10000 2>/dev/null | head -1",
+                )
+                if code == 0 and " dev wan " in route:
+                    print(f"[OK] 2gis path {client_ip} -> wan")
+                else:
+                    failures.append(f"2gis path {client_ip}: {route or 'fail'}")
 
         if "pundef-pc destiny via" in nft:
             print("[OK] destiny nft rule for .133/.208")

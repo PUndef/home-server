@@ -1,7 +1,7 @@
 # Отказоустойчивость роутера и восстановление инфраструктуры
 
 > **Статус:** living reference  
-> **Последняя проверка:** 2026-06-12  
+> **Последняя проверка:** 2026-06-14  
 > **Связано:** [`router-openwrt-x3000t.md`](router-openwrt-x3000t.md), [`hardware-and-env.md`](../overview/hardware-and-env.md)
 
 Домашняя инфраструктура (Proxmox, Nextcloud, Home Assistant, static-sites, мониторинг) **зависит от OpenWrt X3000T** не меньше, чем от самого Proxmox. Роутер — единственный шлюз для сегмента `srv` (`192.168.50.0/24`), DHCP, DNS split-horizon, NAT на Nextcloud и hotplug-восстановление VPN-стека. Ошибка в firewall, pbr, podkop или zapret может обрубить **весь** серверный сегмент, хотя `lan` (`192.168.1.0/24`) при этом остаётся живым.
@@ -17,19 +17,21 @@
     ↓
 OpenWrt X3000T
     ├── lan 192.168.1.0/24  — клиенты, VPN/DPI (pbr, podkop, sing-box, zapret, awg*)
-    └── srv 192.168.50.0/24 — Proxmox .9, nextcloud .34, haos .51, static-sites .35
+    └── srv 192.168.50.0/24 — Proxmox .9, nextcloud .34, static-sites .35, phoneserver .127, pundef-pc .133 (Mercusys)
             ↑
-    физический порт lan2 (интерфейс srv на роутере)
+    физический порт lan2 → Mercusys switch → серверы + игровой ПК eth
 ```
+
+**Админка роутера (SSH/LuCI):** только с `lan` (`192.168.1.1`). С `srv` — reject на `lan2`; для `apply_pundef_pc_routes.py` нужен Wi‑Fi или lan-кабель X3000T.
 
 **Что должно работать всегда для «живой» инфраструктуры:**
 
 | Компонент | Проверка | Если сломано |
 |-----------|----------|--------------|
 | Интерфейс `srv` / `lan2` UP | `ifstatus srv` на роутере | Proxmox и все ВМ без маршрута наружу и без доступа с `lan` |
-| DHCP leases на `srv` | `/tmp/dhcp.leases` содержит `.34`, `.35`, `.51` | ВМ теряют IP или не поднимаются после reboot |
-| Forwarding `lan→srv`, `srv→wan` | LuCI Firewall / `nft list chain inet fw4 forward` | Nextcloud, HA, Proxmox UI недоступны с ПК |
-| **Нет** forwarding `srv→awg1/awg2/workvpn` | `check_stack.py` → `vm-isolation-from-tunnels` | VM-трафик уходит в туннели / ломается DNS |
+| DHCP leases на `srv` | `/tmp/dhcp.leases` содержит `.34`, `.35`, `.127`, `.133` | ВМ/ПК теряют IP или не поднимаются после reboot |
+| Forwarding `lan→srv`, `srv→wan`, **`srv→awg2`** (pbr) | LuCI Firewall / `nft list chain inet fw4 forward` | Nextcloud недоступен; **pundef-pc Mercusys** без YouTube/Discord |
+| **Нет** произвольного `srv→awg1/workvpn` | `check_stack.py` → `vm-isolation-from-tunnels` | VM-трафик уходит не туда / ломается DNS |
 | zapret bypass для `192.168.50.0/24` | nft `zapret-ct-bypass-srv` | Серверный трафик модифицируется nfqws → странные обрывы HTTPS |
 | Split-horizon DNS | `cloud-pundef.mooo.com` → `192.168.50.34` с роутера | Клиенты LAN не попадают на Nextcloud по домену |
 

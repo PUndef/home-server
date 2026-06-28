@@ -17,7 +17,7 @@
 | Документ | Статус | Описание |
 |----------|--------|----------|
 | [network/router-openwrt-x3000t.md](network/router-openwrt-x3000t.md) | living reference | OpenWrt X3000T: pbr, podkop, zapret, awg, workvpn, DNS |
-| [network/gaming-pc-routes.md](network/gaming-pc-routes.md) | living reference | Per-app маршрутизация pundef-pc (.133 / .208) |
+| [network/gaming-pc-routes.md](network/gaming-pc-routes.md) | living reference | Per-app маршрутизация pundef-pc (lan `.133`/`.208`, srv Mercusys `.50.133`) |
 | [network/router-resilience.md](network/router-resilience.md) | living reference | Отказоустойчивость: критический путь srv, recovery после reboot |
 | [network/incidents/zapret-bypass-pundef-pc-2026-05-27.md](network/incidents/zapret-bypass-pundef-pc-2026-05-27.md) | incident | Bypass zapret для `pundef-pc` (Cursor Remote SSH) |
 

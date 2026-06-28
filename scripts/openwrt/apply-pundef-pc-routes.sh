@@ -23,6 +23,8 @@ fi
 
 PC_ETH="${PUNDEF_PC_ETH:-192.168.1.133}"
 PC_WIFI="${PUNDEF_PC_WIFI:-192.168.1.208}"
+# Mercusys hub → X3000T lan2 (srv); real DNS 8.8.8.8 — catch-all via awg2 here is safe (no podkop fake-IP).
+PC_SRV="${PUNDEF_PC_SRV:-192.168.50.133}"
 
 PRIMARY="$(uci -q get podkop.main.interface 2>/dev/null || true)"
 case "${PRIMARY}" in
@@ -66,6 +68,10 @@ delete_games_catchall() {
         uci delete "pbr.@policy[${i}]"
         removed=$((removed + 1))
         i=0
+        continue
+        ;;
+      "pundef-pc srv default via "*)
+        i=$((i + 1))
         continue
         ;;
     esac
@@ -113,6 +119,33 @@ add_dns_bypass() {
   echo "[apply-pundef-pc-routes] dns bypass: ${entry}"
 }
 
+upsert_srv_default_policy() {
+  policy_name="$1"
+  iface="$2"
+
+  idx=""
+  if idx="$(find_policy_idx "${policy_name}" 2>/dev/null)"; then
+    :
+  else
+    uci add pbr policy >/dev/null
+    idx="$(policy_count)"
+    idx=$((idx - 1))
+  fi
+
+  uci set "pbr.@policy[${idx}].name=${policy_name}"
+  uci set "pbr.@policy[${idx}].interface=${iface}"
+  uci set "pbr.@policy[${idx}].enabled=1"
+
+  uci delete "pbr.@policy[${idx}].src_addr" 2>/dev/null || true
+  uci add_list "pbr.@policy[${idx}].src_addr=${PC_SRV}/32"
+
+  uci delete "pbr.@policy[${idx}].dest_addr" 2>/dev/null || true
+  uci add_list "pbr.@policy[${idx}].dest_addr=0.0.0.0/0"
+
+  echo "[apply-pundef-pc-routes] srv-only policy ${policy_name} -> ${iface} (idx ${idx})" >&2
+  echo "${idx}"
+}
+
 upsert_pc_policy() {
   policy_name="$1"
   iface="$2"
@@ -134,6 +167,7 @@ upsert_pc_policy() {
   uci delete "pbr.@policy[${idx}].src_addr" 2>/dev/null || true
   uci add_list "pbr.@policy[${idx}].src_addr=${PC_ETH}/32"
   uci add_list "pbr.@policy[${idx}].src_addr=${PC_WIFI}/32"
+  uci add_list "pbr.@policy[${idx}].src_addr=${PC_SRV}/32"
 
   uci delete "pbr.@policy[${idx}].dest_addr" 2>/dev/null || true
   for d in ${dest_list}; do
@@ -191,6 +225,10 @@ find_first_games_catchall_idx() {
         echo "${i}"
         return 0
         ;;
+      pundef-pc\ srv\ default\ via\ *)
+        i=$((i + 1))
+        continue
+        ;;
     esac
     if echo "${dest}" | grep -q '0.0.0.0/0'; then
       src="$(uci -q get "pbr.@policy[${i}].src_addr" 2>/dev/null || true)"
@@ -215,7 +253,10 @@ check_state() {
   for want in \
     "pundef-pc steam via wan" \
     "pundef-pc nexus via wan" \
+    "pundef-pc ru-local via wan" \
+    "pundef-pc lib ddg via wan" \
     "pundef-pc destiny via ${PRIMARY}" \
+    "pundef-pc srv default via ${PRIMARY}" \
     "Warframe via ${PRIMARY}"
   do
     if ! find_policy_idx "${want}" >/dev/null 2>&1; then
@@ -245,6 +286,13 @@ STEAM_DOMAINS="steampowered.com *.steampowered.com \
 
 NEXUS_DOMAINS="nexusmods.com *.nexusmods.com"
 
+# Russian local services — must stay on WAN (geo/CDN); srv catch-all would send them via awg2.
+RU_LOCAL_DOMAINS="2gis.ru *.2gis.ru dublgis.ru *.dublgis.ru"
+
+# AnimeLib v3/v5 mirrors (DDoS-Guard): block awg2 NL exit IP; OAuth callback lands on v5.
+# Must route via WAN before srv catch-all 0.0.0.0/0 for 192.168.50.133.
+LIB_DDG_DOMAINS="v3.animelib.org v5.animelib.org"
+
 # Destiny login / TAPIR bypass (CIS geo-block at auth only):
 # https://github.com/Flowseal/zapret-discord-youtube/discussions/6033
 DESTINY_DOMAINS="bungie.net *.bungie.net \
@@ -268,7 +316,7 @@ if [ "${CHECK_ONLY}" = true ]; then
   exit 1
 fi
 
-echo "=== apply pundef-pc routes (primary=${PRIMARY}, NO catch-all) ==="
+echo "=== apply pundef-pc routes (primary=${PRIMARY}, lan NO catch-all, srv default via ${PRIMARY}) ==="
 
 delete_games_catchall >/dev/null || true
 delete_untitled_policies >/dev/null || true
@@ -279,16 +327,34 @@ done
 for d in bungie.net steamserver.net deadorbit.net gravityshavings.net; do
   add_dns_bypass "${d}"
 done
+for d in 2gis.ru dublgis.ru; do
+  add_dns_bypass "${d}"
+done
+for d in animelib.org; do
+  add_dns_bypass "${d}"
+done
 
 steam_idx="$(upsert_pc_policy "pundef-pc steam via wan" "wan" "${STEAM_DOMAINS}")"
 nexus_idx="$(upsert_pc_policy "pundef-pc nexus via wan" "wan" "${NEXUS_DOMAINS}")"
+ru_local_idx="$(upsert_pc_policy "pundef-pc ru-local via wan" "wan" "${RU_LOCAL_DOMAINS}")"
+lib_ddg_idx="$(upsert_pc_policy "pundef-pc lib ddg via wan" "wan" "${LIB_DDG_DOMAINS}")"
 destiny_idx="$(upsert_pc_policy "pundef-pc destiny via ${PRIMARY}" "${PRIMARY}" "${DESTINY_DOMAINS}")"
+srv_default_idx="$(upsert_srv_default_policy "pundef-pc srv default via ${PRIMARY}" "${PRIMARY}")"
 warframe_idx="$(upsert_global_policy "Warframe via ${PRIMARY}" "${PRIMARY}" "${WARFRAME_DOMAINS}")"
 
-# Order: steam -> nexus -> destiny -> (warframe global can sit after corp policies)
+# Order: steam -> nexus -> ru-local -> lib-ddg -> destiny -> srv catch-all (srv only; lan still uses podkop)
 reorder_policy_before "${nexus_idx}" "${steam_idx}"
-if [ "${destiny_idx}" -gt "${nexus_idx}" ]; then
-  reorder_policy_before "${destiny_idx}" "${nexus_idx}"
+if [ "${ru_local_idx}" -gt "${nexus_idx}" ]; then
+  reorder_policy_before "${ru_local_idx}" "${nexus_idx}"
+fi
+if [ "${lib_ddg_idx}" -gt "${ru_local_idx}" ]; then
+  reorder_policy_before "${lib_ddg_idx}" "${ru_local_idx}"
+fi
+if [ "${destiny_idx}" -gt "${lib_ddg_idx}" ]; then
+  reorder_policy_before "${destiny_idx}" "${lib_ddg_idx}"
+fi
+if [ "${srv_default_idx}" -gt "${destiny_idx}" ]; then
+  reorder_policy_before "${srv_default_idx}" "${destiny_idx}"
 fi
 
 uci commit dhcp

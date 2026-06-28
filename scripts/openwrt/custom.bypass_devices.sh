@@ -11,6 +11,12 @@ nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-227 ||
 nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-227-pre || \
     nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.227 return comment zapret-ct-bypass-227-pre
 
+# pundef-pc Wi-Fi (.208): same zapret bypass class as lan eth .133
+nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-208 || \
+    nft insert rule inet zapret postnat ct original ip saddr 192.168.1.208 return comment zapret-ct-bypass-208
+nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-208-pre || \
+    nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.208 return comment zapret-ct-bypass-208-pre
+
 # pundef-pc (Win + WSL mirrored): Cloudflare CDN TLS handshake bypass. See zapret-bypass-pundef-pc-2026-05-27.
 nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-133 || \
     nft insert rule inet zapret postnat ct original ip saddr 192.168.1.133 return comment zapret-ct-bypass-133

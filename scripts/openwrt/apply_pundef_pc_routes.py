@@ -23,6 +23,7 @@ WATCHDOG_SH = SCRIPTS / "pundef-pc-routes-watchdog.sh"
 CHECK = SCRIPTS / "check_gaming_pc_routes.py"
 REMOTE_APPLY = "/opt/apply-pundef-pc-routes.sh"
 REMOTE_WATCHDOG = "/opt/pundef-pc-routes-watchdog.sh"
+RESERVE_SH = SCRIPTS / "reserve-pundef-pc-dhcp.sh"
 HOTPLUG_LOCAL = SCRIPTS / "99-vpn-stack"
 REMOTE_HOTPLUG = "/etc/hotplug.d/iface/99-vpn-stack"
 
@@ -103,6 +104,13 @@ def main() -> int:
             print("Destiny login mode active — skip apply (run destiny_login_mode.py normal first)")
             return 0
 
+        if RESERVE_SH.exists():
+            print("Reserving pundef-pc DHCP (lan + srv Mercusys)...")
+            code, output = run_remote(client, "sh -s", stdin_data=RESERVE_SH.read_text(encoding="utf-8"))
+            print(output)
+            if code != 0:
+                return 1
+
         print("Applying routes...")
         code, output = run_remote(client, f"sh {REMOTE_APPLY}")
         print(output)
@@ -125,7 +133,7 @@ def main() -> int:
                 return proc.returncode
 
         print("\n=== OK ===")
-        print("Catch-all removed. Routes will self-heal via 99-vpn-stack + cron watchdog.")
+        print("lan: no catch-all; srv Mercusys: default via awg2. Self-heal: 99-vpn-stack + cron watchdog.")
         return 0
     finally:
         client.close()

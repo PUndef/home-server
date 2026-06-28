@@ -3,7 +3,7 @@
 > **Статус:** incident (snapshot)  
 > **Дата:** 2026-05-27
 
-**Контекст:** Cursor Remote SSH с Mac (`paul-mac`, `192.168.1.198`) на Win-ПК (`pundef-pc`, `192.168.1.133`) через WSL2 в mirrored networking mode. WSL шерит namespace с Win, тот же IP `192.168.1.133`.
+**Контекст:** Cursor Remote SSH с Mac (`paul-mac`, `192.168.1.198`) на Win-ПК (`pundef-pc`, `192.168.1.133` **lan**) через WSL2 в mirrored networking mode. WSL шерит namespace с Win, тот же IP `192.168.1.133`. На uplink **Mercusys/srv** (`.50.133`) corp `workvpn` и per-IP bypass **не** действуют — см. [gaming-pc-routes.md](../gaming-pc-routes.md).
 
 **Статус (2026-05-27):** ✅ zapret bypass, ✅ pbr `pundef-pc kpb via workvpn`, ✅ corp GitLab из WSL, ✅ Cloudflare CDN (nodesource), ✅ SSH `:22` на LAN IP. На Mac-стороне — установка Node 22 / pnpm / git config + ключ в WSL `authorized_keys`.
 
