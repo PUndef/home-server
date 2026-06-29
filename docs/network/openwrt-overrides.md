@@ -32,9 +32,9 @@ py -3 scripts/openwrt/apply_overrides.py --check-only
 
 ```powershell
 py -3 scripts/openwrt/apply_overrides.py --mode normal
-py -3 scripts/openwrt/apply_overrides.py --mode login
-py -3 scripts/openwrt/apply_overrides.py --mode login --full
 ```
+
+`--mode login` — deprecated rollback only (baseline steam_auth заменяет daily login workflow).
 
 Единственная точка apply: `apply_overrides.py`. `apply_pundef_pc_routes.py` и `destiny_login_mode.py` — deprecated wrappers.
 
@@ -42,10 +42,12 @@ py -3 scripts/openwrt/apply_overrides.py --mode login --full
 
 | Источник | Runtime путь | Чем владеет | Restart side effects |
 | --- | --- | --- | --- |
-| `scripts/openwrt/apply_overrides.py` | — (PC-side) | validate → upload → apply normal/login | делегирует в shell scripts ниже |
-| `scripts/openwrt/apply-pundef-pc-routes.sh` | `/opt/apply-pundef-pc-routes.sh` | pbr/DNS policies для `pundef-pc`: Steam/Nexus/RU-local/Discord/Destiny/srv default/Warframe | `dnsmasq restart`, `pbr restart` |
+| `scripts/openwrt/apply_overrides.py` | — (PC-side) | validate → upload → apply baseline | делегирует в shell scripts ниже |
+| `scripts/openwrt/apply-pundef-pc-routes.sh` | `/opt/apply-pundef-pc-routes.sh` | pbr/DNS: steam_auth (awg2) + steam_cdn (wan), Discord/Destiny/srv/Warframe | `dnsmasq restart`, `pbr restart` |
 | `scripts/openwrt/custom.bypass_devices.sh` | `/opt/zapret/custom.bypass_devices.sh` | per-device zapret bypass, `DESTINY_NETS`, Steam SDR UDP | hook apply без service restart |
-| `scripts/openwrt/destiny-login-mode.sh` | `/opt/destiny-login-mode.sh` | temporary login mode из `destiny_modes` в manifest | `pbr restart`; flag `/etc/destiny-login-mode` |
+| `scripts/openwrt/destiny-login-mode.sh` | `/opt/destiny-login-mode.sh` | **deprecated** rollback login mode | `pbr restart`; flag `/etc/destiny-login-mode` |
+| `scripts/openwrt/routing_status.py` | — (PC/LXC) | JSON snapshot для dashboard | read-only SSH |
+| `scripts/openwrt/collect-routing-status.sh` | `/opt/collect-routing-status.sh` (optional) | cron → `status.json` + `history.jsonl` | none |
 | `scripts/openwrt/destiny-normal-mode.sh` | `/opt/destiny-normal-mode.sh` | снимает login flag → canonical apply | через apply |
 | `scripts/openwrt/99-vpn-stack` | `/etc/hotplug.d/iface/99-vpn-stack` | hotplug restore | stack restarts on ifup |
 | `scripts/openwrt/pundef-pc-routes-watchdog.sh` | cron | drift check → apply | через apply |
@@ -57,17 +59,32 @@ Manifest генерирует blocks в:
 - `scripts/openwrt/apply-pundef-pc-routes.sh` — baseline + Discord/Destiny domain lists
 - `scripts/openwrt/custom.bypass_devices.sh` — `DESTINY_NETS`, Steam SDR bypass constants
 - `scripts/openwrt/destiny-login-mode.sh` — login flag path, policy name templates, client IPs
-- `scripts/openwrt/check_gaming_pc_routes.py` — expected policies, DNS hosts, zapret nets
+- `scripts/openwrt/check_gaming_pc_routes.py` — expected policies, DNS hosts, zapret nets, steam auth/CDN route tests
+- `scripts/openwrt/routing_status.py` — same expectations as JSON for dashboard
 
 Правило для агентов: не менять generated blocks руками. Сначала manifest → `generate_overrides.py --write --check` → ACT через `apply_overrides.py`.
+
+## Observability
+
+Dashboard: `http://network.home/` или `https://apps-pundef.mooo.com/network-routing/`
+
+Cron на **gaming PC** (LXC srv не имеет SSH к роутеру):
+
+```powershell
+.\scripts\openwrt\publish-routing-status.ps1 -InstallTask
+```
+
+Пишет `/srv/static-sites/network-routing/status.json` + `history.jsonl` на LXC каждые 3 мин.
+
+`destiny_modes` в manifest — **deprecated** (legacy rollback doc). Baseline `steam_auth` + static IP заменяет login flag workflow.
 
 ## Read-Only Проверки
 
 `validate_overrides.py` проверяет:
 
-- локальные scripts содержат значения из manifest (baseline + Discord/Destiny + zapret);
-- live router: Discord/Destiny policies, baseline Steam/Nexus, destiny login/normal state;
-- stuck login flag / missing `pundef-pc steam via wan`;
+- локальные scripts содержат значения из manifest (baseline steam_auth/steam_cdn + Discord/Destiny + zapret);
+- live router: Discord/Destiny policies, split Steam baseline, auth IP → awg2, CDN → wan;
+- legacy login flag / `pundef-pc steam via wan` / `(destiny login)` policies absent;
 - repo vs `/opt` sha256 для apply/zapret/login/normal scripts;
 - workvpn, Discord nftset, zapret invariants, cron watchdogs.
 
@@ -86,7 +103,7 @@ Manifest генерирует blocks в:
 | `apply_pundef_pc_routes.py` | `apply_overrides.py --mode normal` |
 | `destiny_login_mode.py` | `apply_overrides.py --mode login\|normal` |
 | `switch_steam_route.py` / `switch-steam-route.sh` | `apply_overrides.py --mode normal` |
-| `enable-steam-wan.sh` / `rollback-steam-wan.sh` | manifest `pbr_baseline.steam` + apply |
+| `enable-steam-wan.sh` / `rollback-steam-wan.sh` | manifest `pbr_baseline.steam_cdn` + apply |
 | `enable_steam_wan_safe.py` | `apply_overrides.py --mode normal` |
 | `check_steam_route.py` | `check_gaming_pc_routes.py` |
 | `enable-discord-gaming-pc.sh` | manifest `pbr_overrides.discord` |
@@ -95,7 +112,7 @@ Manifest генерирует blocks в:
 | `expand-pundef-pc-pbr.sh` | `apply-pundef-pc-routes.sh` (generated) |
 | `lib-ddg-wan-only.sh` | manifest `pbr_baseline.lib_ddg` |
 
-**Green check ≠ Destiny login OK:** `check_gaming_pc_routes.py` и `validate_overrides.py` могут быть green в normal mode, пока cold Steam auth идёт через WAN — для входа нужен `--mode login`.
+**Green check = Destiny login path OK** после split baseline: `check_gaming_pc_routes.py` и dashboard проверяют auth IP `199.165.136.100` → awg2 и CDN → wan.
 
 ## См. Также
 
