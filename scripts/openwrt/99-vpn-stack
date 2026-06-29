@@ -16,28 +16,14 @@ case "$INTERFACE" in
     /etc/init.d/podkop restart 2>/dev/null
     /etc/init.d/zapret restart
     /etc/init.d/pbr restart
-    if [ -f /etc/destiny-login-mode ]; then
-      case "$(cat /etc/destiny-login-mode 2>/dev/null)" in
-        full) sh /opt/destiny-login-mode.sh --full 2>/dev/null || true ;;
-        *) sh /opt/destiny-login-mode.sh 2>/dev/null || true ;;
-      esac
-    else
-      sh /opt/apply-pundef-pc-routes.sh 2>/dev/null || true
-    fi
+    sh /opt/apply-pundef-pc-routes.sh 2>/dev/null || true
     sh /opt/seed-phoneserver-groq-ips.sh 2>/dev/null || true
     ;;
   workvpn)
     # Rebuild pbr_workvpn routes after OpenConnect reconnect; full stack not needed.
     sleep 5
     /etc/init.d/pbr restart
-    if [ -f /etc/destiny-login-mode ]; then
-      case "$(cat /etc/destiny-login-mode 2>/dev/null)" in
-        full) sh /opt/destiny-login-mode.sh --full 2>/dev/null || true ;;
-        *) sh /opt/destiny-login-mode.sh 2>/dev/null || true ;;
-      esac
-    else
-      sh /opt/apply-pundef-pc-routes.sh 2>/dev/null || true
-    fi
+    sh /opt/apply-pundef-pc-routes.sh 2>/dev/null || true
     sh /opt/seed-phoneserver-groq-ips.sh 2>/dev/null || true
     ;;
 esac

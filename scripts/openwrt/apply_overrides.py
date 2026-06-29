@@ -5,8 +5,7 @@ Single entry point: validate → generate check → upload → apply → verify.
 Usage:
   py -3 scripts/openwrt/apply_overrides.py --check-only
   py -3 scripts/openwrt/apply_overrides.py --mode normal
-  py -3 scripts/openwrt/apply_overrides.py --mode login
-  py -3 scripts/openwrt/apply_overrides.py --mode login --full
+  py -3 scripts/openwrt/apply_overrides.py --mode login   # deprecated rollback only
   py -3 scripts/openwrt/apply_overrides.py --mode status
 """
 
@@ -233,11 +232,18 @@ def verify_after_apply(client: paramiko.SSHClient, manifest: dict[str, Any], mod
     _, flag_state = run_remote(client, f"test -f {flag} && echo on || echo off")
     if mode == "normal":
         if flag_state.strip() == "on":
-            failures.append("login flag still set after normal apply")
+            failures.append("legacy login flag still set after normal apply")
+        steam_auth = manifest["pbr_baseline"]["steam_auth"]["name_template"].format(primary=primary)
+        steam_cdn = manifest["pbr_baseline"]["steam_cdn"]["name"]
+        for policy_name in (steam_auth, steam_cdn):
+            code, _ = run_remote(client, f"uci show pbr 2>/dev/null | grep -q \"name='{policy_name}'\"")
+            if code != 0:
+                failures.append(f"missing baseline policy after normal apply: {policy_name}")
         code, _ = run_remote(client, "uci show pbr 2>/dev/null | grep -q \"name='pundef-pc steam via wan'\"")
-        if code != 0:
-            failures.append("missing pundef-pc steam via wan after normal apply")
+        if code == 0:
+            failures.append("legacy pundef-pc steam via wan still present after normal apply")
     elif mode == "login":
+        print("WARNING: --mode login is deprecated; baseline steam_auth handles cold login automatically.")
         if flag_state.strip() != "on":
             failures.append("login flag not set after login apply")
         steam_name = manifest["destiny_modes"]["login"]["steam_policy"]["name_template"].format(primary=primary)
@@ -252,20 +258,15 @@ def verify_after_apply(client: paramiko.SSHClient, manifest: dict[str, Any], mod
     return failures
 
 
-def print_login_instructions() -> None:
-    print("\n=== LOGIN MODE ===")
-    print("1. Quit Steam fully (tray too)")
-    print("2. Start Steam again")
-    print("3. Launch Destiny 2")
-    print("4. Play until you are IN THE WORLD (tower / ship / patrol) — NOT character select")
-    print("5. Only then:")
-    print("   py -3 scripts/openwrt/apply_overrides.py --mode normal")
-
-
 def print_normal_instructions() -> None:
-    print("\n=== NORMAL MODE ===")
-    print("Steam -> WAN again (fast downloads).")
-    print("If Destiny is open, expect disconnect — run only when idle or fully in-world.")
+    print("\n=== BASELINE APPLIED ===")
+    print("Steam auth -> tunnel (cold login OK). Steam CDN -> WAN (fast downloads).")
+    print("Dashboard: http://network.home/ or https://apps-pundef.mooo.com/network-routing/")
+
+
+def print_login_instructions() -> None:
+    print("\n=== DEPRECATED LOGIN MODE ===")
+    print("Rollback only. Prefer --mode normal (split steam_auth baseline).")
 
 
 def main() -> int:
@@ -274,7 +275,7 @@ def main() -> int:
         "--mode",
         choices=("normal", "login", "status", "check-only"),
         default="normal",
-        help="normal=baseline routes, login=Destiny auth tunnel, status=read state, check-only=validate only",
+        help="normal=split baseline routes, login=deprecated rollback, status=read state, check-only=validate only",
     )
     parser.add_argument("--full", action="store_true", help="Login mode: route all lan egress via primary tunnel")
     parser.add_argument("--tunnel", choices=("awg1", "awg2"), help="Override primary tunnel for login mode")
@@ -318,16 +319,17 @@ def main() -> int:
     try:
         if args.mode == "status":
             flag = destiny_flag(manifest)
-            _, flag_kind = run_remote(client, f"cat {flag} 2>/dev/null || echo normal")
+            _, flag_kind = run_remote(client, f"test -f {flag} && cat {flag} || echo baseline")
             _, primary = run_remote(client, "uci -q get podkop.main.interface || echo awg2")
-            _, steam = run_remote(
+            _, policies = run_remote(
                 client,
                 "for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do "
                 "n=$(uci -q get pbr.@policy[$i].name 2>/dev/null || true); "
-                "case \"$n\" in 'pundef-pc steam via '*) echo \"$n -> $(uci -q get pbr.@policy[$i].interface)\"; exit 0;; esac; "
-                "done; echo missing",
+                "case \"$n\" in 'pundef-pc steam '*) echo \"$n -> $(uci -q get pbr.@policy[$i].interface)\";; esac; "
+                "done",
             )
-            print(f"mode={flag_kind.strip()} primary={primary.strip()} steam_policy={steam.strip()}")
+            print(f"mode={flag_kind.strip()} primary={primary.strip()}")
+            print(policies.strip() or "no steam policies found")
             return 0
 
         if not args.force_live_session and live_session_active(client):

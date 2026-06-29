@@ -5,10 +5,6 @@
 APPLY="/opt/apply-pundef-pc-routes.sh"
 [ -x "${APPLY}" ] || APPLY="/opt/apply-pundef-pc-routes.sh"
 
-if [ -f /etc/destiny-login-mode ]; then
-  exit 0
-fi
-
 if [ ! -f "${APPLY}" ]; then
   exit 0
 fi
