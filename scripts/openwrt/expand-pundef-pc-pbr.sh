@@ -1,4 +1,5 @@
 #!/bin/sh
+# DEPRECATED — superseded by apply-pundef-pc-routes.sh (generated from manifest).
 # Add pundef-pc WiFi + srv (Mercusys) IPs to all "pundef-pc *" pbr policies.
 # Without this, traffic from 192.168.1.208 / 192.168.50.133 bypasses games/steam policies.
 #

@@ -1,4 +1,5 @@
 #!/bin/sh
+# DEPRECATED — use apply_overrides.py --mode normal.
 # Remove Steam-specific pbr policy (WAN or tunnel).
 # Steam then follows "pundef-pc games via awg2" catch-all with Destiny.
 

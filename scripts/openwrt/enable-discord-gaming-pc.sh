@@ -1,4 +1,5 @@
 #!/bin/sh
+# DEPRECATED — superseded by manifest pbr_overrides.discord + apply_overrides.py.
 # Fix Discord on pundef-pc (.133 eth / .208 wlan).
 #
 # games catch-all (0.0.0.0/0 -> awg2) steals podkop fake-IP (198.18.0.0/15):

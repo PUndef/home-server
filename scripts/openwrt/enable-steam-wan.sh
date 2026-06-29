@@ -1,4 +1,5 @@
 #!/bin/sh
+# DEPRECATED — use apply_overrides.py --mode normal (manifest pbr_baseline.steam).
 # Route Steam from pundef-pc (192.168.1.133) via WAN, bypassing games catch-all awg2.
 # Policy must sit BEFORE "pundef-pc games via awg2" (0.0.0.0/0) in pbr chain.
 #

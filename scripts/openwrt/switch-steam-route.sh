@@ -1,4 +1,5 @@
 #!/bin/sh
+# DEPRECATED — use apply_overrides.py --mode normal.
 # Toggle Steam egress for pundef-pc between WAN (fast downloads) and primary tunnel.
 #
 #   awg2  — remove Steam exception; Steam + Destiny -> games catch-all (awg2)

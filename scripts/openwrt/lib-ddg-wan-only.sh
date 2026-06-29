@@ -1,4 +1,5 @@
 #!/bin/sh
+# DEPRECATED — superseded by manifest pbr_baseline.lib_ddg + apply_overrides.py.
 # Minimal fix: v3/v5.animelib.org via WAN (DDoS-Guard blocks awg2 VPN IP).
 # Paste on router (SSH/LuCI terminal from Wi‑Fi 192.168.1.x):
 #   sh /tmp/lib-ddg-wan-only.sh

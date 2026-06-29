@@ -1,4 +1,5 @@
 #!/bin/sh
+# DEPRECATED — superseded by manifest pbr_baseline.warframe + apply_overrides.py.
 # Route Warframe / Soulframe traffic via primary AmneziaWG tunnel (awg2 by default).
 # - Global policy: game-related domains -> primary tunnel (all LAN clients).
 # PC-specific routes (Steam WAN, Destiny, Nexus, Discord DNS) — apply-pundef-pc-routes.sh.

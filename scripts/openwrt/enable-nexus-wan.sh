@@ -1,4 +1,5 @@
 #!/bin/sh
+# DEPRECATED — superseded by manifest pbr_baseline.nexus + apply_overrides.py.
 # Route Nexus Mods from pundef-pc (192.168.1.133) via WAN, bypassing games catch-all awg2.
 # Policy must sit BEFORE "pundef-pc games via awg2" (0.0.0.0/0) in pbr chain.
 #

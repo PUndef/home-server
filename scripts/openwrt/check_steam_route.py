@@ -1,8 +1,6 @@
 """Steam routing check for a LAN client: current path + optional speed compare.
 
-Resolves common Steam hostnames via router DNS, evaluates pbr path for the
-client (default pundef-pc 192.168.1.133), optionally benchmarks download
-speed via wan / awg1 / awg2 on the router.
+DEPRECATED for gaming-PC baseline checks — use check_gaming_pc_routes.py instead.
 
 Usage:
   py -3 scripts/openwrt/check_steam_route.py

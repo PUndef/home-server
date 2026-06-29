@@ -1,8 +1,13 @@
-"""Safely enable Steam via WAN for pundef-pc (router-resilience).
+"""DEPRECATED: use apply_overrides.py --mode normal.
+
+Safely enable Steam via WAN for pundef-pc (router-resilience legacy wrapper).
 
 Usage:
-  py -3 scripts/openwrt/enable_steam_wan_safe.py
-  py -3 scripts/openwrt/enable_steam_wan_safe.py --dry-run
+  py -3 scripts/openwrt/enable_steam_wan_safe.py   # delegates to apply_overrides.py
+  py -3 scripts/openwrt/enable_steam_wan_safe.py --legacy  # old check_stack path
+
+Prefer:
+  py -3 scripts/openwrt/apply_overrides.py --mode normal
 """
 
 from __future__ import annotations
@@ -17,6 +22,7 @@ from pathlib import Path
 import paramiko
 
 ROOT = Path(__file__).resolve().parents[2]
+APPLY_OVERRIDES = Path(__file__).resolve().parent / "apply_overrides.py"
 ENABLE_SCRIPT = Path(__file__).resolve().parent / "enable-steam-wan.sh"
 ROLLBACK_SCRIPT = Path(__file__).resolve().parent / "rollback-steam-wan.sh"
 RESTORE_AI_SCRIPT = Path(__file__).resolve().parent / "restore-ai-tools-pbr.sh"
@@ -149,9 +155,14 @@ def verify_steam_routing(client: paramiko.SSHClient) -> list[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Safely enable Steam via WAN on pundef-pc")
+    parser = argparse.ArgumentParser(description="DEPRECATED: use apply_overrides.py --mode normal")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--legacy", action="store_true", help="Run old check_stack + enable-steam-wan path")
     args = parser.parse_args()
+
+    if not args.legacy and not args.dry_run:
+        print("DEPRECATED: delegating to apply_overrides.py --mode normal")
+        return subprocess.call([sys.executable, str(APPLY_OVERRIDES), "--mode", "normal"], cwd=str(ROOT))
 
     print("=== Baseline ===")
     before = run_check_stack()
