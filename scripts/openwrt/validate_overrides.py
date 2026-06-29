@@ -95,7 +95,8 @@ def grep_needles(label: str, text: str, needles: list[str], result: ValidationRe
 
 
 def file_sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    raw = path.read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return hashlib.sha256(raw).hexdigest()
 
 
 def remote_sha256(client: paramiko.SSHClient, remote: str) -> str | None:
