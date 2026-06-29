@@ -18,7 +18,7 @@ if [ -x "${APPLY}" ]; then
 elif [ -f "${APPLY}" ]; then
   sh "${APPLY}"
 else
-  echo "ERROR: ${APPLY} missing — run apply_pundef_pc_routes.py from PC" >&2
+  echo "ERROR: ${APPLY} missing — run apply_overrides.py --mode normal from PC" >&2
   exit 1
 fi
 

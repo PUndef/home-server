@@ -6,6 +6,7 @@ Usage:
 
 Prefer:
   py -3 scripts/openwrt/apply_overrides.py --mode normal
+  py -3 scripts/openwrt/apply_overrides.py --install-cron
 """
 
 from __future__ import annotations

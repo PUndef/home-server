@@ -37,6 +37,8 @@ LOGIN_SH = SCRIPTS / "destiny-login-mode.sh"
 NORMAL_SH = SCRIPTS / "destiny-normal-mode.sh"
 RESERVE_SH = SCRIPTS / "reserve-pundef-pc-dhcp.sh"
 HOTPLUG_LOCAL = SCRIPTS / "99-vpn-stack"
+WATCHDOG_SH = SCRIPTS / "pundef-pc-routes-watchdog.sh"
+REMOTE_WATCHDOG = "/opt/pundef-pc-routes-watchdog.sh"
 
 
 def load_manifest(path: Path = MANIFEST) -> dict[str, Any]:
@@ -183,6 +185,17 @@ def reserve_dhcp(client: paramiko.SSHClient) -> None:
         raise RuntimeError("reserve-pundef-pc-dhcp failed")
 
 
+def install_cron(client: paramiko.SSHClient) -> None:
+    upload_file(client, WATCHDOG_SH, REMOTE_WATCHDOG)
+    cron_line = f"*/15 * * * * {REMOTE_WATCHDOG}"
+    _, existing = run_remote(client, "cat /etc/crontabs/root 2>/dev/null || true")
+    if "pundef-pc-routes-watchdog" in existing:
+        print("cron watchdog already installed")
+        return
+    run_remote(client, f"(echo '{cron_line}') >> /etc/crontabs/root && /etc/init.d/cron restart")
+    print("cron watchdog installed (every 15 min)")
+
+
 def apply_normal(client: paramiko.SSHClient, manifest: dict[str, Any]) -> None:
     flag = destiny_flag(manifest)
     paths = remote_paths(manifest)
@@ -273,6 +286,11 @@ def main() -> int:
         action="store_true",
         help="Allow pbr restart while Discord/Destiny UDP sessions may be active",
     )
+    parser.add_argument(
+        "--install-cron",
+        action="store_true",
+        help="Install pundef-pc-routes watchdog cron on router (can combine with --mode normal)",
+    )
     parser.add_argument("--manifest", type=Path, default=MANIFEST)
     args = parser.parse_args()
 
@@ -321,6 +339,10 @@ def main() -> int:
         if not args.skip_upload:
             print("\n=== upload scripts ===")
             upload_scripts(client, manifest)
+
+        if args.install_cron:
+            print("\n=== install cron watchdog ===")
+            install_cron(client)
 
         if args.mode == "normal":
             print("\n=== apply normal ===")

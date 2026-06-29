@@ -17,7 +17,7 @@ CHECK_ONLY=false
 DESTINY_LOGIN_FLAG="/etc/destiny-login-mode"
 
 if [ -f "${DESTINY_LOGIN_FLAG}" ] && [ "${CHECK_ONLY}" = false ]; then
-  echo "[apply-pundef-pc-routes] destiny login mode active — skip (run destiny-normal-mode.sh)"
+  echo "[apply-pundef-pc-routes] destiny login mode active — skip (run apply_overrides.py --mode normal)"
   exit 0
 fi
 

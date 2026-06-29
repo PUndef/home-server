@@ -1,6 +1,6 @@
 #!/bin/sh
 # Self-heal pundef-pc routes if catch-all reappears or policies drift.
-# Installed to /opt/pundef-pc-routes-watchdog.sh by apply_pundef_pc_routes.py --install-cron
+# Installed to /opt/pundef-pc-routes-watchdog.sh by apply_overrides.py --install-cron
 
 APPLY="/opt/apply-pundef-pc-routes.sh"
 [ -x "${APPLY}" ] || APPLY="/opt/apply-pundef-pc-routes.sh"
