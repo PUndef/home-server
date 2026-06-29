@@ -442,14 +442,27 @@ warframe_idx="$(upsert_global_policy "Warframe via ${PRIMARY}" "${PRIMARY}" "${W
 
 # BEGIN GENERATED: openwrt-overrides policy reorder
 # Generated from config/openwrt/overrides.json. Edit the manifest, not this block.
-# Policy order: steam -> nexus -> ru_local -> lib_ddg -> discord -> destiny_auth -> srv_default -> warframe
-reorder_policy_before "${nexus_idx}" "${steam_idx}"
-reorder_policy_before "${ru_local_idx}" "${nexus_idx}"
-reorder_policy_before "${lib_ddg_idx}" "${ru_local_idx}"
-reorder_policy_before "${discord_idx}" "${lib_ddg_idx}"
-reorder_policy_before "${destiny_idx}" "${discord_idx}"
-reorder_policy_before "${srv_default_idx}" "${destiny_idx}"
-reorder_policy_before "${warframe_idx}" "${srv_default_idx}"
+# Policy order: steam -> nexus -> ru_local -> lib_ddg -> discord -> destiny_auth -> srv_default (warframe global — not reordered here)
+# If steam policy landed late in uci, pull it ahead of nexus.
+if [ "${steam_idx}" -gt "${nexus_idx}" ]; then
+  reorder_policy_before "${steam_idx}" "${nexus_idx}"
+fi
+reorder_policy_before "${steam_idx}" "${nexus_idx}"
+if [ "${ru_local_idx}" -gt "${nexus_idx}" ]; then
+  reorder_policy_before "${ru_local_idx}" "${nexus_idx}"
+fi
+if [ "${lib_ddg_idx}" -gt "${ru_local_idx}" ]; then
+  reorder_policy_before "${lib_ddg_idx}" "${ru_local_idx}"
+fi
+if [ "${discord_idx}" -gt "${lib_ddg_idx}" ]; then
+  reorder_policy_before "${discord_idx}" "${lib_ddg_idx}"
+fi
+if [ "${destiny_idx}" -gt "${discord_idx}" ]; then
+  reorder_policy_before "${destiny_idx}" "${discord_idx}"
+fi
+if [ "${srv_default_idx}" -gt "${destiny_idx}" ]; then
+  reorder_policy_before "${srv_default_idx}" "${destiny_idx}"
+fi
 # END GENERATED: openwrt-overrides policy reorder
 
 uci commit dhcp
@@ -458,6 +471,9 @@ uci commit pbr
 /etc/init.d/pbr restart
 
 echo "=== done; policies applied without catch-all ==="
+
+
+
 
 
 

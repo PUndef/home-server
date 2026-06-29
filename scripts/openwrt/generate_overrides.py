@@ -94,18 +94,36 @@ def render_apply_constants_block(manifest: dict[str, Any]) -> str:
 
 def render_policy_reorder_block(manifest: dict[str, Any]) -> str:
     order = list(manifest.get("pbr_policy_order", []))
-    if "warframe" not in order:
-        order.append("warframe")
+    # Warframe is global; do not reorder it relative to pundef-pc chain ( broke priority when moved to [1] ).
 
     lines = [
         BEGIN_POLICY_REORDER,
         "# Generated from config/openwrt/overrides.json. Edit the manifest, not this block.",
-        f'# Policy order: {" -> ".join(order)}',
+        f'# Policy order: {" -> ".join(order)} (warframe global — not reordered here)',
+        "# If steam policy landed late in uci, pull it ahead of nexus.",
+        'if [ "${steam_idx}" -gt "${nexus_idx}" ]; then',
+        '  reorder_policy_before "${steam_idx}" "${nexus_idx}"',
+        "fi",
     ]
-    for prev_key, next_key in zip(order, order[1:]):
-        prev_var = POLICY_IDX_VARS[prev_key]
-        next_var = POLICY_IDX_VARS[next_key]
-        lines.append(f'reorder_policy_before "${{{next_var}}}" "${{{prev_var}}}"')
+
+    pairs = list(zip(order, order[1:]))
+    if pairs:
+        first_late, first_early = pairs[0]
+        late_var = POLICY_IDX_VARS[first_late]
+        early_var = POLICY_IDX_VARS[first_early]
+        lines.append(f'reorder_policy_before "${{{late_var}}}" "${{{early_var}}}"')
+
+    for early_key, late_key in pairs[1:]:
+        early_var = POLICY_IDX_VARS[early_key]
+        late_var = POLICY_IDX_VARS[late_key]
+        lines.extend(
+            [
+                f'if [ "${{{late_var}}}" -gt "${{{early_var}}}" ]; then',
+                f'  reorder_policy_before "${{{late_var}}}" "${{{early_var}}}"',
+                "fi",
+            ]
+        )
+
     lines.append(END_POLICY_REORDER)
     return "\n".join(lines)
 
