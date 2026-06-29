@@ -21,9 +21,20 @@ alwaysApply: true
 - `pundef-pc` сейчас чаще всего диагностируется как Wi-Fi `192.168.1.208`; не путать с eth `192.168.1.133` и srv/Mercusys `192.168.50.133`.
 - Discord text/API/gateway для `.133/.208` должен идти через `pbr` policy `pundef-pc discord via awg2`; это уводит Cloudflare Discord (`162.159.x`) из WAN/zapret-конфликта.
 - Discord voice clean capture показал `104.29.154.185:19315`. **Не добавлять `104.29.154.0/24` в Destiny zapret-bypass**: это ломает Discord voice.
-- Destiny zapret-bypass для `.133/.208` должен быть IP-based, не port-based. Текущий рабочий/проверяемый набор хранится в `scripts/openwrt/custom.bypass_devices.sh` и `/opt/zapret/custom.bypass_devices.sh` (`DESTINY_NETS`), сейчас без `104.29.154.0/24`.
+- Destiny zapret-bypass для `.133/.208` должен быть IP-based, не port-based. Source of truth для набора — `config/openwrt/overrides.json` → generated block `DESTINY_NETS` в `scripts/openwrt/custom.bypass_devices.sh`; runtime `/opt/zapret/custom.bypass_devices.sh` должен совпадать по инвариантам. Сейчас набор без `104.29.154.0/24`.
 - Учитывать автоприменители: `/opt/pundef-pc-routes-watchdog.sh` (cron), `/etc/hotplug.d/iface/99-vpn-stack`, `/opt/apply-pundef-pc-routes.sh`, `INIT_FW_POST_UP_HOOK=/opt/zapret/custom.bypass_devices.sh`. Если фикс не внесён в канонический скрипт, он будет сброшен.
 - На 2026-06-30 подтверждено: после удаления `104.29.154.0/24` из Destiny bypass и добавления `57.129.90.115/32` в `DESTINY_NETS` Discord voice и Destiny activity работают одновременно. `pbr restart` во время живых сессий временно очищает chains/nftsets и роняет оба приложения на 20-40 секунд; после рестарта нужен fresh reconnect.
+
+## Manifest-first workflow
+
+Для пользовательских OpenWrt overrides сначала работать через `config/openwrt/overrides.json`:
+
+- Не менять generated blocks руками в `scripts/openwrt/apply-pundef-pc-routes.sh`, `custom.bypass_devices.sh`, `destiny-login-mode.sh`, `check_gaming_pc_routes.py`.
+- После изменения manifest: `py -3 scripts/openwrt/generate_overrides.py --write`, затем `--check`, затем `validate_overrides.py`.
+- Apply только через `py -3 scripts/openwrt/apply_overrides.py --mode normal|login`. **Не** предлагать `destiny_login_mode.py`, `switch_steam_route.py`, `enable-steam-wan.sh` как primary fix — они deprecated wrappers.
+- `apply_overrides.py --check-only` и `validate_overrides.py` read-only: не upload-ят и не рестартуют сервисы.
+- Dynamic lists `podkop`/`sing-box` и `zapret` не переносить в manifest; они остаются владельцами своих списков и обновлений.
+- `workvpn` clients тоже часть manifest: `paul-mac .198`, `pundef-pc .133`, `xiaomi-13t-pro .214`, corp DNS `/kpb.lt/10.0.160.1` и `gitlab.kpb.lt -> 10.0.17.5`. Не считать `srv`/Mercusys `.50.133` workvpn-клиентом.
 
 1. **Сначала читать архитектуру, потом действовать.** Минимум: `docs/network/router-openwrt-x3000t.md`, `docs/network/gaming-pc-routes.md`, `docs/network/router-resilience.md`, затем релевантные `scripts/openwrt/*`.
 2. **Не делать runtime-правок без модели потока.** Перед изменением составить кратко: `use case -> src IP -> DNS result -> pbr route -> podkop? -> zapret path -> expected layer -> conflict`.

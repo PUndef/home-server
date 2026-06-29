@@ -4,7 +4,7 @@
 # Usage:
 #   sh destiny-normal-mode.sh
 # From PC:
-#   py -3 scripts/openwrt/destiny_login_mode.py normal
+#   py -3 scripts/openwrt/apply_overrides.py --mode normal
 
 set -eu
 

@@ -8,7 +8,7 @@
 #   sh apply-pundef-pc-routes.sh --check-only  # exit 1 if drift detected
 #
 # From PC:
-#   py -3 scripts/openwrt/apply_pundef_pc_routes.py
+#   py -3 scripts/openwrt/apply_overrides.py --mode normal
 
 set -eu
 
@@ -104,6 +104,25 @@ delete_untitled_policies() {
       i=0
       continue
     fi
+    i=$((i + 1))
+  done
+  echo "${removed}"
+}
+
+delete_destiny_login_policies() {
+  removed=0
+  i=0
+  while uci -q get "pbr.@policy[${i}]" >/dev/null 2>&1; do
+    name="$(uci -q get "pbr.@policy[${i}].name" 2>/dev/null || true)"
+    case "${name}" in
+      *"(destiny login)"*)
+        echo "[apply-pundef-pc-routes] delete login policy: ${name}" >&2
+        uci delete "pbr.@policy[${i}]"
+        removed=$((removed + 1))
+        i=0
+        continue
+        ;;
+    esac
     i=$((i + 1))
   done
   echo "${removed}"
@@ -307,45 +326,77 @@ check_state() {
   return "${drift}"
 }
 
-# --- domain lists ---
+# --- domain lists (generated from config/openwrt/overrides.json) ---
 
-STEAM_DOMAINS="steampowered.com *.steampowered.com \
-  steamcommunity.com *.steamcommunity.com \
-  steamcontent.com *.steamcontent.com \
-  steamstatic.com *.steamstatic.com \
-  valvesoftware.com *.valvesoftware.com \
+# BEGIN GENERATED: openwrt-overrides apply lists
+# Generated from config/openwrt/overrides.json. Edit the manifest, not this block.
+STEAM_DOMAINS="steampowered.com \
+  *.steampowered.com \
+  steamcommunity.com \
+  *.steamcommunity.com \
+  steamcontent.com \
+  *.steamcontent.com \
+  steamstatic.com \
+  *.steamstatic.com \
+  valvesoftware.com \
+  *.valvesoftware.com \
   steamcdn-a.akamaihd.net"
 
-NEXUS_DOMAINS="nexusmods.com *.nexusmods.com"
+NEXUS_DOMAINS="nexusmods.com \
+  *.nexusmods.com"
 
-# Russian local services — must stay on WAN (geo/CDN); srv catch-all would send them via awg2.
-RU_LOCAL_DOMAINS="2gis.ru *.2gis.ru dublgis.ru *.dublgis.ru"
+RU_LOCAL_DOMAINS="2gis.ru \
+  *.2gis.ru \
+  dublgis.ru \
+  *.dublgis.ru"
 
-# AnimeLib v3/v5 mirrors (DDoS-Guard): block awg2 NL exit IP; OAuth callback lands on v5.
-# Must route via WAN before srv catch-all 0.0.0.0/0 for 192.168.50.133.
-LIB_DDG_DOMAINS="v3.animelib.org v5.animelib.org"
+LIB_DDG_DOMAINS="v3.animelib.org \
+  v5.animelib.org"
+
+WARFRAME_DOMAINS="warframe.com \
+  *.warframe.com \
+  api.warframe.com \
+  content.warframe.com \
+  soulframe.com \
+  *.soulframe.com \
+  digitalextremes.com \
+  *.digitalextremes.com"
+
+DISCORD_DNS="discord.com \
+  discord.gg \
+  discordapp.com \
+  discordapp.net \
+  discord.media \
+  discordcdn.com \
+  discordstatus.com"
+
+DISCORD_DOMAINS="discord.com \
+  *.discord.com \
+  discord.gg \
+  *.discord.gg \
+  discordapp.com \
+  *.discordapp.com \
+  discordapp.net \
+  *.discordapp.net \
+  discord.media \
+  *.discord.media \
+  discordcdn.com \
+  *.discordcdn.com \
+  discordstatus.com \
+  *.discordstatus.com \
+  gateway.discord.gg"
 
 # Destiny login / TAPIR bypass (CIS geo-block at auth only):
 # https://github.com/Flowseal/zapret-discord-youtube/discussions/6033
-DESTINY_DOMAINS="bungie.net *.bungie.net \
-  steamserver.net *.steamserver.net \
-  deadorbit.net *.deadorbit.net \
-  gravityshavings.net *.gravityshavings.net"
-
-WARFRAME_DOMAINS="warframe.com *.warframe.com api.warframe.com content.warframe.com \
-  soulframe.com *.soulframe.com digitalextremes.com *.digitalextremes.com"
-
-DISCORD_DNS="discord.com discord.gg discordapp.com discordapp.net \
-  discord.media discordcdn.com discordstatus.com"
-
-DISCORD_DOMAINS="discord.com *.discord.com \
-  discord.gg *.discord.gg \
-  discordapp.com *.discordapp.com \
-  discordapp.net *.discordapp.net \
-  discord.media *.discord.media \
-  discordcdn.com *.discordcdn.com \
-  discordstatus.com *.discordstatus.com \
-  gateway.discord.gg"
+DESTINY_DOMAINS="bungie.net \
+  *.bungie.net \
+  steamserver.net \
+  *.steamserver.net \
+  deadorbit.net \
+  *.deadorbit.net \
+  gravityshavings.net \
+  *.gravityshavings.net"
+# END GENERATED: openwrt-overrides apply lists
 
 # --- main ---
 
@@ -361,6 +412,7 @@ echo "=== apply pundef-pc routes (primary=${PRIMARY}, lan NO catch-all, srv defa
 
 delete_games_catchall >/dev/null || true
 delete_untitled_policies >/dev/null || true
+delete_destiny_login_policies >/dev/null || true
 
 for d in ${DISCORD_DNS}; do
   add_dns_bypass "${d}"
@@ -408,3 +460,5 @@ uci commit pbr
 /etc/init.d/pbr restart
 
 echo "=== done; policies applied without catch-all ==="
+
+

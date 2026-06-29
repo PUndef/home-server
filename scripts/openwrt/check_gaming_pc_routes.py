@@ -12,6 +12,37 @@ import sys
 
 import paramiko
 
+# BEGIN GENERATED: openwrt-overrides check expectations
+# Generated from config/openwrt/overrides.json. Edit the manifest, not this block.
+CHECK_REQUIRED_POLICIES_NORMAL = (
+    "pundef-pc steam via wan",
+    "pundef-pc nexus via wan",
+    "pundef-pc ru-local via wan",
+    "pundef-pc discord via {primary}",
+    "pundef-pc destiny via {primary}",
+    "Warframe via {primary}",
+)
+CHECK_DNS_RESOLVE_HOSTS = (
+    "discord.com",
+    "bungie.net",
+    "store.steampowered.com",
+    "2gis.ru",
+)
+CHECK_DESTINY_NO_A = (
+    "steamserver.net",
+    "deadorbit.net",
+    "gravityshavings.net",
+)
+CHECK_STEAM_ROUTE_TEST_IP = "23.61.239.50"
+CHECK_ZAPRET_DESTINY_NETS = (
+    "57.129.90.115/32",
+    "155.133.0.0/16",
+    "162.254.0.0/16",
+    "205.196.0.0/16",
+    "205.209.0.0/16",
+)
+# END GENERATED: openwrt-overrides check expectations
+
 FAKE_IP = re.compile(r"^198\.18\.")
 
 CLIENTS = ("192.168.1.133", "192.168.1.208", "192.168.50.133")
@@ -82,24 +113,18 @@ def main() -> int:
         else:
             print("[OK] no catch-all in nft")
 
-        for policy in (
-            "pundef-pc steam via wan",
-            "pundef-pc nexus via wan",
-            "pundef-pc ru-local via wan",
-            f"pundef-pc discord via {primary}",
-            f"pundef-pc destiny via {primary}",
-            f"Warframe via {primary}",
-        ):
-            code, _ = run(client, f"uci show pbr 2>/dev/null | grep -q \"name='{policy}'\"")
+        for policy in CHECK_REQUIRED_POLICIES_NORMAL:
+            policy_name = policy.format(primary=primary)
+            code, _ = run(client, f"uci show pbr 2>/dev/null | grep -q \"name='{policy_name}'\"")
             if code == 0:
-                print(f"[OK] policy: {policy}")
+                print(f"[OK] policy: {policy_name}")
             else:
-                failures.append(f"missing policy: {policy}")
+                failures.append(f"missing policy: {policy_name}")
 
         # Destiny auth domains may have no public A record; pbr matches by name via nftset fill.
-        DESTINY_NO_A = frozenset({"steamserver.net", "deadorbit.net", "gravityshavings.net"})
+        DESTINY_NO_A = frozenset(CHECK_DESTINY_NO_A)
 
-        for host in ("discord.com", "bungie.net", "store.steampowered.com", "2gis.ru"):
+        for host in CHECK_DNS_RESOLVE_HOSTS:
             ip = resolve(client, host)
             if not ip:
                 failures.append(f"dns: {host} unresolved")
@@ -118,7 +143,7 @@ def main() -> int:
         for client_ip in CLIENTS:
             code, route = run(
                 client,
-                f"ip route get 23.61.239.50 from {client_ip} iif br-lan mark 0x10000 2>/dev/null | head -1",
+                f"ip route get {CHECK_STEAM_ROUTE_TEST_IP} from {client_ip} iif br-lan mark 0x10000 2>/dev/null | head -1",
             )
             if code == 0 and " dev wan " in route:
                 print(f"[OK] steam path {client_ip} -> wan")
@@ -173,13 +198,14 @@ def main() -> int:
         code_pre, zapret_prenat = run(client, "nft list chain inet zapret prenat 2>/dev/null")
         zapret_all = f"{zapret_postnat}\n{zapret_prenat}"
         if code == 0 and code_pre == 0:
-            if "104.29.154.0/24" in zapret_all or "104.29.154." in zapret_all:
+            if re.search(r"ip daddr \{[^}]*104\.29\.154|ip daddr 104\.29\.154/", zapret_all):
                 failures.append("discord voice range 104.29.154.0/24 is in zapret bypass (breaks Discord voice)")
             else:
                 print("[OK] discord voice range 104.29.154.0/24 not in zapret bypass")
 
-            for needle in ("57.129.90.115", "155.133.0.0/16", "162.254.0.0/16", "205.209.0.0/16"):
-                if needle not in zapret_all:
+            for needle in CHECK_ZAPRET_DESTINY_NETS:
+                short = needle.removesuffix("/32")
+                if short not in zapret_all and needle not in zapret_all:
                     failures.append(f"destiny zapret bypass missing {needle}")
             if not any(f"destiny zapret bypass missing" in item for item in failures):
                 print("[OK] destiny zapret bypass ranges present")
@@ -200,7 +226,7 @@ def main() -> int:
         print(f"FAILED ({len(failures)}):")
         for item in failures:
             print(f"  - {item}")
-        print("Fix: py -3 scripts/openwrt/apply_pundef_pc_routes.py")
+        print("Fix: py -3 scripts/openwrt/apply_overrides.py --mode normal")
         return 1
 
     print("All gaming-PC route checks passed.")
@@ -209,3 +235,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

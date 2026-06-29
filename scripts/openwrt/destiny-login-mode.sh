@@ -8,12 +8,20 @@
 #   sh destiny-login-mode.sh           # Steam domains -> tunnel
 #   sh destiny-login-mode.sh --full  # ALL egress .133/.208 -> tunnel (stronger)
 # From PC:
-#   py -3 scripts/openwrt/destiny_login_mode.py login
-#   py -3 scripts/openwrt/destiny_login_mode.py login --full
+#   py -3 scripts/openwrt/apply_overrides.py --mode login
+#   py -3 scripts/openwrt/apply_overrides.py --mode login --full
 
 set -eu
 
+# BEGIN GENERATED: openwrt-overrides destiny login constants
+# Generated from config/openwrt/overrides.json. Edit the manifest, not this block.
 FLAG="/etc/destiny-login-mode"
+LOGIN_STEAM_NAME_TEMPLATE="pundef-pc steam via {primary} (destiny login)"
+LOGIN_FULL_NAME_TEMPLATE="pundef-pc destiny login full via {primary}"
+PC_ETH="192.168.1.133"
+PC_WIFI="192.168.1.208"
+# END GENERATED: openwrt-overrides destiny login constants
+
 FULL=false
 case "${1:-}" in
   --full|full) FULL=true ;;
@@ -27,8 +35,8 @@ case "${PRIMARY}" in
   *) PRIMARY=awg2 ;;
 esac
 
-PC_ETH="${PUNDEF_PC_ETH:-192.168.1.133}"
-PC_WIFI="${PUNDEF_PC_WIFI:-192.168.1.208}"
+PC_ETH="${PUNDEF_PC_ETH:-${PC_ETH}}"
+PC_WIFI="${PUNDEF_PC_WIFI:-${PC_WIFI}}"
 
 find_policy_idx() {
   name="$1"
@@ -80,7 +88,8 @@ if ! idx="$(find_steam_policy_idx 2>/dev/null)"; then
 fi
 
 uci set "pbr.@policy[${idx}].interface=${PRIMARY}"
-uci set "pbr.@policy[${idx}].name=pundef-pc steam via ${PRIMARY} (destiny login)"
+steam_name="${LOGIN_STEAM_NAME_TEMPLATE//\{primary\}/${PRIMARY}}"
+uci set "pbr.@policy[${idx}].name=${steam_name}"
 uci set "pbr.@policy[${idx}].enabled=1"
 
 # Drop duplicate steam-via-wan left by apply-pundef-pc-routes
@@ -98,7 +107,7 @@ done
 
 if [ "${FULL}" = true ]; then
   echo "=== enabling login FULL (0.0.0.0/0 -> ${PRIMARY}) ===" >&2
-  catch_name="pundef-pc destiny login full via ${PRIMARY}"
+  catch_name="${LOGIN_FULL_NAME_TEMPLATE//\{primary\}/${PRIMARY}}"
   catch_idx=""
   if catch_idx="$(find_policy_idx "${catch_name}" 2>/dev/null)"; then
     :
@@ -128,4 +137,6 @@ else
 fi
 echo "=== login mode ON (${FULL:+FULL }${FULL:-split}); wait ~15s ==="
 echo "=== quit Steam -> restart Steam -> launch Destiny ==="
-echo "=== after IN THE WORLD (tower/ship), NOT character select: destiny_login_mode.py normal ==="
+echo "=== after IN THE WORLD (tower/ship), NOT character select: apply_overrides.py --mode normal ==="
+
+

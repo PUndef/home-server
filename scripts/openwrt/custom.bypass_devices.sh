@@ -13,7 +13,7 @@ delete_nft_by_comment() {
   comment="$3"
   while true; do
     handle=$(nft -a list chain "$table" "$chain" 2>/dev/null \
-      | grep "comment \"$comment\"" | head -1 | sed -n 's/.*# handle \([0-9]*\).*/\1/p')
+      | grep "comment \"$comment\"" | head -1 | awk '{print $NF}')
     [ -n "$handle" ] || break
     nft delete rule "$table" "$chain" handle "$handle" 2>/dev/null || break
   done
@@ -54,7 +54,12 @@ delete_nft_by_comment inet zapret prenat "zapret-ct-bypass-208-pre-tcp"
 # Do NOT include 104.29.154.0/24 here: a clean Discord-only capture showed
 # Discord voice on 104.29.154.185:19315, so bypassing it breaks Discord voice.
 # zapret mangling these -> "centipede"/"currant"/"cabbage"/"hare"; raw WAN to them works.
-DESTINY_NETS="{ 57.129.90.115/32, 155.133.0.0/16, 162.254.0.0/16, 205.209.0.0/16 }"
+# BEGIN GENERATED: openwrt-overrides zapret destiny nets
+# Generated from config/openwrt/overrides.json. Edit the manifest, not this block.
+# Destiny activity servers must bypass nfqws; Discord voice must remain outside this bypass.
+# Forbidden in Destiny bypass: 104.29.154.0/24
+DESTINY_NETS="{ 57.129.90.115/32, 155.133.0.0/16, 162.254.0.0/16, 205.196.0.0/16, 205.209.0.0/16 }"
+# END GENERATED: openwrt-overrides zapret destiny nets
 # migrate any legacy port-based game rules first
 delete_nft_by_comment inet zapret postnat "zapret-ct-bypass-133-destiny"
 delete_nft_by_comment inet zapret prenat "zapret-ct-bypass-133-destiny-pre"
@@ -64,6 +69,10 @@ delete_nft_by_comment inet zapret postnat "zapret-ct-bypass-133-games"
 delete_nft_by_comment inet zapret prenat "zapret-ct-bypass-133-games-pre"
 delete_nft_by_comment inet zapret postnat "zapret-ct-bypass-208-games"
 delete_nft_by_comment inet zapret prenat "zapret-ct-bypass-208-games-pre"
+delete_nft_by_comment inet zapret postnat "zapret-ct-bypass-133-destiny-ip"
+delete_nft_by_comment inet zapret prenat "zapret-ct-bypass-133-destiny-ip-pre"
+delete_nft_by_comment inet zapret postnat "zapret-ct-bypass-208-destiny-ip"
+delete_nft_by_comment inet zapret prenat "zapret-ct-bypass-208-destiny-ip-pre"
 nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-133-destiny-ip || \
     nft insert rule inet zapret postnat ct original ip saddr 192.168.1.133 ip daddr $DESTINY_NETS return comment zapret-ct-bypass-133-destiny-ip
 nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-133-destiny-ip-pre || \
@@ -72,6 +81,21 @@ nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-208-de
     nft insert rule inet zapret postnat ct original ip saddr 192.168.1.208 ip daddr $DESTINY_NETS return comment zapret-ct-bypass-208-destiny-ip
 nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-208-destiny-ip-pre || \
     nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.208 ip saddr $DESTINY_NETS return comment zapret-ct-bypass-208-destiny-ip-pre
+
+# Destiny instance / lost sector load: dynamic Steam relay IPs outside 155.133/162.254.
+# BEGIN GENERATED: openwrt-overrides zapret steam sdr
+# Generated from config/openwrt/overrides.json. Edit the manifest, not this block.
+STEAM_SDR_CLIENTS="192.168.1.133 192.168.1.208"
+STEAM_SDR_UDP_DPORT="27000-27200"
+STEAM_SDR_FORBIDDEN="104.29.154.0/24"
+# END GENERATED: openwrt-overrides zapret steam sdr
+for client_ip in ${STEAM_SDR_CLIENTS}; do
+  client_suffix="${client_ip##*.}"
+  nft list chain inet zapret postnat 2>/dev/null | grep -q "zapret-ct-bypass-${client_suffix}-steam-sdr" || \
+      nft insert rule inet zapret postnat ct original ip saddr "${client_ip}" ip daddr != ${STEAM_SDR_FORBIDDEN} udp dport ${STEAM_SDR_UDP_DPORT} return comment "zapret-ct-bypass-${client_suffix}-steam-sdr"
+  nft list chain inet zapret prenat 2>/dev/null | grep -q "zapret-ct-bypass-${client_suffix}-steam-sdr-pre" || \
+      nft insert rule inet zapret prenat ct reply ip daddr "${client_ip}" ip saddr != ${STEAM_SDR_FORBIDDEN} udp sport ${STEAM_SDR_UDP_DPORT} return comment "zapret-ct-bypass-${client_suffix}-steam-sdr-pre"
+done
 
 # xiaomi-13t-pro: Android TLS/DPI bypass (same symptom class as pundef-pc).
 nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-214 || \
@@ -86,3 +110,7 @@ nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-srv ||
     nft insert rule inet zapret postnat ct original ip saddr 192.168.50.0/24 return comment zapret-ct-bypass-srv
 nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-srv-pre || \
     nft insert rule inet zapret prenat ct reply ip daddr 192.168.50.0/24 return comment zapret-ct-bypass-srv-pre
+
+
+
+

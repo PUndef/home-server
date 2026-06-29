@@ -1,0 +1,329 @@
+{
+  "schema_version": 1,
+  "description": "Declarative home-server OpenWrt overrides. This file describes only local custom rules; podkop/sing-box/zapret dynamic lists remain owned by their services.",
+  "clients": {
+    "pundef_pc": {
+      "lan": [
+        "192.168.1.133",
+        "192.168.1.208"
+      ],
+      "srv": [
+        "192.168.50.133"
+      ]
+    },
+    "phoneserver": {
+      "lan": [
+        "192.168.1.227"
+      ],
+      "srv": [
+        "192.168.50.127"
+      ]
+    },
+    "xiaomi_13t_pro": {
+      "lan": [
+        "192.168.1.214"
+      ]
+    },
+    "paul_mac": {
+      "lan": [
+        "192.168.1.198"
+      ]
+    }
+  },
+  "primary_interface": "podkop.main.interface",
+  "workvpn": {
+    "interface": "workvpn",
+    "route_table": "pbr_workvpn",
+    "dns": {
+      "domain": "kpb.lt",
+      "upstream": "10.0.160.1",
+      "static_hosts": {
+        "gitlab.kpb.lt": "10.0.17.5"
+      }
+    },
+    "destinations": [
+      "kpb.lt",
+      "*.kpb.lt",
+      "gitlab.kpb.lt",
+      "10.0.160.0/22",
+      "10.0.17.0/24"
+    ],
+    "clients": [
+      {
+        "name": "paul-mac",
+        "src": "192.168.1.198",
+        "policy": "paul-mac kpb via workvpn"
+      },
+      {
+        "name": "pundef-pc",
+        "src": "192.168.1.133",
+        "policy": "pundef-pc kpb via workvpn"
+      },
+      {
+        "name": "xiaomi-13t-pro",
+        "src": "192.168.1.214",
+        "policy": "xiaomi-13t-pro kpb via workvpn",
+        "force_dns": true,
+        "block_dot": true
+      }
+    ],
+    "watchdog": "/opt/pbr-workvpn-watchdog.sh"
+  },
+  "dns_bypass": {
+    "upstream": "8.8.8.8",
+    "domains": [
+      "discord.com",
+      "discord.gg",
+      "discordapp.com",
+      "discordapp.net",
+      "discord.media",
+      "discordcdn.com",
+      "discordstatus.com",
+      "bungie.net",
+      "steamserver.net",
+      "deadorbit.net",
+      "gravityshavings.net",
+      "2gis.ru",
+      "dublgis.ru",
+      "animelib.org"
+    ]
+  },
+  "pbr_baseline": {
+    "steam": {
+      "name": "pundef-pc steam via wan",
+      "interface": "wan",
+      "upsert": "pc",
+      "domains": [
+        "steampowered.com",
+        "*.steampowered.com",
+        "steamcommunity.com",
+        "*.steamcommunity.com",
+        "steamcontent.com",
+        "*.steamcontent.com",
+        "steamstatic.com",
+        "*.steamstatic.com",
+        "valvesoftware.com",
+        "*.valvesoftware.com",
+        "steamcdn-a.akamaihd.net"
+      ]
+    },
+    "nexus": {
+      "name": "pundef-pc nexus via wan",
+      "interface": "wan",
+      "upsert": "pc",
+      "domains": [
+        "nexusmods.com",
+        "*.nexusmods.com"
+      ]
+    },
+    "ru_local": {
+      "name": "pundef-pc ru-local via wan",
+      "interface": "wan",
+      "upsert": "pc",
+      "domains": [
+        "2gis.ru",
+        "*.2gis.ru",
+        "dublgis.ru",
+        "*.dublgis.ru"
+      ]
+    },
+    "lib_ddg": {
+      "name": "pundef-pc lib ddg via wan",
+      "interface": "wan",
+      "upsert": "pc",
+      "domains": [
+        "v3.animelib.org",
+        "v5.animelib.org"
+      ]
+    },
+    "srv_default": {
+      "name_template": "pundef-pc srv default via {primary}",
+      "interface": "primary",
+      "upsert": "srv_default",
+      "dest": "0.0.0.0/0"
+    },
+    "warframe": {
+      "name_template": "Warframe via {primary}",
+      "interface": "primary",
+      "upsert": "global",
+      "domains": [
+        "warframe.com",
+        "*.warframe.com",
+        "api.warframe.com",
+        "content.warframe.com",
+        "soulframe.com",
+        "*.soulframe.com",
+        "digitalextremes.com",
+        "*.digitalextremes.com"
+      ]
+    }
+  },
+  "pbr_policy_order": [
+    "steam",
+    "nexus",
+    "ru_local",
+    "lib_ddg",
+    "discord",
+    "destiny_auth",
+    "srv_default"
+  ],
+  "destiny_modes": {
+    "flag": "/etc/destiny-login-mode",
+    "normal": {
+      "steam": "pbr_baseline.steam"
+    },
+    "login": {
+      "steam_policy": {
+        "name_template": "pundef-pc steam via {primary} (destiny login)",
+        "interface": "primary"
+      },
+      "full_tunnel": {
+        "name_template": "pundef-pc destiny login full via {primary}",
+        "src_group": "pundef_pc.lan",
+        "interface": "primary",
+        "dest": "0.0.0.0/0"
+      },
+      "static_ips": [
+        "199.165.136.100"
+      ]
+    }
+  },
+  "check_expectations": {
+    "required_policies_normal": [
+      "pundef-pc steam via wan",
+      "pundef-pc nexus via wan",
+      "pundef-pc ru-local via wan",
+      "pundef-pc discord via {primary}",
+      "pundef-pc destiny via {primary}",
+      "Warframe via {primary}"
+    ],
+    "dns_resolve_hosts": [
+      "discord.com",
+      "bungie.net",
+      "store.steampowered.com",
+      "2gis.ru"
+    ],
+    "destiny_no_a_records": [
+      "steamserver.net",
+      "deadorbit.net",
+      "gravityshavings.net"
+    ],
+    "steam_route_test_ip": "23.61.239.50"
+  },
+  "pbr_overrides": {
+    "discord": {
+      "name_template": "pundef-pc discord via {primary}",
+      "src_group": "pundef_pc.lan",
+      "interface": "primary",
+      "domains": [
+        "discord.com",
+        "*.discord.com",
+        "discord.gg",
+        "*.discord.gg",
+        "discordapp.com",
+        "*.discordapp.com",
+        "discordapp.net",
+        "*.discordapp.net",
+        "discord.media",
+        "*.discord.media",
+        "discordcdn.com",
+        "*.discordcdn.com",
+        "discordstatus.com",
+        "*.discordstatus.com",
+        "gateway.discord.gg"
+      ]
+    },
+    "destiny_auth": {
+      "name_template": "pundef-pc destiny via {primary}",
+      "src_group": "pundef_pc.all",
+      "interface": "primary",
+      "domains": [
+        "bungie.net",
+        "*.bungie.net",
+        "steamserver.net",
+        "*.steamserver.net",
+        "deadorbit.net",
+        "*.deadorbit.net",
+        "gravityshavings.net",
+        "*.gravityshavings.net"
+      ]
+    }
+  },
+  "zapret_bypass": {
+    "pundef_pc_eth_tcp": {
+      "src": [
+        "192.168.1.133"
+      ],
+      "protocol": "tcp",
+      "reason": "Cloudflare CDN TLS handshake for Cursor Remote SSH / WSL nodesource"
+    },
+    "pundef_pc_wlan_no_blanket_bypass": {
+      "src": [
+        "192.168.1.208"
+      ],
+      "forbid_blanket_bypass": true,
+      "reason": "Discord TCP gateway and UDP voice need zapret on this ISP"
+    },
+    "destiny_activity": {
+      "src": [
+        "192.168.1.133",
+        "192.168.1.208"
+      ],
+      "dst": [
+        "57.129.90.115/32",
+        "155.133.0.0/16",
+        "162.254.0.0/16",
+        "205.196.0.0/16",
+        "205.209.0.0/16"
+      ],
+      "forbidden": [
+        "104.29.154.0/24"
+      ],
+      "reason": "Destiny activity UDP must bypass nfqws; Discord voice uses 104.29.154.185:19315 and must not be bypassed"
+    },
+    "destiny_steam_sdr": {
+      "src": [
+        "192.168.1.133",
+        "192.168.1.208"
+      ],
+      "udp_dport": "27000-27200",
+      "forbidden": [
+        "104.29.154.0/24"
+      ],
+      "reason": "Lost sector / instance load uses dynamic Steam relay IPs outside 155.133/162.254; bypass SDR ports only, not Discord voice :19315"
+    },
+    "srv_subnet": {
+      "src": [
+        "192.168.50.0/24"
+      ],
+      "reason": "Keep DPI off srv / Proxmox / VM traffic"
+    },
+    "phoneserver_wlan": {
+      "src": [
+        "192.168.1.227"
+      ],
+      "reason": "Voice PE / Groq traffic"
+    },
+    "xiaomi_13t_pro": {
+      "src": [
+        "192.168.1.214"
+      ],
+      "reason": "Android TLS/DPI bypass"
+    }
+  },
+  "automation": {
+    "apply_routes": "/opt/apply-pundef-pc-routes.sh",
+    "apply_overrides": "scripts/openwrt/apply_overrides.py",
+    "destiny_login": "/opt/destiny-login-mode.sh",
+    "destiny_normal": "/opt/destiny-normal-mode.sh",
+    "zapret_hook": "/opt/zapret/custom.bypass_devices.sh",
+    "hotplug": "/etc/hotplug.d/iface/99-vpn-stack",
+    "watchdog": "/opt/pundef-pc-routes-watchdog.sh",
+    "cron_contains": [
+      "/opt/pundef-pc-routes-watchdog.sh",
+      "/opt/pbr-workvpn-watchdog.sh",
+      "/opt/pbr-phoneserver-groq-watchdog.sh",
+      "/usr/bin/podkop-subnets-watchdog.sh"
+    ]
+  }
+}
