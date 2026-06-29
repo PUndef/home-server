@@ -62,6 +62,7 @@ Failover awg1 ⇄ awg2        → scripts/openwrt/switch_primary_tunnel_safe.py
 - **AmneziaWG `awg2`** — Neth NL (`45.154.35.222`). **Primary** для podkop, pbr AI/Mangalib, GitHub community-list routes, `srv→awg2` (OwnCord ghcr).
 - **OpenConnect `vpn-workvpn`** — корпоративный VPN, поднимается с парой `username/password`, split-routing для клиентов с pbr-policy (сейчас `paul-mac` `192.168.1.198`, `pundef-pc` `192.168.1.133`, `xiaomi-13t-pro` `192.168.1.214`) и `*.kpb.lt`.
 - **zapret / nfqws** — модификация первых пакетов TCP/UDP уже выбранных WAN-потоков; маршрут не выбирает.
+- **`config/openwrt/overrides.json`** — source of truth только для локальных кастомных overrides (`pundef-pc`, Discord/Destiny, per-device bypass, cron/hotplug expectations). Dynamic lists `podkop`/`sing-box` и `zapret` не переносятся в manifest и остаются владельцами своих обновлений.
 
 ---
 
@@ -553,6 +554,9 @@ nft list table inet zapret
 | [scripts/openwrt/openwrt_exec.py](../../scripts/openwrt/openwrt_exec.py)                                 | Выполнить одну команду на роутере по SSH с ключом без passphrase (`OPENWRT_HOST`, `OPENWRT_USER`, `OPENWRT_KEY`).                                                                   |
 | [scripts/openwrt/upload.py](../../scripts/openwrt/upload.py)                                             | Залить локальный файл на роутер по SSH (без SFTP — через `base64 -d`). Используется для обновления `99-vpn-stack` и других конфигов.                                                |
 | [scripts/openwrt/check_stack.py](../../scripts/openwrt/check_stack.py)                                   | Health-check стека (primary = `podkop.main.interface`, backup `awg1` informational). |
+| [config/openwrt/overrides.json](../../config/openwrt/overrides.json)                                      | Декларативный manifest пользовательских OpenWrt overrides; не включает dynamic lists podkop/zapret. |
+| [scripts/openwrt/generate_overrides.py](../../scripts/openwrt/generate_overrides.py)                       | Dry-run generator и `--check` для generated blocks в локальных скриптах. |
+| [scripts/openwrt/validate_overrides.py](../../scripts/openwrt/validate_overrides.py)                       | Read-only validator: local manifest/scripts + live router drift checks без upload/restart. |
 | [scripts/openwrt/switch_primary_tunnel_safe.py](../../scripts/openwrt/switch_primary_tunnel_safe.py)     | Безопасное переключение primary `awg1` ⇄ `awg2` с auto-rollback. |
 | [scripts/openwrt/switch-primary-tunnel.sh](../../scripts/openwrt/switch-primary-tunnel.sh)               | Shell-логика переключения на роутере. |
 | [scripts/openwrt/trace_traffic.py](../../scripts/openwrt/trace_traffic.py)                               | Трассировка пути конкретного домена/IP через pbr/podkop/zapret.                                                                                                                     |
@@ -569,7 +573,8 @@ nft list table inet zapret
 | [scripts/openwrt/rollback-workvpn-xiaomi-13t-pro.sh](../../scripts/openwrt/rollback-workvpn-xiaomi-13t-pro.sh) | Откат corp pbr-policy для `xiaomi-13t-pro` (`.214`); не трогает `paul-mac` / `pundef-pc`.                                                                          |
 | [scripts/openwrt/reserve-phoneserver-dhcp.sh](../../scripts/openwrt/reserve-phoneserver-dhcp.sh)         | DHCP srv `.127` + wlan `.227` для phoneserver.                                                                                                                                      |
 | [scripts/openwrt/reserve-pundef-pc-dhcp.sh](../../scripts/openwrt/reserve-pundef-pc-dhcp.sh)             | DHCP lan `.133` + srv **Mercusys** `.50.133` для `pundef-pc`.                                                                                                                       |
-| [scripts/openwrt/apply_pundef_pc_routes.py](../../scripts/openwrt/apply_pundef_pc_routes.py)             | Deploy `/opt/apply-pundef-pc-routes.sh`, DHCP, watchdog; **только с lan/Wi‑Fi** (не с srv). См. [gaming-pc-routes.md](gaming-pc-routes.md).                                       |
+| [scripts/openwrt/apply_overrides.py](../../scripts/openwrt/apply_overrides.py)                           | **Primary:** manifest validate → upload → apply normal/login; cron `--install-cron`. **Только с lan/Wi‑Fi** (не с srv). См. [gaming-pc-routes.md](gaming-pc-routes.md), [openwrt-overrides.md](openwrt-overrides.md). |
+| [scripts/openwrt/apply_pundef_pc_routes.py](../../scripts/openwrt/apply_pundef_pc_routes.py)             | Deprecated wrapper → `apply_overrides.py --mode normal`.                                                                                                                          |
 
 
 Пример с ПК (PowerShell, дефолтный ключ `C:\Users\PUndef-PC\.ssh\openwrt_ax300t_nopass`):

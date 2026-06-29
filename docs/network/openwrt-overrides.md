@@ -77,6 +77,26 @@ Manifest генерирует blocks в:
 - `pbr restart` только когда менялись pbr/DNS sections.
 - zapret hook apply предпочтительнее `zapret restart` для точечных nft rules.
 
+## Legacy scripts (deprecated)
+
+Не использовать как primary deploy path. Все gaming-pc routing changes — через manifest + `apply_overrides.py`.
+
+| Script | Superseded by |
+| --- | --- |
+| `apply_pundef_pc_routes.py` | `apply_overrides.py --mode normal` |
+| `destiny_login_mode.py` | `apply_overrides.py --mode login\|normal` |
+| `switch_steam_route.py` / `switch-steam-route.sh` | `apply_overrides.py --mode normal` |
+| `enable-steam-wan.sh` / `rollback-steam-wan.sh` | manifest `pbr_baseline.steam` + apply |
+| `enable_steam_wan_safe.py` | `apply_overrides.py --mode normal` |
+| `check_steam_route.py` | `check_gaming_pc_routes.py` |
+| `enable-discord-gaming-pc.sh` | manifest `pbr_overrides.discord` |
+| `enable-nexus-wan.sh` | manifest `pbr_baseline.nexus` |
+| `enable-warframe-awg2.sh` | manifest `pbr_baseline.warframe` |
+| `expand-pundef-pc-pbr.sh` | `apply-pundef-pc-routes.sh` (generated) |
+| `lib-ddg-wan-only.sh` | manifest `pbr_baseline.lib_ddg` |
+
+**Green check ≠ Destiny login OK:** `check_gaming_pc_routes.py` и `validate_overrides.py` могут быть green в normal mode, пока cold Steam auth идёт через WAN — для входа нужен `--mode login`.
+
 ## См. Также
 
 - [`gaming-pc-routes.md`](gaming-pc-routes.md)

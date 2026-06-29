@@ -28,9 +28,9 @@ Mercusys switch ──► X3000T lan2 (srv) ──► 192.168.50.133 (eth srv)
 ## Таблица маршрутов
 
 
-| Трафик               | Домены / IP                                                             | Куда                          | Механизм                         | DNS                   | Автовосстановление                                                                                                                                                  |
+| Трафик               | Домены / IP                                                             | Куда                          | Механизм                         | DNS                   | Deploy / восстановление                                                                                                                                             |
 | -------------------- | ----------------------------------------------------------------------- | ----------------------------- | -------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Steam** (загрузки) | `steampowered.com`, CDN, `steamstatic.com`                              | **WAN**                       | pbr `pundef-pc steam via wan`    | реальные IP (nftset)  | `apply-pundef-pc-routes.sh`                                                                                                                                         |
+| **Steam** (загрузки) | `steampowered.com`, CDN, `steamstatic.com`                              | **WAN**                       | pbr `pundef-pc steam via wan`    | реальные IP (nftset)  | `apply_overrides.py --mode normal`; hotplug/watchdog → `/opt/apply-pundef-pc-routes.sh`                                                                           |
 | **Nexus Mods**       | `nexusmods.com`                                                         | **WAN**                       | pbr `pundef-pc nexus via wan`    | реальные IP           | то же                                                                                                                                                               |
 | **RU local (2GIS)**  | `2gis.ru`, `dublgis.ru`                                                 | **WAN**                       | pbr `pundef-pc ru-local via wan` | bypass → `8.8.8.8`    | иначе srv catch-all уводит в awg2                                                                                                                                   |
 | **Destiny / Bungie** | `bungie.net`, `steamserver.net`, `deadorbit.net`, `gravityshavings.net`; game IPs in `DESTINY_NETS` | **awg2** для auth/API; selected game UDP bypasses zapret on WAN | pbr `pundef-pc destiny via awg2` + zapret IP-bypass | bypass → `8.8.8.8`    | TAPIR — гео-блок на **авторизации**; activity UDP must not be nfqws-mangled |
@@ -112,8 +112,8 @@ py -3 scripts/openwrt/check_gaming_pc_routes.py
 | **pbr wildcard `*.domain`**    | В логах `ERROR: Unknown entry`                       | Обычно nftset всё равно заполняется; при поломке — убрать `*.` из dest_addr                            |
 | **Битые политики `Untitled`**  | pbr restart с ошибками                               | `apply-pundef-pc-routes.sh` удаляет пустые                                                             |
 | **Перезагрузка роутера**       | Политики слетают, если только в RAM                  | hotplug + cron watchdog                                                                                |
-| **PC на srv без pbr**          | YouTube/Discord таймаут (голый RU WAN)               | `apply_pundef_pc_routes.py`; eth должен быть `.50.133`, не случайный `.50.x`                          |
-| **RU-сайты через VPN на srv**  | 2GIS и др. уходят в awg2 из-за srv catch-all         | политика `pundef-pc ru-local via wan`; `apply_pundef_pc_routes.py`                                    |
+| **PC на srv без pbr**          | YouTube/Discord таймаут (голый RU WAN)               | `apply_overrides.py --mode normal`; eth должен быть `.50.133`, не случайный `.50.x`                   |
+| **RU-сайты через VPN на srv**  | 2GIS и др. уходят в awg2 из-за srv catch-all         | политика `pundef-pc ru-local via wan`; `apply_overrides.py --mode normal`                             |
 | **Deploy с srv**               | SSH/LuCI на `192.168.1.1` недоступны                 | Подключиться к домашнему Wi‑Fi или lan-кабелю X3000T, затем deploy                                     |
 | **Corp с Mercusys**            | `*.kpb.lt` не идёт в workvpn                         | Переключиться на lan `.133` / Wi‑Fi `.208`                                                             |
 
@@ -126,33 +126,46 @@ Steam-auth на входе должен идти через туннель (не
 
 ```powershell
 # Перед запуском Destiny (закрой Steam, потом снова открой):
-py -3 scripts/openwrt/destiny_login_mode.py login
+py -3 scripts/openwrt/apply_overrides.py --mode login
 
 # Если TAPIR остаётся — полный туннель только на время входа (как VPN на весь ПК):
-py -3 scripts/openwrt/destiny_login_mode.py login --full
+py -3 scripts/openwrt/apply_overrides.py --mode login --full
 
 # Другой egress (тест): --tunnel awg1
-py -3 scripts/openwrt/destiny_login_mode.py login --full --tunnel awg1
+py -3 scripts/openwrt/apply_overrides.py --mode login --full --tunnel awg1
 
 # После того как оказался В МИРЕ (башня / корабль / патруль), НЕ на экране персонажей:
-py -3 scripts/openwrt/destiny_login_mode.py normal
+py -3 scripts/openwrt/apply_overrides.py --mode normal
 # Скрипт «висит» ~30–60 с (pbr restart) — не запускать во время загрузки.
 
 # Статус:
-py -3 scripts/openwrt/destiny_login_mode.py status
+py -3 scripts/openwrt/apply_overrides.py --mode status
 ```
+
+`destiny_login_mode.py` и `apply_pundef_pc_routes.py` — deprecated wrappers; вызывают `apply_overrides.py`.
 
 Пока активен login mode, файл `/etc/destiny-login-mode` на роутере — watchdog и `apply-pundef-pc-routes` **не откатывают** Steam на WAN.
 
-## Один скрипт — один источник правды
+## Один manifest — generated scripts
 
 ```powershell
-# Применить / починить всё (normal mode):
-py -3 scripts/openwrt/apply_pundef_pc_routes.py --install-cron
+# Проверить manifest-generated blocks локально:
+py -3 scripts/openwrt/generate_overrides.py --check
 
-# Проверить:
+# Проверить live drift без изменений на роутере:
+py -3 scripts/openwrt/validate_overrides.py
+
+# Применить / починить всё (normal mode) только после согласованного ACT:
+py -3 scripts/openwrt/apply_overrides.py --mode normal
+
+# Только read-only drift:
+py -3 scripts/openwrt/apply_overrides.py --check-only
+
+# Проверить базовые игровые маршруты:
 py -3 scripts/openwrt/check_gaming_pc_routes.py
 ```
+
+`config/openwrt/overrides.json` — source of truth для кастомных pundef-pc policies (Steam/Nexus/RU-local/Discord/Destiny/Warframe), `destiny_modes`, zapret bypass и workvpn clients. Generated blocks в `apply-pundef-pc-routes.sh`, `custom.bypass_devices.sh`, `destiny-login-mode.sh`, `check_gaming_pc_routes.py` руками не редактировать.
 
 ### Автовосстановление после reboot / flap
 
@@ -161,7 +174,8 @@ py -3 scripts/openwrt/check_gaming_pc_routes.py
 | --------------------------------------------- | ------------------------------------------------------------ |
 | hotplug `99-vpn-stack` на `wan`/`awg1`/`awg2` | после `pbr restart` → `/opt/apply-pundef-pc-routes.sh`       |
 | cron каждые 15 мин                            | `pundef-pc-routes-watchdog.sh` → `--check-only` или re-apply |
-| Ручной откат                                  | `py -3 scripts/openwrt/apply_pundef_pc_routes.py`            |
+| Ручной откат                                  | `py -3 scripts/openwrt/apply_overrides.py --mode normal`     |
+| Установка cron watchdog                       | `py -3 scripts/openwrt/apply_overrides.py --install-cron`    |
 
 
 ---
@@ -180,8 +194,14 @@ py -3 scripts/openwrt/check_gaming_pc_routes.py
 
 | Файл                                                                                 | Назначение                                |
 | ------------------------------------------------------------------------------------ | ----------------------------------------- |
+| `[overrides.json](../../config/openwrt/overrides.json)`                              | Source of truth для кастомных OpenWrt overrides |
+| `[openwrt-overrides.md](openwrt-overrides.md)`                                       | Inventory источников состояния, рестартов и manifest workflow |
+| `[apply_overrides.py](../../scripts/openwrt/apply_overrides.py)`                     | **Primary:** validate → upload → apply normal/login с ПК |
 | `[apply-pundef-pc-routes.sh](../../scripts/openwrt/apply-pundef-pc-routes.sh)`       | Каноническое состояние на роутере `/opt/` |
-| `[apply_pundef_pc_routes.py](../../scripts/openwrt/apply_pundef_pc_routes.py)`       | Deploy + apply с ПК                       |
+| `[apply_pundef_pc_routes.py](../../scripts/openwrt/apply_pundef_pc_routes.py)`       | Deprecated wrapper → `apply_overrides.py` |
+| `[destiny_login_mode.py](../../scripts/openwrt/destiny_login_mode.py)`               | Deprecated wrapper → `apply_overrides.py --mode login\|normal` |
+| `[generate_overrides.py](../../scripts/openwrt/generate_overrides.py)`               | Dry-run generator / generated-block check |
+| `[validate_overrides.py](../../scripts/openwrt/validate_overrides.py)`               | Read-only live drift validator            |
 | `[check_gaming_pc_routes.py](../../scripts/openwrt/check_gaming_pc_routes.py)`       | Smoke-test                                |
 | `[reserve-pundef-pc-dhcp.sh](../../scripts/openwrt/reserve-pundef-pc-dhcp.sh)`       | DHCP lan `.133` + srv `.133` (Mercusys); Wi‑Fi `.208` — отдельный MAC при необходимости |
 | `[pundef-pc-routes-watchdog.sh](../../scripts/openwrt/pundef-pc-routes-watchdog.sh)` | Cron self-heal на роутере                                                               |

@@ -22,7 +22,7 @@ OpenWrt X3000T
     физический порт lan2 → Mercusys switch → серверы + игровой ПК eth
 ```
 
-**Админка роутера (SSH/LuCI):** только с `lan` (`192.168.1.1`). С `srv` — reject на `lan2`; для `apply_pundef_pc_routes.py` нужен Wi‑Fi или lan-кабель X3000T.
+**Админка роутера (SSH/LuCI):** только с `lan` (`192.168.1.1`). С `srv` — reject на `lan2`; для `apply_overrides.py` нужен Wi‑Fi или lan-кабель X3000T.
 
 **Что должно работать всегда для «живой» инфраструктуры:**
 
