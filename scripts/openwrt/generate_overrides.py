@@ -26,14 +26,31 @@ DEFAULT_MANIFEST = ROOT / "config" / "openwrt" / "overrides.json"
 
 BEGIN_APPLY = "# BEGIN GENERATED: openwrt-overrides apply lists"
 END_APPLY = "# END GENERATED: openwrt-overrides apply lists"
+BEGIN_APPLY_CONST = "# BEGIN GENERATED: openwrt-overrides apply constants"
+END_APPLY_CONST = "# END GENERATED: openwrt-overrides apply constants"
+BEGIN_POLICY_REORDER = "# BEGIN GENERATED: openwrt-overrides policy reorder"
+END_POLICY_REORDER = "# END GENERATED: openwrt-overrides policy reorder"
 BEGIN_ZAPRET = "# BEGIN GENERATED: openwrt-overrides zapret destiny nets"
 END_ZAPRET = "# END GENERATED: openwrt-overrides zapret destiny nets"
+BEGIN_ZAPRET_DEVICES = "# BEGIN GENERATED: openwrt-overrides zapret devices"
+END_ZAPRET_DEVICES = "# END GENERATED: openwrt-overrides zapret devices"
 BEGIN_ZAPRET_SDR = "# BEGIN GENERATED: openwrt-overrides zapret steam sdr"
 END_ZAPRET_SDR = "# END GENERATED: openwrt-overrides zapret steam sdr"
 BEGIN_LOGIN = "# BEGIN GENERATED: openwrt-overrides destiny login constants"
 END_LOGIN = "# END GENERATED: openwrt-overrides destiny login constants"
 BEGIN_CHECK = "# BEGIN GENERATED: openwrt-overrides check expectations"
 END_CHECK = "# END GENERATED: openwrt-overrides check expectations"
+
+POLICY_IDX_VARS = {
+    "steam": "steam_idx",
+    "nexus": "nexus_idx",
+    "ru_local": "ru_local_idx",
+    "lib_ddg": "lib_ddg_idx",
+    "discord": "discord_idx",
+    "destiny_auth": "destiny_idx",
+    "srv_default": "srv_default_idx",
+    "warframe": "warframe_idx",
+}
 
 
 def load_manifest(path: Path) -> dict[str, Any]:
@@ -63,6 +80,36 @@ def baseline_var_name(key: str) -> str:
     return mapping[key]
 
 
+def render_apply_constants_block(manifest: dict[str, Any]) -> str:
+    flag = manifest["destiny_modes"]["flag"]
+    return "\n".join(
+        [
+            BEGIN_APPLY_CONST,
+            "# Generated from config/openwrt/overrides.json. Edit the manifest, not this block.",
+            f'DESTINY_LOGIN_FLAG="{flag}"',
+            END_APPLY_CONST,
+        ]
+    )
+
+
+def render_policy_reorder_block(manifest: dict[str, Any]) -> str:
+    order = list(manifest.get("pbr_policy_order", []))
+    if "warframe" not in order:
+        order.append("warframe")
+
+    lines = [
+        BEGIN_POLICY_REORDER,
+        "# Generated from config/openwrt/overrides.json. Edit the manifest, not this block.",
+        f'# Policy order: {" -> ".join(order)}',
+    ]
+    for prev_key, next_key in zip(order, order[1:]):
+        prev_var = POLICY_IDX_VARS[prev_key]
+        next_var = POLICY_IDX_VARS[next_key]
+        lines.append(f'reorder_policy_before "${{{next_var}}}" "${{{prev_var}}}"')
+    lines.append(END_POLICY_REORDER)
+    return "\n".join(lines)
+
+
 def render_apply_block(manifest: dict[str, Any]) -> str:
     dns = manifest["dns_bypass"]["domains"]
     discord = manifest["pbr_overrides"]["discord"]["domains"]
@@ -89,6 +136,92 @@ def render_apply_block(manifest: dict[str, Any]) -> str:
             END_APPLY,
         ]
     )
+    return "\n".join(lines)
+
+
+def ip_suffix(ip: str) -> str:
+    return ip.rsplit(".", 1)[-1]
+
+
+def render_zapret_devices_block(manifest: dict[str, Any]) -> str:
+    zb = manifest["zapret_bypass"]
+    lines = [
+        BEGIN_ZAPRET_DEVICES,
+        "# Generated from config/openwrt/overrides.json. Edit the manifest, not this block.",
+    ]
+
+    ps = zb.get("phoneserver_wlan", {})
+    for src in ps.get("src", []):
+        suffix = ip_suffix(src)
+        lines.extend(
+            [
+                f"# phoneserver wlan {src}: {ps.get('reason', '')}",
+                f"nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-{suffix} || \\",
+                f"    nft insert rule inet zapret postnat ct original ip saddr {src} return comment zapret-ct-bypass-{suffix}",
+                f"nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-{suffix}-pre || \\",
+                f"    nft insert rule inet zapret prenat ct reply ip daddr {src} return comment zapret-ct-bypass-{suffix}-pre",
+                "",
+            ]
+        )
+
+    eth = zb.get("pundef_pc_eth_tcp", {})
+    for src in eth.get("src", []):
+        suffix = ip_suffix(src)
+        lines.extend(
+            [
+                f"# pundef-pc eth {src} TCP bypass: {eth.get('reason', '')}",
+                f'delete_nft_by_comment inet zapret postnat "zapret-ct-bypass-{suffix}"',
+                f'delete_nft_by_comment inet zapret prenat "zapret-ct-bypass-{suffix}-pre"',
+                f"nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-{suffix}-tcp || \\",
+                f"    nft insert rule inet zapret postnat ct original ip saddr {src} meta l4proto tcp return comment zapret-ct-bypass-{suffix}-tcp",
+                f"nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-{suffix}-pre-tcp || \\",
+                f"    nft insert rule inet zapret prenat ct reply ip daddr {src} meta l4proto tcp return comment zapret-ct-bypass-{suffix}-pre-tcp",
+                "",
+            ]
+        )
+
+    wlan = zb.get("pundef_pc_wlan_no_blanket_bypass", {})
+    for src in wlan.get("src", []):
+        suffix = ip_suffix(src)
+        lines.extend(
+            [
+                f"# pundef-pc wlan {src}: no blanket bypass — {wlan.get('reason', '')}",
+                f'delete_nft_by_comment inet zapret postnat "zapret-ct-bypass-{suffix}"',
+                f'delete_nft_by_comment inet zapret prenat "zapret-ct-bypass-{suffix}-pre"',
+                f'delete_nft_by_comment inet zapret postnat "zapret-ct-bypass-{suffix}-tcp"',
+                f'delete_nft_by_comment inet zapret prenat "zapret-ct-bypass-{suffix}-pre-tcp"',
+                "",
+            ]
+        )
+
+    xm = zb.get("xiaomi_13t_pro", {})
+    for src in xm.get("src", []):
+        suffix = ip_suffix(src)
+        lines.extend(
+            [
+                f"# xiaomi-13t-pro {src}: {xm.get('reason', '')}",
+                f"nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-{suffix} || \\",
+                f"    nft insert rule inet zapret postnat ct original ip saddr {src} return comment zapret-ct-bypass-{suffix}",
+                f"nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-{suffix}-pre || \\",
+                f"    nft insert rule inet zapret prenat ct reply ip daddr {src} return comment zapret-ct-bypass-{suffix}-pre",
+                "",
+            ]
+        )
+
+    srv = zb.get("srv_subnet", {})
+    for src in srv.get("src", []):
+        lines.extend(
+            [
+                f"# srv subnet {src}: {srv.get('reason', '')}",
+                "nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-srv || \\",
+                f"    nft insert rule inet zapret postnat ct original ip saddr {src} return comment zapret-ct-bypass-srv",
+                "nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-srv-pre || \\",
+                f"    nft insert rule inet zapret prenat ct reply ip daddr {src} return comment zapret-ct-bypass-srv-pre",
+                "",
+            ]
+        )
+
+    lines.append(END_ZAPRET_DEVICES)
     return "\n".join(lines)
 
 
@@ -131,6 +264,7 @@ def render_login_constants_block(manifest: dict[str, Any]) -> str:
     modes = manifest["destiny_modes"]
     login = modes["login"]
     clients = manifest["clients"]["pundef_pc"]
+    static_ips = " ".join(login.get("static_ips", []))
 
     return "\n".join(
         [
@@ -139,6 +273,7 @@ def render_login_constants_block(manifest: dict[str, Any]) -> str:
             f'FLAG="{modes["flag"]}"',
             f'LOGIN_STEAM_NAME_TEMPLATE="{login["steam_policy"]["name_template"]}"',
             f'LOGIN_FULL_NAME_TEMPLATE="{login["full_tunnel"]["name_template"]}"',
+            f'LOGIN_STATIC_IPS="{static_ips}"',
             f'PC_ETH="{clients["lan"][0]}"',
             f'PC_WIFI="{clients["lan"][1]}"',
             END_LOGIN,
@@ -231,7 +366,10 @@ def write_blocks(blocks: dict[str, tuple[Path, str, str]]) -> None:
 
 def build_blocks(manifest: dict[str, Any]) -> dict[str, str]:
     return {
+        "apply_const": render_apply_constants_block(manifest),
         "apply": render_apply_block(manifest),
+        "policy_reorder": render_policy_reorder_block(manifest),
+        "zapret_devices": render_zapret_devices_block(manifest),
         "zapret": render_zapret_block(manifest),
         "zapret_sdr": render_zapret_sdr_block(manifest),
         "login": render_login_constants_block(manifest),
@@ -240,10 +378,15 @@ def build_blocks(manifest: dict[str, Any]) -> dict[str, str]:
 
 
 def block_targets(blocks: dict[str, str]) -> dict[str, tuple[Path, str, str]]:
+    apply_sh = SCRIPTS / "apply-pundef-pc-routes.sh"
+    zapret_sh = SCRIPTS / "custom.bypass_devices.sh"
     return {
-        blocks["apply"]: (SCRIPTS / "apply-pundef-pc-routes.sh", BEGIN_APPLY, END_APPLY),
-        blocks["zapret"]: (SCRIPTS / "custom.bypass_devices.sh", BEGIN_ZAPRET, END_ZAPRET),
-        blocks["zapret_sdr"]: (SCRIPTS / "custom.bypass_devices.sh", BEGIN_ZAPRET_SDR, END_ZAPRET_SDR),
+        blocks["apply_const"]: (apply_sh, BEGIN_APPLY_CONST, END_APPLY_CONST),
+        blocks["apply"]: (apply_sh, BEGIN_APPLY, END_APPLY),
+        blocks["policy_reorder"]: (apply_sh, BEGIN_POLICY_REORDER, END_POLICY_REORDER),
+        blocks["zapret_devices"]: (zapret_sh, BEGIN_ZAPRET_DEVICES, END_ZAPRET_DEVICES),
+        blocks["zapret"]: (zapret_sh, BEGIN_ZAPRET, END_ZAPRET),
+        blocks["zapret_sdr"]: (zapret_sh, BEGIN_ZAPRET_SDR, END_ZAPRET_SDR),
         blocks["login"]: (SCRIPTS / "destiny-login-mode.sh", BEGIN_LOGIN, END_LOGIN),
         blocks["check"]: (SCRIPTS / "check_gaming_pc_routes.py", BEGIN_CHECK, END_CHECK),
     }

@@ -19,16 +19,15 @@ delete_nft_by_comment() {
   done
 }
 
-# phoneserver: postmarketOS on Redmi joyeuse (eth0 .227 via USB-Ethernet hub).
+# BEGIN GENERATED: openwrt-overrides zapret devices
+# Generated from config/openwrt/overrides.json. Edit the manifest, not this block.
+# phoneserver wlan 192.168.1.227: Voice PE / Groq traffic
 nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-227 || \
     nft insert rule inet zapret postnat ct original ip saddr 192.168.1.227 return comment zapret-ct-bypass-227
 nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-227-pre || \
     nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.227 return comment zapret-ct-bypass-227-pre
 
-# pundef-pc eth .133 (Win + WSL mirrored): TCP bypass for Cloudflare CDN TLS handshake
-# (Cursor Remote SSH / WSL nodesource), see incidents/zapret-bypass-pundef-pc-2026-05-27.md.
-# NOTE: blanket TCP bypass also disables zapret SNI-desync for Discord on .133; if Discord
-# is used on .133, narrow this to Cloudflare ranges (see docs/network/gaming-pc-routes.md).
+# pundef-pc eth 192.168.1.133 TCP bypass: Cloudflare CDN TLS handshake for Cursor Remote SSH / WSL nodesource
 delete_nft_by_comment inet zapret postnat "zapret-ct-bypass-133"
 delete_nft_by_comment inet zapret prenat "zapret-ct-bypass-133-pre"
 nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-133-tcp || \
@@ -36,13 +35,25 @@ nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-133-tc
 nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-133-pre-tcp || \
     nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.133 meta l4proto tcp return comment zapret-ct-bypass-133-pre-tcp
 
-# pundef-pc wlan .208: NO bypass for TCP/Discord-UDP. Discord (TCP gateway + UDP voice)
-# needs zapret SNI/UDP desync to connect on this ISP; bypassing TCP blocks fresh Discord
-# connections, bypassing voice UDP throttles voice. Remove any legacy .208 bypass rules.
+# pundef-pc wlan 192.168.1.208: no blanket bypass — Discord TCP gateway and UDP voice need zapret on this ISP
 delete_nft_by_comment inet zapret postnat "zapret-ct-bypass-208"
 delete_nft_by_comment inet zapret prenat "zapret-ct-bypass-208-pre"
 delete_nft_by_comment inet zapret postnat "zapret-ct-bypass-208-tcp"
 delete_nft_by_comment inet zapret prenat "zapret-ct-bypass-208-pre-tcp"
+
+# xiaomi-13t-pro 192.168.1.214: Android TLS/DPI bypass
+nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-214 || \
+    nft insert rule inet zapret postnat ct original ip saddr 192.168.1.214 return comment zapret-ct-bypass-214
+nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-214-pre || \
+    nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.214 return comment zapret-ct-bypass-214-pre
+
+# srv subnet 192.168.50.0/24: Keep DPI off srv / Proxmox / VM traffic
+nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-srv || \
+    nft insert rule inet zapret postnat ct original ip saddr 192.168.50.0/24 return comment zapret-ct-bypass-srv
+nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-srv-pre || \
+    nft insert rule inet zapret prenat ct reply ip daddr 192.168.50.0/24 return comment zapret-ct-bypass-srv-pre
+
+# END GENERATED: openwrt-overrides zapret devices
 
 # Destiny 2 servers must bypass nfqws, but Discord voice (same PC, same UDP port ranges)
 # MUST keep zapret. Port-based split is impossible (they overlap), so we split by DESTINATION
@@ -97,19 +108,6 @@ for client_ip in ${STEAM_SDR_CLIENTS}; do
       nft insert rule inet zapret prenat ct reply ip daddr "${client_ip}" ip saddr != ${STEAM_SDR_FORBIDDEN} udp sport ${STEAM_SDR_UDP_DPORT} return comment "zapret-ct-bypass-${client_suffix}-steam-sdr-pre"
 done
 
-# xiaomi-13t-pro: Android TLS/DPI bypass (same symptom class as pundef-pc).
-nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-214 || \
-    nft insert rule inet zapret postnat ct original ip saddr 192.168.1.214 return comment zapret-ct-bypass-214
-nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-214-pre || \
-    nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.214 return comment zapret-ct-bypass-214-pre
-
-# Whole srv subnet (Proxmox host + VMs): keep DPI off the server traffic.
-# Effective only when traffic with saddr 192.168.50.x actually hits zapret postnat
-# (e.g. asymmetric routing or routed scenarios).
-nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-srv || \
-    nft insert rule inet zapret postnat ct original ip saddr 192.168.50.0/24 return comment zapret-ct-bypass-srv
-nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-srv-pre || \
-    nft insert rule inet zapret prenat ct reply ip daddr 192.168.50.0/24 return comment zapret-ct-bypass-srv-pre
 
 
 

@@ -12,9 +12,13 @@
 
 set -eu
 
+# BEGIN GENERATED: openwrt-overrides apply constants
+# Generated from config/openwrt/overrides.json. Edit the manifest, not this block.
+DESTINY_LOGIN_FLAG="/etc/destiny-login-mode"
+# END GENERATED: openwrt-overrides apply constants
+
 CHECK_ONLY=false
 [ "${1:-}" = "--check-only" ] && CHECK_ONLY=true
-DESTINY_LOGIN_FLAG="/etc/destiny-login-mode"
 
 if [ -f "${DESTINY_LOGIN_FLAG}" ] && [ "${CHECK_ONLY}" = false ]; then
   echo "[apply-pundef-pc-routes] destiny login mode active — skip (run apply_overrides.py --mode normal)"
@@ -436,23 +440,17 @@ destiny_idx="$(upsert_pc_policy "pundef-pc destiny via ${PRIMARY}" "${PRIMARY}" 
 srv_default_idx="$(upsert_srv_default_policy "pundef-pc srv default via ${PRIMARY}" "${PRIMARY}")"
 warframe_idx="$(upsert_global_policy "Warframe via ${PRIMARY}" "${PRIMARY}" "${WARFRAME_DOMAINS}")"
 
-# Order: steam -> nexus -> ru-local -> lib-ddg -> discord -> destiny -> srv catch-all (srv only; lan still uses podkop)
+# BEGIN GENERATED: openwrt-overrides policy reorder
+# Generated from config/openwrt/overrides.json. Edit the manifest, not this block.
+# Policy order: steam -> nexus -> ru_local -> lib_ddg -> discord -> destiny_auth -> srv_default -> warframe
 reorder_policy_before "${nexus_idx}" "${steam_idx}"
-if [ "${ru_local_idx}" -gt "${nexus_idx}" ]; then
-  reorder_policy_before "${ru_local_idx}" "${nexus_idx}"
-fi
-if [ "${lib_ddg_idx}" -gt "${ru_local_idx}" ]; then
-  reorder_policy_before "${lib_ddg_idx}" "${ru_local_idx}"
-fi
-if [ "${discord_idx}" -gt "${lib_ddg_idx}" ]; then
-  reorder_policy_before "${discord_idx}" "${lib_ddg_idx}"
-fi
-if [ "${destiny_idx}" -gt "${discord_idx}" ]; then
-  reorder_policy_before "${destiny_idx}" "${discord_idx}"
-fi
-if [ "${srv_default_idx}" -gt "${destiny_idx}" ]; then
-  reorder_policy_before "${srv_default_idx}" "${destiny_idx}"
-fi
+reorder_policy_before "${ru_local_idx}" "${nexus_idx}"
+reorder_policy_before "${lib_ddg_idx}" "${ru_local_idx}"
+reorder_policy_before "${discord_idx}" "${lib_ddg_idx}"
+reorder_policy_before "${destiny_idx}" "${discord_idx}"
+reorder_policy_before "${srv_default_idx}" "${destiny_idx}"
+reorder_policy_before "${warframe_idx}" "${srv_default_idx}"
+# END GENERATED: openwrt-overrides policy reorder
 
 uci commit dhcp
 uci commit pbr
@@ -460,5 +458,8 @@ uci commit pbr
 /etc/init.d/pbr restart
 
 echo "=== done; policies applied without catch-all ==="
+
+
+
 
 

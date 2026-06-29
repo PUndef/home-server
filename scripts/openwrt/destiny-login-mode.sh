@@ -18,6 +18,7 @@ set -eu
 FLAG="/etc/destiny-login-mode"
 LOGIN_STEAM_NAME_TEMPLATE="pundef-pc steam via {primary} (destiny login)"
 LOGIN_FULL_NAME_TEMPLATE="pundef-pc destiny login full via {primary}"
+LOGIN_STATIC_IPS="199.165.136.100"
 PC_ETH="192.168.1.133"
 PC_WIFI="192.168.1.208"
 # END GENERATED: openwrt-overrides destiny login constants
@@ -92,6 +93,15 @@ steam_name="${LOGIN_STEAM_NAME_TEMPLATE//\{primary\}/${PRIMARY}}"
 uci set "pbr.@policy[${idx}].name=${steam_name}"
 uci set "pbr.@policy[${idx}].enabled=1"
 
+for ip in ${LOGIN_STATIC_IPS}; do
+  dest="${ip}/32"
+  existing="$(uci -q get "pbr.@policy[${idx}].dest_addr" 2>/dev/null || true)"
+  if ! echo "${existing}" | grep -q "${dest}"; then
+    uci add_list "pbr.@policy[${idx}].dest_addr=${dest}"
+    echo "[destiny-login-mode] steam static auth IP ${dest} -> ${PRIMARY}" >&2
+  fi
+done
+
 # Drop duplicate steam-via-wan left by apply-pundef-pc-routes
 i=0
 while uci -q get "pbr.@policy[${i}]" >/dev/null 2>&1; do
@@ -138,5 +148,6 @@ fi
 echo "=== login mode ON (${FULL:+FULL }${FULL:-split}); wait ~15s ==="
 echo "=== quit Steam -> restart Steam -> launch Destiny ==="
 echo "=== after IN THE WORLD (tower/ship), NOT character select: apply_overrides.py --mode normal ==="
+
 
 
