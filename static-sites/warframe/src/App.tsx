@@ -1,4 +1,4 @@
-import { IconArrowRight, IconBrandTwitch, IconSearch, IconSwords } from "@tabler/icons-react";
+import { IconArrowRight, IconBrandTwitch, IconRoute, IconSearch, IconSwords } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { siteUrl } from "@shared/site-urls";
@@ -28,6 +28,14 @@ const apps = [
     badge: "Twitch",
     icon: IconBrandTwitch,
     accent: "border-purple-500/30 hover:ring-purple-500/20",
+  },
+  {
+    id: "networkRouting" as const,
+    title: "Network Routing",
+    description: "Статус маршрутизации pundef-pc: Steam auth/CDN split, Destiny login path, Discord/Destiny invariants.",
+    badge: "OpenWrt",
+    icon: IconRoute,
+    accent: "border-sky-500/30 hover:ring-sky-500/20",
   },
 ] as const;
 

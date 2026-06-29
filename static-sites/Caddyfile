@@ -26,6 +26,14 @@ http://wffarm.home {
 	file_server
 }
 
+# Local hostname — network-routing dashboard from root.
+http://network.home {
+	root * /srv/static-sites/network-routing
+	try_files {path} /index.html
+	encode zstd gzip
+	file_server
+}
+
 # Local hostname — wf-twitch SPA from root.
 http://wftwitch.home {
 	root * /srv/static-sites/wf-twitch
@@ -48,6 +56,7 @@ http://apps-pundef.mooo.com, http://192.168.50.35, http://localhost {
 	redir /requiem /requiem/ 301
 	redir /wf-farm /wf-farm/ 301
 	redir /wf-twitch /wf-twitch/ 301
+	redir /network-routing /network-routing/ 301
 	redir /beszel /beszel/ 301
 
 	handle_path /warframe/* {
@@ -73,6 +82,13 @@ http://apps-pundef.mooo.com, http://192.168.50.35, http://localhost {
 
 	handle_path /wf-twitch/* {
 		root * /srv/static-sites/wf-twitch
+		try_files {path} /index.html
+		encode zstd gzip
+		file_server
+	}
+
+	handle_path /network-routing/* {
+		root * /srv/static-sites/network-routing
 		try_files {path} /index.html
 		encode zstd gzip
 		file_server

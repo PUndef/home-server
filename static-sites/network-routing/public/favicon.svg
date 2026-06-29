@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="WF Farm Helper">
+  <rect width="32" height="32" rx="7" fill="#1c1917"/>
+  <rect x="7" y="12" width="18" height="13" rx="2" fill="#f59e0b"/>
+  <rect x="9" y="14" width="14" height="2" rx="1" fill="#78350f" opacity="0.5"/>
+  <path d="M19 8a5 5 0 0 1 3.5 8.6l-1.4 1.4A3 3 0 0 0 18 14h-2a3 3 0 1 0 0 6h1v2h-1a5 5 0 1 1 0-10h2a5 5 0 0 1 2 .4Z" fill="#fde68a"/>
+  <circle cx="21.5" cy="10.5" r="2.5" fill="none" stroke="#fde68a" stroke-width="1.5"/>
+</svg>

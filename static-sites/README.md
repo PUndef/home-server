@@ -29,6 +29,7 @@ static-sites/
 | `requiem/`  | Requiem Helper       | `http://requiem.home/`  | `https://apps-pundef.mooo.com/requiem/`  |
 | `wf-farm/`  | Farm / Drops lookup  | `http://wffarm.home/`   | `https://apps-pundef.mooo.com/wf-farm/`  |
 | `wf-twitch/`| Twitch Drops schedule| `http://wftwitch.home/` | `https://apps-pundef.mooo.com/wf-twitch/` |
+| `network-routing/` | OpenWrt routing dashboard | `http://network.home/` | `https://apps-pundef.mooo.com/network-routing/` |
 
 
 Beszel hub (`/beszel/`) — не статика, reverse proxy на `127.0.0.1:8090`; см. [`docs/proxmox/beszel-monitoring-setup.md`](../docs/proxmox/beszel-monitoring-setup.md).
@@ -81,6 +82,7 @@ uci add_list dhcp.@dnsmasq[0].address='/warframe.home/192.168.50.35'
 uci add_list dhcp.@dnsmasq[0].address='/requiem.home/192.168.50.35'
 uci add_list dhcp.@dnsmasq[0].address='/wffarm.home/192.168.50.35'
 uci add_list dhcp.@dnsmasq[0].address='/wftwitch.home/192.168.50.35'
+uci add_list dhcp.@dnsmasq[0].address='/network.home/192.168.50.35'
 uci commit dhcp
 /etc/init.d/dnsmasq restart
 ```

@@ -7,6 +7,7 @@ export const SITE_URLS = {
   requiem: { path: "/requiem/", host: "http://requiem.home/" },
   wfFarm: { path: "/wf-farm/", host: "http://wffarm.home/" },
   wfTwitch: { path: "/wf-twitch/", host: "http://wftwitch.home/" },
+  networkRouting: { path: "/network-routing/", host: "http://network.home/" },
 } as const;
 
 /** Public HTTPS edge (Apache nextcloud-vm → Caddy static-sites). */
@@ -14,7 +15,7 @@ export const SITE_EDGE_ORIGIN = "https://apps-pundef.mooo.com";
 
 export type SiteApp = keyof typeof SITE_URLS;
 
-const LAN_HOSTNAMES = new Set<string>(["warframe.home", "requiem.home", "wffarm.home", "wftwitch.home"]);
+const LAN_HOSTNAMES = new Set<string>(["warframe.home", "requiem.home", "wffarm.home", "wftwitch.home", "network.home"]);
 
 /** Apps on *.home vhosts are served from /; apps-pundef and IP use /warframe/, /requiem/, etc. */
 export function usesHostnameRouting(): boolean {
