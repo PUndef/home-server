@@ -89,15 +89,27 @@
     ]
   },
   "pbr_baseline": {
-    "steam": {
-      "name": "pundef-pc steam via wan",
-      "interface": "wan",
+    "steam_auth": {
+      "name_template": "pundef-pc steam auth via {primary}",
+      "interface": "primary",
       "upsert": "pc",
       "domains": [
         "steampowered.com",
         "*.steampowered.com",
         "steamcommunity.com",
         "*.steamcommunity.com",
+        "login.steampowered.com",
+        "help.steampowered.com"
+      ],
+      "static_ips": [
+        "199.165.136.100"
+      ]
+    },
+    "steam_cdn": {
+      "name": "pundef-pc steam cdn via wan",
+      "interface": "wan",
+      "upsert": "pc",
+      "domains": [
         "steamcontent.com",
         "*.steamcontent.com",
         "steamstatic.com",
@@ -159,7 +171,8 @@
     }
   },
   "pbr_policy_order": [
-    "steam",
+    "steam_auth",
+    "steam_cdn",
     "nexus",
     "ru_local",
     "lib_ddg",
@@ -168,6 +181,7 @@
     "srv_default"
   ],
   "destiny_modes": {
+    "deprecated": "Login/normal split removed — steam_auth in baseline handles cold login automatically",
     "flag": "/etc/destiny-login-mode",
     "normal": {
       "steam": "pbr_baseline.steam"
@@ -190,7 +204,8 @@
   },
   "check_expectations": {
     "required_policies_normal": [
-      "pundef-pc steam via wan",
+      "pundef-pc steam auth via {primary}",
+      "pundef-pc steam cdn via wan",
       "pundef-pc nexus via wan",
       "pundef-pc ru-local via wan",
       "pundef-pc discord via {primary}",
@@ -208,7 +223,8 @@
       "deadorbit.net",
       "gravityshavings.net"
     ],
-    "steam_route_test_ip": "23.61.239.50"
+    "steam_route_test_ip": "23.61.239.50",
+    "steam_auth_route_test_ip": "199.165.136.100"
   },
   "pbr_overrides": {
     "discord": {

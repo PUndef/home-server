@@ -42,7 +42,8 @@ BEGIN_CHECK = "# BEGIN GENERATED: openwrt-overrides check expectations"
 END_CHECK = "# END GENERATED: openwrt-overrides check expectations"
 
 POLICY_IDX_VARS = {
-    "steam": "steam_idx",
+    "steam_auth": "steam_auth_idx",
+    "steam_cdn": "steam_cdn_idx",
     "nexus": "nexus_idx",
     "ru_local": "ru_local_idx",
     "lib_ddg": "lib_ddg_idx",
@@ -71,7 +72,8 @@ def shell_list(name: str, values: list[str]) -> str:
 
 def baseline_var_name(key: str) -> str:
     mapping = {
-        "steam": "STEAM_DOMAINS",
+        "steam_auth": "STEAM_AUTH_DOMAINS",
+        "steam_cdn": "STEAM_CDN_DOMAINS",
         "nexus": "NEXUS_DOMAINS",
         "ru_local": "RU_LOCAL_DOMAINS",
         "lib_ddg": "LIB_DDG_DOMAINS",
@@ -81,12 +83,13 @@ def baseline_var_name(key: str) -> str:
 
 
 def render_apply_constants_block(manifest: dict[str, Any]) -> str:
-    flag = manifest["destiny_modes"]["flag"]
+    static_ips = manifest["pbr_baseline"]["steam_auth"].get("static_ips", [])
+    static_value = " ".join(static_ips)
     return "\n".join(
         [
             BEGIN_APPLY_CONST,
             "# Generated from config/openwrt/overrides.json. Edit the manifest, not this block.",
-            f'DESTINY_LOGIN_FLAG="{flag}"',
+            f'STEAM_AUTH_STATIC_IPS="{static_value}"',
             END_APPLY_CONST,
         ]
     )
@@ -100,9 +103,9 @@ def render_policy_reorder_block(manifest: dict[str, Any]) -> str:
         BEGIN_POLICY_REORDER,
         "# Generated from config/openwrt/overrides.json. Edit the manifest, not this block.",
         f'# Policy order: {" -> ".join(order)} (warframe global — not reordered here)',
-        "# If steam policy landed late in uci, pull it ahead of nexus.",
-        'if [ "${steam_idx}" -gt "${nexus_idx}" ]; then',
-        '  reorder_policy_before "${steam_idx}" "${nexus_idx}"',
+        "# Pull steam_auth ahead of steam_cdn if indices drifted.",
+        'if [ "${steam_auth_idx}" -gt "${steam_cdn_idx}" ]; then',
+        '  reorder_policy_before "${steam_auth_idx}" "${steam_cdn_idx}"',
         "fi",
     ]
 
@@ -138,7 +141,7 @@ def render_apply_block(manifest: dict[str, Any]) -> str:
         BEGIN_APPLY,
         "# Generated from config/openwrt/overrides.json. Edit the manifest, not this block.",
     ]
-    for key in ("steam", "nexus", "ru_local", "lib_ddg", "warframe"):
+    for key in ("steam_auth", "steam_cdn", "nexus", "ru_local", "lib_ddg", "warframe"):
         lines.append(shell_list(baseline_var_name(key), baseline[key]["domains"]))
         lines.append("")
 
@@ -323,6 +326,7 @@ def render_check_block(manifest: dict[str, Any]) -> str:
         render_python_tuple("CHECK_DESTINY_NO_A", check["destiny_no_a_records"]),
         f'CHECK_STEAM_ROUTE_TEST_IP = "{check["steam_route_test_ip"]}"',
         render_python_tuple("CHECK_ZAPRET_DESTINY_NETS", zapret_nets),
+        f'CHECK_STEAM_AUTH_ROUTE_TEST_IP = "{check.get("steam_auth_route_test_ip", "199.165.136.100")}"',
         END_CHECK,
     ]
     return "\n".join(lines)
@@ -360,9 +364,9 @@ def check_block(path: Path, begin: str, end: str, expected: str, failures: list[
         failures.append(f"{label}: generated block differs from manifest ({begin})")
 
 
-def check_blocks(blocks: dict[str, tuple[Path, str, str]]) -> int:
+def check_blocks(targets: list[tuple[str, Path, str, str]]) -> int:
     failures: list[str] = []
-    for expected, (path, begin, end) in blocks.items():
+    for expected, path, begin, end in targets:
         check_block(path, begin, end, expected, failures)
 
     if failures:
@@ -375,8 +379,8 @@ def check_blocks(blocks: dict[str, tuple[Path, str, str]]) -> int:
     return 0
 
 
-def write_blocks(blocks: dict[str, tuple[Path, str, str]]) -> None:
-    for expected, (path, begin, end) in blocks.items():
+def write_blocks(targets: list[tuple[str, Path, str, str]]) -> None:
+    for expected, path, begin, end in targets:
         text = path.read_text(encoding="utf-8")
         path.write_text(replace_block(text, begin, end, expected) + "\n", encoding="utf-8")
         print(f"Updated {path.relative_to(ROOT)}")
@@ -395,19 +399,20 @@ def build_blocks(manifest: dict[str, Any]) -> dict[str, str]:
     }
 
 
-def block_targets(blocks: dict[str, str]) -> dict[str, tuple[Path, str, str]]:
+def block_targets(blocks: dict[str, str]) -> list[tuple[str, Path, str, str]]:
     apply_sh = SCRIPTS / "apply-pundef-pc-routes.sh"
     zapret_sh = SCRIPTS / "custom.bypass_devices.sh"
-    return {
-        blocks["apply_const"]: (apply_sh, BEGIN_APPLY_CONST, END_APPLY_CONST),
-        blocks["apply"]: (apply_sh, BEGIN_APPLY, END_APPLY),
-        blocks["policy_reorder"]: (apply_sh, BEGIN_POLICY_REORDER, END_POLICY_REORDER),
-        blocks["zapret_devices"]: (zapret_sh, BEGIN_ZAPRET_DEVICES, END_ZAPRET_DEVICES),
-        blocks["zapret"]: (zapret_sh, BEGIN_ZAPRET, END_ZAPRET),
-        blocks["zapret_sdr"]: (zapret_sh, BEGIN_ZAPRET_SDR, END_ZAPRET_SDR),
-        blocks["login"]: (SCRIPTS / "destiny-login-mode.sh", BEGIN_LOGIN, END_LOGIN),
-        blocks["check"]: (SCRIPTS / "check_gaming_pc_routes.py", BEGIN_CHECK, END_CHECK),
-    }
+    return [
+        (blocks["apply_const"], apply_sh, BEGIN_APPLY_CONST, END_APPLY_CONST),
+        (blocks["apply"], apply_sh, BEGIN_APPLY, END_APPLY),
+        (blocks["policy_reorder"], apply_sh, BEGIN_POLICY_REORDER, END_POLICY_REORDER),
+        (blocks["zapret_devices"], zapret_sh, BEGIN_ZAPRET_DEVICES, END_ZAPRET_DEVICES),
+        (blocks["zapret"], zapret_sh, BEGIN_ZAPRET, END_ZAPRET),
+        (blocks["zapret_sdr"], zapret_sh, BEGIN_ZAPRET_SDR, END_ZAPRET_SDR),
+        (blocks["login"], SCRIPTS / "destiny-login-mode.sh", BEGIN_LOGIN, END_LOGIN),
+        (blocks["check"], SCRIPTS / "check_gaming_pc_routes.py", BEGIN_CHECK, END_CHECK),
+        (blocks["check"], SCRIPTS / "routing_status.py", BEGIN_CHECK, END_CHECK),
+    ]
 
 
 def main() -> int:

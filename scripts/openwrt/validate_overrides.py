@@ -126,7 +126,7 @@ def check_local_files(manifest: dict[str, Any], result: ValidationResult) -> Non
 
     grep_needles("local apply script Discord domains", apply_text, discord_domains, result)
     grep_needles("local apply script Destiny domains", apply_text, destiny_domains, result)
-    for key in ("steam", "nexus", "ru_local", "lib_ddg", "warframe"):
+    for key in ("steam_auth", "steam_cdn", "nexus", "ru_local", "lib_ddg", "warframe"):
         grep_needles(f"local apply script {key} domains", apply_text, baseline[key]["domains"], result)
     grep_needles("local zapret hook Destiny nets", zapret_text, destiny_dst, result)
 
@@ -182,7 +182,7 @@ def check_remote_hash(client: paramiko.SSHClient, manifest: dict[str, Any], resu
             print(f"[OK] remote {label} script matches repo")
 
 
-def check_destiny_modes(client: paramiko.SSHClient, manifest: dict[str, Any], result: ValidationResult) -> None:
+def check_destiny_baseline(client: paramiko.SSHClient, manifest: dict[str, Any], result: ValidationResult) -> None:
     flag = manifest["destiny_modes"]["flag"]
     _, primary = run(client, "uci -q get podkop.main.interface || echo awg2")
     primary = primary.strip() or "awg2"
@@ -191,36 +191,48 @@ def check_destiny_modes(client: paramiko.SSHClient, manifest: dict[str, Any], re
     pbr_text = pbr if code == 0 else ""
 
     _, flag_state = run(client, f"test -f {flag} && echo on || echo off")
-    login_active = flag_state.strip() == "on"
+    if flag_state.strip() == "on":
+        result.fail(f"legacy login flag still set ({flag}) — run apply_overrides.py --mode normal")
 
-    steam_normal = manifest["pbr_baseline"]["steam"]["name"]
-    login_steam = manifest["destiny_modes"]["login"]["steam_policy"]["name_template"].format(primary=primary)
-    static_ips = manifest["destiny_modes"]["login"].get("static_ips", [])
+    steam_auth = policy_name_from_baseline(manifest, "steam_auth", primary)
+    steam_cdn = policy_name_from_baseline(manifest, "steam_cdn", primary)
+    legacy_steam = "pundef-pc steam via wan"
+    static_ips = manifest["pbr_baseline"]["steam_auth"].get("static_ips", [])
+    auth_test_ip = manifest["check_expectations"].get("steam_auth_route_test_ip", "199.165.136.100")
 
-    if login_active:
-        if login_steam not in pbr_text:
-            result.fail(f"stuck login mode: flag set but missing policy {login_steam}")
-        elif steam_normal in pbr_text:
-            result.fail("stuck login mode: flag set but normal steam policy still present")
-        else:
-            print("[OK] router destiny login mode active with login steam policy")
-        for ip in static_ips:
-            if f"{ip}/32" not in pbr_text:
-                result.warn(f"login mode: Steam auth static IP {ip}/32 not in pbr dest_addr")
-            else:
-                print(f"[OK] login mode routes Steam auth IP {ip}/32")
+    if legacy_steam in pbr_text:
+        result.fail(f"legacy baseline policy still present: {legacy_steam}")
+    if "(destiny login)" in pbr_text:
+        result.fail("legacy destiny login policy still present")
+
+    if steam_auth in pbr_text:
+        print(f"[OK] router baseline steam auth policy: {steam_auth}")
     else:
-        if login_steam in pbr_text and "(destiny login)" in login_steam:
-            result.fail(f"incomplete normal restore: login steam policy still present ({login_steam})")
-        code, _ = run(client, f"uci show pbr 2>/dev/null | grep -q \"name='{steam_normal}'\"")
-        if code != 0:
-            result.fail(f"normal mode missing baseline policy: {steam_normal}")
+        result.fail(f"router baseline steam auth policy missing: {steam_auth}")
+
+    if steam_cdn in pbr_text:
+        print(f"[OK] router baseline steam cdn policy: {steam_cdn}")
+    else:
+        result.fail(f"router baseline steam cdn policy missing: {steam_cdn}")
+
+    for ip in static_ips:
+        if f"{ip}/32" not in pbr_text:
+            result.fail(f"steam auth static IP {ip}/32 not in pbr dest_addr")
         else:
-            print(f"[OK] router normal mode has {steam_normal}")
-            result.warn(
-                "normal mode + cold Destiny login risk: Steam auth may route via WAN; "
-                "use apply_overrides.py --mode login before cold start"
-            )
+            print(f"[OK] steam auth static IP {ip}/32 in pbr")
+
+    _, auth_route = run(
+        client,
+        f"ip route get {auth_test_ip} from 192.168.1.208 iif br-lan mark 0x40000 2>/dev/null | head -1",
+    )
+    if f"dev {primary}" in auth_route:
+        print(f"[OK] steam auth IP {auth_test_ip} routes via {primary} (.208 mark 0x40000)")
+    elif " dev wan " in auth_route:
+        result.fail(
+            f"steam auth IP {auth_test_ip} routes via WAN — Destiny cold login will fail (centipede)"
+        )
+    else:
+        result.fail(f"steam auth IP route check failed: {auth_route or 'empty'}")
 
 
 def check_baseline_policies(client: paramiko.SSHClient, manifest: dict[str, Any], result: ValidationResult) -> None:
@@ -229,7 +241,7 @@ def check_baseline_policies(client: paramiko.SSHClient, manifest: dict[str, Any]
     code, pbr = run(client, "uci show pbr 2>/dev/null")
     pbr_text = pbr if code == 0 else ""
 
-    for key in ("steam", "nexus", "ru_local", "lib_ddg", "warframe"):
+    for key in ("steam_auth", "steam_cdn", "nexus", "ru_local", "lib_ddg", "warframe"):
         policy_name = policy_name_from_baseline(manifest, key, primary)
         if policy_name in pbr_text:
             print(f"[OK] router baseline policy present: {policy_name}")
@@ -276,7 +288,7 @@ def check_router(client: paramiko.SSHClient, manifest: dict[str, Any], result: V
             result.fail(f"router pbr policy missing/inactive: {policy_name}")
 
     check_baseline_policies(client, manifest, result)
-    check_destiny_modes(client, manifest, result)
+    check_destiny_baseline(client, manifest, result)
     check_remote_hash(client, manifest, result)
 
     workvpn = manifest["workvpn"]

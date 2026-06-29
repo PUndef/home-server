@@ -14,16 +14,11 @@ set -eu
 
 # BEGIN GENERATED: openwrt-overrides apply constants
 # Generated from config/openwrt/overrides.json. Edit the manifest, not this block.
-DESTINY_LOGIN_FLAG="/etc/destiny-login-mode"
+STEAM_AUTH_STATIC_IPS="199.165.136.100"
 # END GENERATED: openwrt-overrides apply constants
 
 CHECK_ONLY=false
 [ "${1:-}" = "--check-only" ] && CHECK_ONLY=true
-
-if [ -f "${DESTINY_LOGIN_FLAG}" ] && [ "${CHECK_ONLY}" = false ]; then
-  echo "[apply-pundef-pc-routes] destiny login mode active — skip (run apply_overrides.py --mode normal)"
-  exit 0
-fi
 
 PC_ETH="${PUNDEF_PC_ETH:-192.168.1.133}"
 PC_WIFI="${PUNDEF_PC_WIFI:-192.168.1.208}"
@@ -108,6 +103,25 @@ delete_untitled_policies() {
       i=0
       continue
     fi
+    i=$((i + 1))
+  done
+  echo "${removed}"
+}
+
+delete_legacy_steam_policies() {
+  removed=0
+  i=0
+  while uci -q get "pbr.@policy[${i}]" >/dev/null 2>&1; do
+    name="$(uci -q get "pbr.@policy[${i}].name" 2>/dev/null || true)"
+    case "${name}" in
+      "pundef-pc steam via wan"|"pundef-pc steam via "*"(destiny login)"*)
+        echo "[apply-pundef-pc-routes] delete legacy steam policy: ${name}" >&2
+        uci delete "pbr.@policy[${i}]"
+        removed=$((removed + 1))
+        i=0
+        continue
+        ;;
+    esac
     i=$((i + 1))
   done
   echo "${removed}"
@@ -198,6 +212,42 @@ upsert_pc_policy() {
   done
 
   echo "[apply-pundef-pc-routes] policy ${policy_name} -> ${iface} (idx ${idx})" >&2
+  echo "${idx}"
+}
+
+upsert_pc_policy_with_static_ips() {
+  policy_name="$1"
+  iface="$2"
+  dest_list="$3"
+  static_ips="$4"
+
+  idx=""
+  if idx="$(find_policy_idx "${policy_name}" 2>/dev/null)"; then
+    :
+  else
+    uci add pbr policy >/dev/null
+    idx="$(policy_count)"
+    idx=$((idx - 1))
+  fi
+
+  uci set "pbr.@policy[${idx}].name=${policy_name}"
+  uci set "pbr.@policy[${idx}].interface=${iface}"
+  uci set "pbr.@policy[${idx}].enabled=1"
+
+  uci delete "pbr.@policy[${idx}].src_addr" 2>/dev/null || true
+  uci add_list "pbr.@policy[${idx}].src_addr=${PC_ETH}/32"
+  uci add_list "pbr.@policy[${idx}].src_addr=${PC_WIFI}/32"
+  uci add_list "pbr.@policy[${idx}].src_addr=${PC_SRV}/32"
+
+  uci delete "pbr.@policy[${idx}].dest_addr" 2>/dev/null || true
+  for d in ${dest_list}; do
+    uci add_list "pbr.@policy[${idx}].dest_addr=${d}"
+  done
+  for ip in ${static_ips}; do
+    uci add_list "pbr.@policy[${idx}].dest_addr=${ip}/32"
+  done
+
+  echo "[apply-pundef-pc-routes] policy ${policy_name} -> ${iface} (idx ${idx}, static IPs)" >&2
   echo "${idx}"
 }
 
@@ -305,7 +355,8 @@ check_state() {
   fi
 
   for want in \
-    "pundef-pc steam via wan" \
+    "pundef-pc steam auth via ${PRIMARY}" \
+    "pundef-pc steam cdn via wan" \
     "pundef-pc nexus via wan" \
     "pundef-pc ru-local via wan" \
     "pundef-pc lib ddg via wan" \
@@ -334,11 +385,14 @@ check_state() {
 
 # BEGIN GENERATED: openwrt-overrides apply lists
 # Generated from config/openwrt/overrides.json. Edit the manifest, not this block.
-STEAM_DOMAINS="steampowered.com \
+STEAM_AUTH_DOMAINS="steampowered.com \
   *.steampowered.com \
   steamcommunity.com \
   *.steamcommunity.com \
-  steamcontent.com \
+  login.steampowered.com \
+  help.steampowered.com"
+
+STEAM_CDN_DOMAINS="steamcontent.com \
   *.steamcontent.com \
   steamstatic.com \
   *.steamstatic.com \
@@ -417,6 +471,7 @@ echo "=== apply pundef-pc routes (primary=${PRIMARY}, lan NO catch-all, srv defa
 delete_games_catchall >/dev/null || true
 delete_untitled_policies >/dev/null || true
 delete_destiny_login_policies >/dev/null || true
+delete_legacy_steam_policies >/dev/null || true
 
 for d in ${DISCORD_DNS}; do
   add_dns_bypass "${d}"
@@ -431,7 +486,8 @@ for d in animelib.org; do
   add_dns_bypass "${d}"
 done
 
-steam_idx="$(upsert_pc_policy "pundef-pc steam via wan" "wan" "${STEAM_DOMAINS}")"
+steam_auth_idx="$(upsert_pc_policy_with_static_ips "pundef-pc steam auth via ${PRIMARY}" "${PRIMARY}" "${STEAM_AUTH_DOMAINS}" "${STEAM_AUTH_STATIC_IPS}")"
+steam_cdn_idx="$(upsert_pc_policy "pundef-pc steam cdn via wan" "wan" "${STEAM_CDN_DOMAINS}")"
 nexus_idx="$(upsert_pc_policy "pundef-pc nexus via wan" "wan" "${NEXUS_DOMAINS}")"
 ru_local_idx="$(upsert_pc_policy "pundef-pc ru-local via wan" "wan" "${RU_LOCAL_DOMAINS}")"
 lib_ddg_idx="$(upsert_pc_policy "pundef-pc lib ddg via wan" "wan" "${LIB_DDG_DOMAINS}")"
@@ -442,12 +498,15 @@ warframe_idx="$(upsert_global_policy "Warframe via ${PRIMARY}" "${PRIMARY}" "${W
 
 # BEGIN GENERATED: openwrt-overrides policy reorder
 # Generated from config/openwrt/overrides.json. Edit the manifest, not this block.
-# Policy order: steam -> nexus -> ru_local -> lib_ddg -> discord -> destiny_auth -> srv_default (warframe global — not reordered here)
-# If steam policy landed late in uci, pull it ahead of nexus.
-if [ "${steam_idx}" -gt "${nexus_idx}" ]; then
-  reorder_policy_before "${steam_idx}" "${nexus_idx}"
+# Policy order: steam_auth -> steam_cdn -> nexus -> ru_local -> lib_ddg -> discord -> destiny_auth -> srv_default (warframe global — not reordered here)
+# Pull steam_auth ahead of steam_cdn if indices drifted.
+if [ "${steam_auth_idx}" -gt "${steam_cdn_idx}" ]; then
+  reorder_policy_before "${steam_auth_idx}" "${steam_cdn_idx}"
 fi
-reorder_policy_before "${steam_idx}" "${nexus_idx}"
+reorder_policy_before "${steam_auth_idx}" "${steam_cdn_idx}"
+if [ "${nexus_idx}" -gt "${steam_cdn_idx}" ]; then
+  reorder_policy_before "${nexus_idx}" "${steam_cdn_idx}"
+fi
 if [ "${ru_local_idx}" -gt "${nexus_idx}" ]; then
   reorder_policy_before "${ru_local_idx}" "${nexus_idx}"
 fi
@@ -471,6 +530,12 @@ uci commit pbr
 /etc/init.d/pbr restart
 
 echo "=== done; policies applied without catch-all ==="
+
+
+
+
+
+
 
 
 

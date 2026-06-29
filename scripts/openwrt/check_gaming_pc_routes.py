@@ -15,7 +15,8 @@ import paramiko
 # BEGIN GENERATED: openwrt-overrides check expectations
 # Generated from config/openwrt/overrides.json. Edit the manifest, not this block.
 CHECK_REQUIRED_POLICIES_NORMAL = (
-    "pundef-pc steam via wan",
+    "pundef-pc steam auth via {primary}",
+    "pundef-pc steam cdn via wan",
     "pundef-pc nexus via wan",
     "pundef-pc ru-local via wan",
     "pundef-pc discord via {primary}",
@@ -41,6 +42,7 @@ CHECK_ZAPRET_DESTINY_NETS = (
     "205.196.0.0/16",
     "205.209.0.0/16",
 )
+CHECK_STEAM_AUTH_ROUTE_TEST_IP = "199.165.136.100"
 # END GENERATED: openwrt-overrides check expectations
 
 FAKE_IP = re.compile(r"^198\.18\.")
@@ -146,9 +148,23 @@ def main() -> int:
                 f"ip route get {CHECK_STEAM_ROUTE_TEST_IP} from {client_ip} iif br-lan mark 0x10000 2>/dev/null | head -1",
             )
             if code == 0 and " dev wan " in route:
-                print(f"[OK] steam path {client_ip} -> wan")
+                print(f"[OK] steam CDN path {client_ip} -> wan")
             else:
-                failures.append(f"steam path {client_ip}: {route or 'fail'}")
+                failures.append(f"steam CDN path {client_ip}: {route or 'fail'}")
+
+        code, auth_route = run(
+            client,
+            f"ip route get {CHECK_STEAM_AUTH_ROUTE_TEST_IP} from 192.168.1.208 iif br-lan mark 0x40000 2>/dev/null | head -1",
+        )
+        if code == 0 and f"dev {primary}" in auth_route:
+            print(f"[OK] steam auth IP {CHECK_STEAM_AUTH_ROUTE_TEST_IP} (.208 mark 0x40000) -> {primary}")
+        elif code == 0 and " dev wan " in auth_route:
+            failures.append(
+                "Destiny login path broken: steam auth IP routes via WAN (centipede risk) — "
+                "infrastructure may look OK for Discord but Destiny cold login will fail"
+            )
+        else:
+            failures.append(f"steam auth IP route (.208 mark 0x40000): {auth_route or 'fail'}")
 
         twogis_ip = resolve(client, "2gis.ru")
         if twogis_ip and not FAKE_IP.match(twogis_ip):
@@ -235,4 +251,8 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+
+
 
