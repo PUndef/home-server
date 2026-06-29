@@ -86,6 +86,7 @@ def main() -> int:
             "pundef-pc steam via wan",
             "pundef-pc nexus via wan",
             "pundef-pc ru-local via wan",
+            f"pundef-pc discord via {primary}",
             f"pundef-pc destiny via {primary}",
             f"Warframe via {primary}",
         ):
@@ -138,6 +139,14 @@ def main() -> int:
 
         if "pundef-pc destiny via" in nft:
             print("[OK] destiny nft rule for .133/.208")
+        else:
+            failures.append("missing destiny nft rule for .133/.208")
+
+        if "pundef-pc discord via" in nft:
+            print("[OK] discord nft rule for .133/.208")
+        else:
+            failures.append("missing discord nft rule for .133/.208")
+
         bungie_ip = resolve(client, "bungie.net")
         if bungie_ip and not FAKE_IP.match(bungie_ip):
             _, route = run(client, f"ip route get {bungie_ip} mark 0x40000 2>&1 | head -1")
@@ -145,6 +154,37 @@ def main() -> int:
                 print(f"[OK] destiny mark route -> {primary}")
             else:
                 failures.append(f"destiny mark route: {route or 'empty'}")
+
+        gateway_ip = resolve(client, "gateway.discord.gg")
+        if gateway_ip and not FAKE_IP.match(gateway_ip):
+            _, route = run(client, f"ip route get {gateway_ip} mark 0x40000 2>&1 | head -1")
+            if f"dev {primary}" in route:
+                print(f"[OK] discord gateway mark route -> {primary}")
+            else:
+                failures.append(f"discord gateway mark route: {route or 'empty'}")
+
+        code, discord_set = run(client, "nft list set inet fw4 pbr_awg2_4_dst_ip_discord_pundef 2>/dev/null")
+        if code == 0 and "162.159." in discord_set:
+            print("[OK] discord pbr nftset seeded")
+        else:
+            failures.append("discord pbr nftset missing or empty")
+
+        code, zapret_postnat = run(client, "nft list chain inet zapret postnat 2>/dev/null")
+        code_pre, zapret_prenat = run(client, "nft list chain inet zapret prenat 2>/dev/null")
+        zapret_all = f"{zapret_postnat}\n{zapret_prenat}"
+        if code == 0 and code_pre == 0:
+            if "104.29.154.0/24" in zapret_all or "104.29.154." in zapret_all:
+                failures.append("discord voice range 104.29.154.0/24 is in zapret bypass (breaks Discord voice)")
+            else:
+                print("[OK] discord voice range 104.29.154.0/24 not in zapret bypass")
+
+            for needle in ("57.129.90.115", "155.133.0.0/16", "162.254.0.0/16", "205.209.0.0/16"):
+                if needle not in zapret_all:
+                    failures.append(f"destiny zapret bypass missing {needle}")
+            if not any(f"destiny zapret bypass missing" in item for item in failures):
+                print("[OK] destiny zapret bypass ranges present")
+        else:
+            failures.append("zapret chains unreadable")
 
         code, out = run(client, "sh /opt/apply-pundef-pc-routes.sh --check-only 2>/dev/null")
         if code == 0:

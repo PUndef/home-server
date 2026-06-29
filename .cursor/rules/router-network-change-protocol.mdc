@@ -1,0 +1,39 @@
+---
+description: Протокол работы агентов с OpenWrt/VPN/DPI сетью home-server
+alwaysApply: true
+---
+
+# Протокол сетевых правок
+
+Для задач про OpenWrt X3000T, `pbr`, `podkop`/`sing-box`, `zapret`/`nfqws`, `awg1`/`awg2`, `workvpn`, Discord/Destiny/Steam/WSL/corp:
+
+## PLAN/ACT
+
+Работать в два явных режима:
+
+- **PLAN:** только чтение, диагностика, гипотезы, матрица потоков, риски, rollback и критерии успеха. В этом режиме запрещены `uci set/delete/commit`, `nft insert/delete/add`, `service restart`, upload конфигов, правки роутера и любые действия, меняющие сеть.
+- **ACT:** ровно одно заранее согласованное изменение из плана. Перед ACT повторить: что меняется, почему, кого может задеть, rollback, проверки после. После ACT сразу выполнить проверки и остановиться за подтверждением пользователя.
+
+Если пользователь явно не сказал “применяй”, “делай”, “go/го” или аналог для конкретного шага, оставаться в PLAN.
+
+## Актуальные инварианты Discord/Destiny
+
+- `pundef-pc` сейчас чаще всего диагностируется как Wi-Fi `192.168.1.208`; не путать с eth `192.168.1.133` и srv/Mercusys `192.168.50.133`.
+- Discord text/API/gateway для `.133/.208` должен идти через `pbr` policy `pundef-pc discord via awg2`; это уводит Cloudflare Discord (`162.159.x`) из WAN/zapret-конфликта.
+- Discord voice clean capture показал `104.29.154.185:19315`. **Не добавлять `104.29.154.0/24` в Destiny zapret-bypass**: это ломает Discord voice.
+- Destiny zapret-bypass для `.133/.208` должен быть IP-based, не port-based. Текущий рабочий/проверяемый набор хранится в `scripts/openwrt/custom.bypass_devices.sh` и `/opt/zapret/custom.bypass_devices.sh` (`DESTINY_NETS`), сейчас без `104.29.154.0/24`.
+- Учитывать автоприменители: `/opt/pundef-pc-routes-watchdog.sh` (cron), `/etc/hotplug.d/iface/99-vpn-stack`, `/opt/apply-pundef-pc-routes.sh`, `INIT_FW_POST_UP_HOOK=/opt/zapret/custom.bypass_devices.sh`. Если фикс не внесён в канонический скрипт, он будет сброшен.
+- На 2026-06-30 подтверждено: после удаления `104.29.154.0/24` из Destiny bypass и добавления `57.129.90.115/32` в `DESTINY_NETS` Discord voice и Destiny activity работают одновременно. `pbr restart` во время живых сессий временно очищает chains/nftsets и роняет оба приложения на 20-40 секунд; после рестарта нужен fresh reconnect.
+
+1. **Сначала читать архитектуру, потом действовать.** Минимум: `docs/network/router-openwrt-x3000t.md`, `docs/network/gaming-pc-routes.md`, `docs/network/router-resilience.md`, затем релевантные `scripts/openwrt/*`.
+2. **Не делать runtime-правок без модели потока.** Перед изменением составить кратко: `use case -> src IP -> DNS result -> pbr route -> podkop? -> zapret path -> expected layer -> conflict`.
+3. **Проверять фактический source IP.** `pundef-pc` multi-homed: `.133` lan eth, `.208` Wi-Fi, `.50.133` srv/Mercusys. Не предполагать активный интерфейс без `ipconfig`/`route print` и router neighbor/route checks.
+4. **Не путать слои.** `pbr` выбирает маршрут; `podkop`/`sing-box` перехватывает fake-IP/blocked domains; `zapret` меняет первые WAN-пакеты и не работает на `awg1`/`awg2`/`workvpn`; DNS-bypass влияет на то, попадёт ли домен в fake-IP/nftset.
+5. **Один эксперимент за раз.** До правки: `check_stack.py`, `check_gaming_pc_routes.py`, live snapshot нужных `uci/nft/ip route`. После правки: те же проверки + конкретный ручной тест пользователя.
+6. **Каждая правка должна иметь rollback.** Перед применением назвать: что меняется, как откатить, какой критерий успеха/провала. Не применять “на всякий случай”.
+7. **Не рестартовать стек пачкой.** Без крайней необходимости не трогать `network`/`firewall`. Для pbr-правок допустим только `pbr restart`; для zapret-runtime предпочитать точечные `nft` операции. `zapret restart` ломает живые voice/game-сессии.
+8. **Не ломать других клиентов.** Проверять, что изменения не затрагивают `paul-mac .198`, `xiaomi-13t-pro .214`, `phoneserver .127/.227`, `srv 192.168.50.0/24`, VM/LXC.
+9. **Не лечить Discord/Destiny перебором портов.** Сначала доказать конфликт по маршруту/IP/слою. Discord, Steam SDR, Bungie, Cloudflare и podkop могут пересекаться; порт сам по себе не является достаточным объяснением.
+10. **Документировать итог.** Если найдено рабочее решение, обновить `docs/network/gaming-pc-routes.md` матрицей use case -> layer -> conflict avoidance, чтобы следующий агент не начинал заново.
+
+Запрещено: “попробовать правило и спросить работает ли” без диагностики, массовые `uci revert`, `git restore` пользовательских изменений, catch-all VPN на `lan` `.133/.208`, правки `srv` forwarding без явной цели и проверки.

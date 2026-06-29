@@ -178,6 +178,37 @@ upsert_pc_policy() {
   echo "${idx}"
 }
 
+upsert_lan_pc_policy() {
+  policy_name="$1"
+  iface="$2"
+  dest_list="$3"
+
+  idx=""
+  if idx="$(find_policy_idx "${policy_name}" 2>/dev/null)"; then
+    :
+  else
+    uci add pbr policy >/dev/null
+    idx="$(policy_count)"
+    idx=$((idx - 1))
+  fi
+
+  uci set "pbr.@policy[${idx}].name=${policy_name}"
+  uci set "pbr.@policy[${idx}].interface=${iface}"
+  uci set "pbr.@policy[${idx}].enabled=1"
+
+  uci delete "pbr.@policy[${idx}].src_addr" 2>/dev/null || true
+  uci add_list "pbr.@policy[${idx}].src_addr=${PC_ETH}/32"
+  uci add_list "pbr.@policy[${idx}].src_addr=${PC_WIFI}/32"
+
+  uci delete "pbr.@policy[${idx}].dest_addr" 2>/dev/null || true
+  for d in ${dest_list}; do
+    uci add_list "pbr.@policy[${idx}].dest_addr=${d}"
+  done
+
+  echo "[apply-pundef-pc-routes] lan policy ${policy_name} -> ${iface} (idx ${idx})" >&2
+  echo "${idx}"
+}
+
 upsert_global_policy() {
   policy_name="$1"
   iface="$2"
@@ -255,6 +286,7 @@ check_state() {
     "pundef-pc nexus via wan" \
     "pundef-pc ru-local via wan" \
     "pundef-pc lib ddg via wan" \
+    "pundef-pc discord via ${PRIMARY}" \
     "pundef-pc destiny via ${PRIMARY}" \
     "pundef-pc srv default via ${PRIMARY}" \
     "Warframe via ${PRIMARY}"
@@ -306,6 +338,15 @@ WARFRAME_DOMAINS="warframe.com *.warframe.com api.warframe.com content.warframe.
 DISCORD_DNS="discord.com discord.gg discordapp.com discordapp.net \
   discord.media discordcdn.com discordstatus.com"
 
+DISCORD_DOMAINS="discord.com *.discord.com \
+  discord.gg *.discord.gg \
+  discordapp.com *.discordapp.com \
+  discordapp.net *.discordapp.net \
+  discord.media *.discord.media \
+  discordcdn.com *.discordcdn.com \
+  discordstatus.com *.discordstatus.com \
+  gateway.discord.gg"
+
 # --- main ---
 
 if [ "${CHECK_ONLY}" = true ]; then
@@ -338,11 +379,12 @@ steam_idx="$(upsert_pc_policy "pundef-pc steam via wan" "wan" "${STEAM_DOMAINS}"
 nexus_idx="$(upsert_pc_policy "pundef-pc nexus via wan" "wan" "${NEXUS_DOMAINS}")"
 ru_local_idx="$(upsert_pc_policy "pundef-pc ru-local via wan" "wan" "${RU_LOCAL_DOMAINS}")"
 lib_ddg_idx="$(upsert_pc_policy "pundef-pc lib ddg via wan" "wan" "${LIB_DDG_DOMAINS}")"
+discord_idx="$(upsert_lan_pc_policy "pundef-pc discord via ${PRIMARY}" "${PRIMARY}" "${DISCORD_DOMAINS}")"
 destiny_idx="$(upsert_pc_policy "pundef-pc destiny via ${PRIMARY}" "${PRIMARY}" "${DESTINY_DOMAINS}")"
 srv_default_idx="$(upsert_srv_default_policy "pundef-pc srv default via ${PRIMARY}" "${PRIMARY}")"
 warframe_idx="$(upsert_global_policy "Warframe via ${PRIMARY}" "${PRIMARY}" "${WARFRAME_DOMAINS}")"
 
-# Order: steam -> nexus -> ru-local -> lib-ddg -> destiny -> srv catch-all (srv only; lan still uses podkop)
+# Order: steam -> nexus -> ru-local -> lib-ddg -> discord -> destiny -> srv catch-all (srv only; lan still uses podkop)
 reorder_policy_before "${nexus_idx}" "${steam_idx}"
 if [ "${ru_local_idx}" -gt "${nexus_idx}" ]; then
   reorder_policy_before "${ru_local_idx}" "${nexus_idx}"
@@ -350,8 +392,11 @@ fi
 if [ "${lib_ddg_idx}" -gt "${ru_local_idx}" ]; then
   reorder_policy_before "${lib_ddg_idx}" "${ru_local_idx}"
 fi
-if [ "${destiny_idx}" -gt "${lib_ddg_idx}" ]; then
-  reorder_policy_before "${destiny_idx}" "${lib_ddg_idx}"
+if [ "${discord_idx}" -gt "${lib_ddg_idx}" ]; then
+  reorder_policy_before "${discord_idx}" "${lib_ddg_idx}"
+fi
+if [ "${destiny_idx}" -gt "${discord_idx}" ]; then
+  reorder_policy_before "${destiny_idx}" "${discord_idx}"
 fi
 if [ "${srv_default_idx}" -gt "${destiny_idx}" ]; then
   reorder_policy_before "${srv_default_idx}" "${destiny_idx}"

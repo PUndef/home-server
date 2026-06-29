@@ -1,7 +1,7 @@
 # Маршрутизация игрового ПК (pundef-pc)
 
 > **Статус:** living reference  
-> **Последняя проверка:** 2026-06-14
+> **Последняя проверка:** 2026-06-30
 
 Единая схема для `pundef-pc` — eth lan `192.168.1.133`, Wi‑Fi `192.168.1.208`, **eth srv (Mercusys → lan2) `192.168.50.133`**.  
 **Catch-all `0.0.0.0/0` на lan запрещён** — ломает podkop fake-IP (Discord и др.). На **srv** catch-all через awg2 **разрешён** только для `192.168.50.133`: там DNS `8.8.8.8`, fake-IP podkop нет.
@@ -33,9 +33,9 @@ Mercusys switch ──► X3000T lan2 (srv) ──► 192.168.50.133 (eth srv)
 | **Steam** (загрузки) | `steampowered.com`, CDN, `steamstatic.com`                              | **WAN**                       | pbr `pundef-pc steam via wan`    | реальные IP (nftset)  | `apply-pundef-pc-routes.sh`                                                                                                                                         |
 | **Nexus Mods**       | `nexusmods.com`                                                         | **WAN**                       | pbr `pundef-pc nexus via wan`    | реальные IP           | то же                                                                                                                                                               |
 | **RU local (2GIS)**  | `2gis.ru`, `dublgis.ru`                                                 | **WAN**                       | pbr `pundef-pc ru-local via wan` | bypass → `8.8.8.8`    | иначе srv catch-all уводит в awg2                                                                                                                                   |
-| **Destiny / Bungie** | `bungie.net`, `steamserver.net`, `deadorbit.net`, `gravityshavings.net` | **awg2** (NL)                 | pbr `pundef-pc destiny via awg2` | bypass → `8.8.8.8`    | TAPIR — гео-блок на **авторизации** ([обход](https://github.com/Flowseal/zapret-discord-youtube/discussions/6033)); `steamserver.net` уходит в awg2, не в Steam WAN |
+| **Destiny / Bungie** | `bungie.net`, `steamserver.net`, `deadorbit.net`, `gravityshavings.net`; game IPs in `DESTINY_NETS` | **awg2** для auth/API; selected game UDP bypasses zapret on WAN | pbr `pundef-pc destiny via awg2` + zapret IP-bypass | bypass → `8.8.8.8`    | TAPIR — гео-блок на **авторизации**; activity UDP must not be nfqws-mangled |
 | **Warframe**         | `warframe.com`, `digitalextremes.com`                                   | **awg2**                      | pbr global `Warframe via awg2`   | подкоп / реальные     | то же                                                                                                                                                               |
-| **Discord**          | `discord.com`, `discord.gg`, …                                          | **awg2** (через реальные IP)  | dns bypass + default path        | bypass → `8.8.8.8`    | то же                                                                                                                                                               |
+| **Discord**          | `discord.com`, `discord.gg`, `gateway.discord.gg`, voice IP `104.29.154.185:19315` | **awg2** для text/API/gateway; voice stays on zapret unless proven otherwise | pbr `pundef-pc discord via awg2` + no Destiny bypass for `104.29.154.0/24` | bypass → `8.8.8.8`    | `104.29.154.0/24` нельзя добавлять в Destiny bypass: ломает Discord voice |
 | **Corp**             | `*.kpb.lt`, `10.0.160.0/22`                                             | **workvpn**                   | pbr `pundef-pc kpb via workvpn`  | `10.0.160.1`          | `pbr-workvpn-watchdog.sh`                                                                                                                                           |
 | **Всё остальное (lan)** | любые                                                                | **podkop → awg2** или **WAN** | без pbr catch-all                | fake-IP `198.18.x` OK | podkop / sing-box                                                                                                                                                   |
 | **Всё остальное (srv / Mercusys)** | любые не попавшие в Steam/Nexus/Destiny above              | **awg2**                      | pbr `pundef-pc srv default via awg2` | реальные IP (`8.8.8.8`) | `apply-pundef-pc-routes.sh`                                                                                                                                      |
@@ -48,10 +48,11 @@ Mercusys switch ──► X3000T lan2 (srv) ──► 192.168.50.133 (eth srv)
 2. pundef-pc steam via wan      (если dst Steam)
 3. pundef-pc ru-local via wan   (2GIS и др. RU-сервисы)
 4. pundef-pc kpb via workvpn    (corp — только lan .133)
-5. pundef-pc destiny via awg2   (Bungie)
-6. Warframe via awg2            (глобально, все клиенты)
-7. — НЕТ catch-all на lan —
-8. podkop / default WAN
+5. pundef-pc discord via awg2   (Discord text/API/gateway)
+6. pundef-pc destiny via awg2   (Bungie auth/API)
+7. Warframe via awg2            (глобально, все клиенты)
+8. — НЕТ catch-all на lan —
+9. podkop / default WAN
 ```
 
 ### Приоритет pbr (srv / Mercusys: `192.168.50.133`)
@@ -65,6 +66,38 @@ Mercusys switch ──► X3000T lan2 (srv) ──► 192.168.50.133 (eth srv)
 ```
 
 Corp `workvpn` и per-IP zapret bypass (`.133`) действуют только когда источник **lan** `192.168.1.133` / `.208`. С eth srv corp GitLab не маршрутизируется — для WSL/Cursor Remote SSH используй lan или Wi‑Fi.
+
+---
+
+## Discord + Destiny одновременно (2026-06-30)
+
+Проверенное состояние для Wi-Fi `192.168.1.208`: Discord voice и Destiny activity работают одновременно, если разделять не по UDP-портам, а по назначению и слою.
+
+| Поток | Слой | Инвариант |
+| ----- | ---- | --------- |
+| Discord text/API/gateway (`162.159.x`) | `pbr` → `awg2` | policy `pundef-pc discord via awg2`; nftset `pbr_awg2_4_dst_ip_discord_pundef` должен быть заполнен |
+| Discord voice (`104.29.154.185:19315`) | WAN + `zapret` | **не** добавлять `104.29.154.0/24` в Destiny zapret-bypass |
+| Destiny auth/API (`bungie.net`, `steamserver.net`, `deadorbit.net`, `gravityshavings.net`) | `pbr` → `awg2` | policy `pundef-pc destiny via awg2` |
+| Destiny activity UDP | WAN, но без nfqws для доказанных IP | `DESTINY_NETS` in `custom.bypass_devices.sh`: `57.129.90.115/32`, `155.133.0.0/16`, `162.254.0.0/16`, `205.209.0.0/16` |
+
+Почему не port-based: Discord и Destiny пересекаются по UDP-диапазонам и могут использовать похожие relay-порты. Правило вида “весь UDP < 50000 bypass” ломает Discord voice; правило “весь UDP через zapret” ломает Destiny (`centipede` / `currant` / `cabbage` / `hare`).
+
+Автовосстановление обязательно учитывать:
+
+- `/opt/apply-pundef-pc-routes.sh` и `pundef-pc-routes-watchdog.sh` восстанавливают pbr/DNS;
+- `/etc/hotplug.d/iface/99-vpn-stack` после `wan`/`awg*` events перезапускает стек и затем применяет `/opt/apply-pundef-pc-routes.sh`;
+- `INIT_FW_POST_UP_HOOK=/opt/zapret/custom.bypass_devices.sh` восстанавливает zapret-bypass после `zapret restart`;
+- если фикс есть только в runtime, он будет потерян.
+
+Не запускать `pbr restart` во время живого Discord voice / Destiny activity: на 20-40 секунд очищаются pbr chains/nftsets, из-за чего оба приложения выглядят “снова сломанными”. После рестарта нужен fresh reconnect клиентов.
+
+Проверка:
+
+```powershell
+py -3 scripts/openwrt/check_gaming_pc_routes.py
+```
+
+Скрипт должен проверять не только базовые pbr policies, но и инварианты Discord/Destiny: Discord nftset, отсутствие `104.29.154.0/24` в zapret-bypass, наличие `DESTINY_NETS`.
 
 ---
 
