@@ -1,10 +1,8 @@
 #!/bin/sh
-# Collect routing status JSON for static-sites dashboard (cron on LXC or PC).
+# DEPRECATED: LXC srv cannot SSH to OpenWrt. Use phoneserver systemd timer instead:
+#   scripts/phoneserver/install-routing-status-collector.ps1
 #
-# Install on static-sites LXC (192.168.50.35):
-#   */3 * * * * /opt/collect-routing-status.sh
-#
-# Requires: repo checkout or copy of routing_status.py + OPENWRT_KEY on collector host.
+# Legacy stub kept for reference only.
 
 set -eu
 

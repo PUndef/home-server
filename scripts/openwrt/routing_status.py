@@ -46,6 +46,7 @@ CHECK_DESTINY_NO_A = (
 CHECK_STEAM_ROUTE_TEST_IP = "23.61.239.50"
 CHECK_ZAPRET_DESTINY_NETS = (
     "57.129.90.115/32",
+    "172.97.56.0/24",
     "155.133.0.0/16",
     "162.254.0.0/16",
     "205.196.0.0/16",
@@ -287,4 +288,6 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
 

@@ -1,0 +1,11 @@
+[Unit]
+Description=Publish OpenWrt routing status to static-sites LXC
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/routing-status-collector.env
+ExecStart=/opt/home-server/scripts/phoneserver/routing-status-collector.sh
+User=user
+Group=user

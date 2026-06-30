@@ -81,7 +81,7 @@ Corp `workvpn` и per-IP zapret bypass (`.133`) действуют только 
 | Discord text/API/gateway (`162.159.x`)                                                     | `pbr` → `awg2`                      | policy `pundef-pc discord via awg2`; nftset `pbr_awg2_4_dst_ip_discord_pundef` должен быть заполнен                    |
 | Discord voice (`104.29.154.185:19315`)                                                     | WAN + `zapret`                      | **не** добавлять `104.29.154.0/24` в Destiny zapret-bypass                                                             |
 | Destiny auth/API (`bungie.net`, `steamserver.net`, `deadorbit.net`, `gravityshavings.net`) | `pbr` → `awg2`                      | policy `pundef-pc destiny via awg2`                                                                                    |
-| Destiny activity UDP                                                                       | WAN, но без nfqws для доказанных IP | `DESTINY_NETS` in `custom.bypass_devices.sh`: `57.129.90.115/32`, `155.133.0.0/16`, `162.254.0.0/16`, `205.209.0.0/16` |
+| Destiny activity UDP                                                                       | WAN, но без nfqws для доказанных IP | `DESTINY_NETS`: `57.129.90.115/32`, `172.97.56.0/24` (TCP :7500 activity), `155.133.0.0/16`, `162.254.0.0/16`, `205.209.0.0/16` |
 
 
 Почему не port-based: Discord и Destiny пересекаются по UDP-диапазонам и могут использовать похожие relay-порты. Правило вида “весь UDP < 50000 bypass” ломает Discord voice; правило “весь UDP через zapret” ломает Destiny (`centipede` / `currant` / `cabbage` / `hare`).
@@ -140,10 +140,23 @@ py -3 scripts/openwrt/validate_overrides.py
 py -3 scripts/openwrt/check_gaming_pc_routes.py
 py -3 scripts/openwrt/routing_status.py
 
-# Observability dashboard (JSON обновляется с gaming PC — srv LXC не имеет SSH к роутеру):
+# Observability dashboard (phoneserver systemd timer, not Windows Task):
 # http://network.home/  или  http://192.168.50.35/network-routing/
-# Cron: .\scripts\openwrt\publish-routing-status.ps1 -InstallTask
+# Install: .\scripts\phoneserver\install-routing-status-collector.ps1
 ```
+
+### Destiny net watch (cabbage / weasel)
+
+Фоновый read-only лог conntrack с роутера (`/proc/net/nf_conntrack`, не `conntrack` CLI). ALERT = game UDP/TCP вне `DESTINY_NETS`.
+
+```powershell
+.\scripts\openwrt\start-destiny-net-watch.ps1          # одно окно, preflight, lock
+.\scripts\openwrt\stop-destiny-net-watch.ps1
+py -3 scripts/openwrt/analyze_destiny_log.py           # после отвала
+py -3 scripts/openwrt/watch_destiny_sessions.py --once # разовый снимок
+```
+
+Логи: `logs/destiny-net-watch/` (`YYYY-MM-DD.jsonl`, `alerts.jsonl`).
 
 `--mode login` оставлен только как **deprecated rollback** (не daily workflow). Watchdog и hotplug всегда вызывают `/opt/apply-pundef-pc-routes.sh` — без проверки `/etc/destiny-login-mode`.
 
@@ -200,13 +213,17 @@ py -3 scripts/openwrt/check_gaming_pc_routes.py
 | `[apply_overrides.py](../../scripts/openwrt/apply_overrides.py)`                     | **Primary:** validate → upload → apply normal/login с ПК                                |
 | `[apply-pundef-pc-routes.sh](../../scripts/openwrt/apply-pundef-pc-routes.sh)`       | Каноническое состояние на роутере `/opt/`                                               |
 | `[apply_pundef_pc_routes.py](../../scripts/openwrt/apply_pundef_pc_routes.py)`       | Deprecated wrapper → `apply_overrides.py`                                               |
-| `[destiny_login_mode.py](../../scripts/openwrt/destiny_login_mode.py)`               | Deprecated wrapper → `apply_overrides.py --mode login|normal`                           |
+| `[destiny_login_mode.py](../../scripts/openwrt/destiny_login_mode.py)`               | Deprecated wrapper → `apply_overrides.py --mode login\|normal`                           |
 | `[generate_overrides.py](../../scripts/openwrt/generate_overrides.py)`               | Dry-run generator / generated-block check                                               |
 | `[validate_overrides.py](../../scripts/openwrt/validate_overrides.py)`               | Read-only live drift validator                                                          |
 | `[check_gaming_pc_routes.py](../../scripts/openwrt/check_gaming_pc_routes.py)`       | Smoke-test + Destiny login path gate                                                    |
-| `[collect-routing-status.sh](../../scripts/openwrt/collect-routing-status.sh)`       | Cron collector → `/srv/static-sites/network-routing/status.json`                        |
+| `[collect-routing-status.sh](../../scripts/openwrt/collect-routing-status.sh)`       | Deprecated — use phoneserver timer                                                        |
+| `[install-routing-status-collector.ps1](../../scripts/phoneserver/install-routing-status-collector.ps1)` | Install phoneserver systemd collector |
 | `[reserve-pundef-pc-dhcp.sh](../../scripts/openwrt/reserve-pundef-pc-dhcp.sh)`       | DHCP lan `.133` + srv `.133` (Mercusys); Wi‑Fi `.208` — отдельный MAC при необходимости |
 | `[pundef-pc-routes-watchdog.sh](../../scripts/openwrt/pundef-pc-routes-watchdog.sh)` | Cron self-heal на роутере                                                               |
+| `[watch_destiny_sessions.py](../../scripts/openwrt/watch_destiny_sessions.py)`       | Destiny net watch: nf_conntrack poll + ALERT log (read-only)                            |
+| `[analyze_destiny_log.py](../../scripts/openwrt/analyze_destiny_log.py)`             | Разбор лога после cabbage/weasel                                                        |
+| `[start-destiny-net-watch.ps1](../../scripts/openwrt/start-destiny-net-watch.ps1)`   | Запуск watcher (single instance)                                                        |
 
 
 ## Сделано (история)

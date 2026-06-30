@@ -47,7 +47,7 @@ py -3 scripts/openwrt/apply_overrides.py --mode normal
 | `scripts/openwrt/custom.bypass_devices.sh` | `/opt/zapret/custom.bypass_devices.sh` | per-device zapret bypass, `DESTINY_NETS`, Steam SDR UDP | hook apply без service restart |
 | `scripts/openwrt/destiny-login-mode.sh` | `/opt/destiny-login-mode.sh` | **deprecated** rollback login mode | `pbr restart`; flag `/etc/destiny-login-mode` |
 | `scripts/openwrt/routing_status.py` | — (PC/LXC) | JSON snapshot для dashboard | read-only SSH |
-| `scripts/openwrt/collect-routing-status.sh` | `/opt/collect-routing-status.sh` (optional) | cron → `status.json` + `history.jsonl` | none |
+| `scripts/openwrt/collect-routing-status.sh` | deprecated | LXC cannot SSH router — use phoneserver timer | none |
 | `scripts/openwrt/destiny-normal-mode.sh` | `/opt/destiny-normal-mode.sh` | снимает login flag → canonical apply | через apply |
 | `scripts/openwrt/99-vpn-stack` | `/etc/hotplug.d/iface/99-vpn-stack` | hotplug restore | stack restarts on ifup |
 | `scripts/openwrt/pundef-pc-routes-watchdog.sh` | cron | drift check → apply | через apply |
@@ -68,13 +68,21 @@ Manifest генерирует blocks в:
 
 Dashboard: `http://network.home/` или `https://apps-pundef.mooo.com/network-routing/`
 
-Cron на **gaming PC** (LXC srv не имеет SSH к роутеру):
+**Periodic collector — phoneserver** (wlan → OpenWrt SSH, eth → LXC scp). Без Windows Task Scheduler:
 
 ```powershell
-.\scripts\openwrt\publish-routing-status.ps1 -InstallTask
+.\scripts\phoneserver\install-routing-status-collector.ps1
 ```
 
-Пишет `/srv/static-sites/network-routing/status.json` + `history.jsonl` на LXC каждые 3 мин.
+Timer `routing-status-collector.timer`: каждые 5 мин → `/srv/static-sites/network-routing/status.json` + `history.jsonl`.
+
+**One-shot с PC** (после `apply_overrides.py --mode normal` вызывается автоматически):
+
+```powershell
+.\scripts\openwrt\publish-routing-status.ps1
+```
+
+Legacy cleanup: `.\scripts\openwrt\publish-routing-status.ps1 -RemoveTask`
 
 `destiny_modes` в manifest — **deprecated** (legacy rollback doc). Baseline `steam_auth` + static IP заменяет login flag workflow.
 

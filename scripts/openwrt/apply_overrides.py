@@ -34,6 +34,7 @@ APPLY_SH = SCRIPTS / "apply-pundef-pc-routes.sh"
 ZAPRET_SH = SCRIPTS / "custom.bypass_devices.sh"
 LOGIN_SH = SCRIPTS / "destiny-login-mode.sh"
 NORMAL_SH = SCRIPTS / "destiny-normal-mode.sh"
+PUBLISH_PS1 = SCRIPTS / "publish-routing-status.ps1"
 RESERVE_SH = SCRIPTS / "reserve-pundef-pc-dhcp.sh"
 HOTPLUG_LOCAL = SCRIPTS / "99-vpn-stack"
 WATCHDOG_SH = SCRIPTS / "pundef-pc-routes-watchdog.sh"
@@ -108,6 +109,28 @@ def remote_sha256(client: paramiko.SSHClient, remote: str) -> str | None:
 def run_local_script(script: Path, *args: str) -> int:
     proc = subprocess.run([sys.executable, str(script), *args], cwd=str(ROOT))
     return proc.returncode
+
+
+def publish_routing_status_dashboard() -> None:
+    if not PUBLISH_PS1.exists():
+        return
+    print("\n=== publish routing status (dashboard) ===")
+    proc = subprocess.run(
+        [
+            "powershell",
+            "-NoProfile",
+            "-WindowStyle",
+            "Hidden",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(PUBLISH_PS1),
+            "-Hidden",
+        ],
+        cwd=str(ROOT),
+    )
+    if proc.returncode != 0:
+        print("WARN: routing status publish failed (phoneserver timer will catch up)")
 
 
 def destiny_flag(manifest: dict[str, Any]) -> str:
@@ -262,6 +285,7 @@ def print_normal_instructions() -> None:
     print("\n=== BASELINE APPLIED ===")
     print("Steam auth -> tunnel (cold login OK). Steam CDN -> WAN (fast downloads).")
     print("Dashboard: http://network.home/ or https://apps-pundef.mooo.com/network-routing/")
+    print("Live updates: phoneserver systemd timer (not Windows Task Scheduler).")
 
 
 def print_login_instructions() -> None:
@@ -376,6 +400,9 @@ def main() -> int:
             print("\n=== check_gaming_pc_routes ===")
             if run_local_script(CHECK) != 0:
                 return 1
+
+        if args.mode == "normal":
+            publish_routing_status_dashboard()
 
         if args.mode == "login":
             print_login_instructions()

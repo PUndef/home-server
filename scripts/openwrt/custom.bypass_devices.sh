@@ -13,7 +13,7 @@ delete_nft_by_comment() {
   comment="$3"
   while true; do
     handle=$(nft -a list chain "$table" "$chain" 2>/dev/null \
-      | grep "comment \"$comment\"" | head -1 | awk '{print $NF}')
+      | grep -F "$comment" | head -1 | sed -n 's/.*# handle \([0-9][0-9]*\).*/\1/p')
     [ -n "$handle" ] || break
     nft delete rule "$table" "$chain" handle "$handle" 2>/dev/null || break
   done
@@ -69,7 +69,7 @@ nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-srv-pre
 # Generated from config/openwrt/overrides.json. Edit the manifest, not this block.
 # Destiny activity servers must bypass nfqws; Discord voice must remain outside this bypass.
 # Forbidden in Destiny bypass: 104.29.154.0/24
-DESTINY_NETS="{ 57.129.90.115/32, 155.133.0.0/16, 162.254.0.0/16, 205.196.0.0/16, 205.209.0.0/16 }"
+DESTINY_NETS="{ 57.129.90.115/32, 172.97.56.0/24, 155.133.0.0/16, 162.254.0.0/16, 205.196.0.0/16, 205.209.0.0/16 }"
 # END GENERATED: openwrt-overrides zapret destiny nets
 # migrate any legacy port-based game rules first
 delete_nft_by_comment inet zapret postnat "zapret-ct-bypass-133-destiny"
@@ -84,14 +84,10 @@ delete_nft_by_comment inet zapret postnat "zapret-ct-bypass-133-destiny-ip"
 delete_nft_by_comment inet zapret prenat "zapret-ct-bypass-133-destiny-ip-pre"
 delete_nft_by_comment inet zapret postnat "zapret-ct-bypass-208-destiny-ip"
 delete_nft_by_comment inet zapret prenat "zapret-ct-bypass-208-destiny-ip-pre"
-nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-133-destiny-ip || \
-    nft insert rule inet zapret postnat ct original ip saddr 192.168.1.133 ip daddr $DESTINY_NETS return comment zapret-ct-bypass-133-destiny-ip
-nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-133-destiny-ip-pre || \
-    nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.133 ip saddr $DESTINY_NETS return comment zapret-ct-bypass-133-destiny-ip-pre
-nft list chain inet zapret postnat 2>/dev/null | grep -q zapret-ct-bypass-208-destiny-ip || \
-    nft insert rule inet zapret postnat ct original ip saddr 192.168.1.208 ip daddr $DESTINY_NETS return comment zapret-ct-bypass-208-destiny-ip
-nft list chain inet zapret prenat 2>/dev/null | grep -q zapret-ct-bypass-208-destiny-ip-pre || \
-    nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.208 ip saddr $DESTINY_NETS return comment zapret-ct-bypass-208-destiny-ip-pre
+nft insert rule inet zapret postnat ct original ip saddr 192.168.1.133 ip daddr $DESTINY_NETS return comment zapret-ct-bypass-133-destiny-ip
+nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.133 ip saddr $DESTINY_NETS return comment zapret-ct-bypass-133-destiny-ip-pre
+nft insert rule inet zapret postnat ct original ip saddr 192.168.1.208 ip daddr $DESTINY_NETS return comment zapret-ct-bypass-208-destiny-ip
+nft insert rule inet zapret prenat ct reply ip daddr 192.168.1.208 ip saddr $DESTINY_NETS return comment zapret-ct-bypass-208-destiny-ip-pre
 
 # Destiny instance / lost sector load: dynamic Steam relay IPs outside 155.133/162.254.
 # BEGIN GENERATED: openwrt-overrides zapret steam sdr
@@ -107,6 +103,12 @@ for client_ip in ${STEAM_SDR_CLIENTS}; do
   nft list chain inet zapret prenat 2>/dev/null | grep -q "zapret-ct-bypass-${client_suffix}-steam-sdr-pre" || \
       nft insert rule inet zapret prenat ct reply ip daddr "${client_ip}" ip saddr != ${STEAM_SDR_FORBIDDEN} udp sport ${STEAM_SDR_UDP_DPORT} return comment "zapret-ct-bypass-${client_suffix}-steam-sdr-pre"
 done
+
+
+
+
+
+
 
 
 

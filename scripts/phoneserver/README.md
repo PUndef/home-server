@@ -32,6 +32,8 @@
 | `fix-beszel-agent-lan.sh` | Beszel agent offline после смены сети — перезапуск systemd unit. |
 | `install-beszel-agent.ps1` / `.sh` | Переустановка Beszel agent (TOKEN из UI hub). |
 | `seed-kuma-monitors.sh` | Залить мониторы из `kuma-monitors.json` → `http://192.168.50.35:3001/` (venv `.venv-kuma`). |
+| `install-routing-status-collector.ps1` | Первичная установка systemd timer (Windows или WSL fallback). |
+| `install-routing-status-collector-wsl.sh` | То же из WSL, если ключ только в `~/.ssh/phoneserver_nopass`. |
 | `run-owncord-kuma-remote.sh` | Hosts + TLS fix для Kuma на LXC (`fix-kuma-monitors-lxc.sh` через Proxmox). |
 | `pin-dns-and-ntp.sh` | Публичный DNS (1.1.1.1), не dnsmasq роутера; `chronyc makestep`. |
 
