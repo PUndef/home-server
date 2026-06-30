@@ -65,10 +65,13 @@ if (Test-Path $LocalStaging) { Remove-Item $LocalStaging -Recurse -Force }
 New-Item -ItemType Directory -Path $LocalStaging | Out-Null
 
 Copy-Item "$RepoRoot\scripts\openwrt\routing_status.py" $LocalStaging
+Copy-Item "$RepoRoot\scripts\openwrt\watch_destiny_sessions.py" $LocalStaging
 Copy-Item "$RepoRoot\config\openwrt\overrides.json" $LocalStaging
 Copy-Item "$RepoRoot\scripts\phoneserver\routing-status-collector.sh" $LocalStaging
+Copy-Item "$RepoRoot\scripts\phoneserver\destiny-net-watch-collector.sh" $LocalStaging
 Copy-Item "$RepoRoot\scripts\phoneserver\routing-status-collector.service" $LocalStaging
 Copy-Item "$RepoRoot\scripts\phoneserver\routing-status-collector.timer" $LocalStaging
+Copy-Item "$RepoRoot\scripts\phoneserver\destiny-net-watch-collector.service" $LocalStaging
 Copy-Item $OpenWrtKey (Join-Path $LocalStaging "openwrt_collector")
 Copy-Item $LxcKey (Join-Path $LocalStaging "lxc_deploy_key")
 Copy-Item "$RepoRoot\scripts\phoneserver\install-routing-status-collector.sh" $LocalStaging

@@ -34,6 +34,7 @@
 | `seed-kuma-monitors.sh` | Залить мониторы из `kuma-monitors.json` → `http://192.168.50.35:3001/` (venv `.venv-kuma`). |
 | `install-routing-status-collector.ps1` | Первичная установка systemd timer (Windows или WSL fallback). |
 | `install-routing-status-collector-wsl.sh` | То же из WSL, если ключ только в `~/.ssh/phoneserver_nopass`. |
+| `destiny-net-watch-collector.sh` | Постоянный read-only watcher Destiny conntrack: OpenWrt → phoneserver → static-sites. |
 | `run-owncord-kuma-remote.sh` | Hosts + TLS fix для Kuma на LXC (`fix-kuma-monitors-lxc.sh` через Proxmox). |
 | `pin-dns-and-ntp.sh` | Публичный DNS (1.1.1.1), не dnsmasq роутера; `chronyc makestep`. |
 
@@ -71,6 +72,24 @@ bash scripts/phoneserver/run-owncord-kuma-remote.sh
 Полный seed из `kuma-monitors.json` — через `seed-kuma-monitors.sh` (нужен `KUMA_USERNAME` / `KUMA_PASSWORD`).
 
 **Проверить:** в UI мониторы Public HTTPS зелёные.
+
+---
+
+## Destiny net watch
+
+`install-routing-status-collector.ps1` также ставит `destiny-net-watch-collector.service` на phoneserver. Сервис каждые 5 секунд читает `/proc/net/nf_conntrack` на OpenWrt для `pundef-pc` Wi-Fi `192.168.1.208` и каждые 15 секунд публикует результат в static-sites.
+
+Проверить:
+
+```bash
+curl http://192.168.50.35/network-routing/destiny/destiny-watch.json
+```
+
+Артефакты:
+
+- `http://192.168.50.35/network-routing/destiny/destiny-watch.json` — свежая сводка, top ALERT targets.
+- `http://192.168.50.35/network-routing/destiny/YYYY-MM-DD.jsonl` — полный дневной лог ticks.
+- `http://192.168.50.35/network-routing/destiny/alerts.jsonl` — только ticks с подозрительными Destiny-потоками.
 
 ---
 

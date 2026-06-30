@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import atexit
+import hashlib
 import ipaddress
 import json
 import os
@@ -143,6 +144,15 @@ def parse_sdr_port_range(manifest: dict[str, Any]) -> tuple[int, int]:
     return int(start_s), int(end_s)
 
 
+def bypass_version(manifest: dict[str, Any]) -> str:
+    payload = {
+        "destiny_activity": manifest["zapret_bypass"]["destiny_activity"],
+        "destiny_steam_sdr": manifest["zapret_bypass"]["destiny_steam_sdr"],
+    }
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()[:12]
+
+
 def ip_in_nets(ip_text: str, nets: list[ipaddress._BaseNetwork]) -> bool:  # noqa: SLF001
     ip = ipaddress.ip_address(ip_text)
     return any(ip in net for net in nets)
@@ -221,6 +231,7 @@ def classify_entry(
 def collect_tick(
     client: paramiko.SSHClient,
     client_ip: str,
+    version: str,
     destiny_nets: list[ipaddress._BaseNetwork],  # noqa: SLF001
     forbidden_nets: list[ipaddress._BaseNetwork],  # noqa: SLF001
     sdr_lo: int,
@@ -246,6 +257,7 @@ def collect_tick(
     return {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "client_ip": client_ip,
+        "bypass_version": version,
         "entry_count": len(classified),
         "gameish_count": len(gameish),
         "alerts": alerts,
@@ -285,10 +297,14 @@ def preflight(client: paramiko.SSHClient, client_ip: str) -> dict[str, Any]:
     return {"neigh": neigh}
 
 
-def validate_probe(probe: dict[str, Any], neigh: str) -> None:
+def validate_probe(probe: dict[str, Any], neigh: str, allow_idle: bool) -> None:
     count = probe["entry_count"]
     if count > 0:
         print(f"OK: probe saw {count} conntrack entries")
+        return
+
+    if allow_idle and neigh not in {"missing", "FAILED", "unknown"}:
+        print(f"OK: idle probe saw 0 conntrack entries (neigh={neigh}); waiting for game traffic")
         return
 
     if neigh in {"missing", "FAILED", "unknown"}:
@@ -313,6 +329,7 @@ def compact_tick(tick: dict[str, Any], verbose: bool) -> dict[str, Any]:
     return {
         "timestamp": tick["timestamp"],
         "client_ip": tick["client_ip"],
+        "bypass_version": tick.get("bypass_version", ""),
         "entry_count": tick["entry_count"],
         "gameish_count": tick["gameish_count"],
         "alerts": tick["alerts"],
@@ -353,12 +370,14 @@ def main() -> int:
     parser.add_argument("--once", action="store_true", help="Single snapshot, then exit")
     parser.add_argument("--verbose", action="store_true", help="Log full entries every tick")
     parser.add_argument("--no-lock", action="store_true", help="Skip single-instance lock (debug)")
+    parser.add_argument("--allow-idle", action="store_true", help="Keep running even if the initial probe sees no traffic")
     args = parser.parse_args()
 
     if not args.once and not args.no_lock:
         acquire_lock(LOCK_FILE if args.log_dir == DEFAULT_LOG_DIR else args.log_dir / ".watch.lock")
 
     manifest = load_manifest(DEFAULT_MANIFEST)
+    version = bypass_version(manifest)
     destiny_nets = load_destiny_nets(manifest)
     forbidden_nets = load_forbidden_nets(manifest)
     sdr_lo, sdr_hi = parse_sdr_port_range(manifest)
@@ -376,17 +395,23 @@ def main() -> int:
     client = connect()
     try:
         pf = preflight(client, args.client_ip)
-        probe = collect_tick(client, args.client_ip, destiny_nets, forbidden_nets, sdr_lo, sdr_hi)
-        validate_probe(probe, pf["neigh"])
+        probe = collect_tick(client, args.client_ip, version, destiny_nets, forbidden_nets, sdr_lo, sdr_hi)
+        validate_probe(probe, pf["neigh"], args.allow_idle)
         print()
 
         while True:
             try:
-                tick = collect_tick(client, args.client_ip, destiny_nets, forbidden_nets, sdr_lo, sdr_hi)
+                manifest = load_manifest(DEFAULT_MANIFEST)
+                version = bypass_version(manifest)
+                destiny_nets = load_destiny_nets(manifest)
+                forbidden_nets = load_forbidden_nets(manifest)
+                sdr_lo, sdr_hi = parse_sdr_port_range(manifest)
+                tick = collect_tick(client, args.client_ip, version, destiny_nets, forbidden_nets, sdr_lo, sdr_hi)
             except Exception as exc:  # noqa: BLE001
                 tick = {
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "client_ip": args.client_ip,
+                    "bypass_version": "",
                     "error": str(exc),
                     "entry_count": 0,
                     "gameish_count": 0,

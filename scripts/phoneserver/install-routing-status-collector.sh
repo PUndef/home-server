@@ -8,6 +8,7 @@ INSTALL_ROOT="/opt/home-server"
 ENV_FILE="/etc/routing-status-collector.env"
 SERVICE="routing-status-collector.service"
 TIMER="routing-status-collector.timer"
+DESTINY_SERVICE="destiny-net-watch-collector.service"
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "run as root: sudo $0" >&2
@@ -27,8 +28,10 @@ install -d -m 755 "${INSTALL_ROOT}/scripts/openwrt"
 install -d -m 755 "${INSTALL_ROOT}/scripts/phoneserver"
 install -d -m 755 "${INSTALL_ROOT}/config/openwrt"
 install -m 644 "${STAGING}/routing_status.py" "${INSTALL_ROOT}/scripts/openwrt/routing_status.py"
+install -m 644 "${STAGING}/watch_destiny_sessions.py" "${INSTALL_ROOT}/scripts/openwrt/watch_destiny_sessions.py"
 install -m 644 "${STAGING}/overrides.json" "${INSTALL_ROOT}/config/openwrt/overrides.json"
 install -m 755 "${STAGING}/routing-status-collector.sh" "${INSTALL_ROOT}/scripts/phoneserver/routing-status-collector.sh"
+install -m 755 "${STAGING}/destiny-net-watch-collector.sh" "${INSTALL_ROOT}/scripts/phoneserver/destiny-net-watch-collector.sh"
 
 install -d -m 700 /home/user/.ssh
 if [ -f "${STAGING}/openwrt_collector" ]; then
@@ -47,16 +50,23 @@ OPENWRT_KEY=/home/user/.ssh/openwrt_collector
 LXC_TARGET=deploy@192.168.50.35
 LXC_KEY=/home/user/.ssh/lxc_deploy_key
 LXC_DIR=/srv/static-sites/network-routing
+DESTINY_CLIENT_IP=192.168.1.208
+DESTINY_WATCH_INTERVAL=5
+DESTINY_PUBLISH_INTERVAL=15
 EOF
 chmod 644 "${ENV_FILE}"
 
 install -m 644 "${STAGING}/${SERVICE}" "/etc/systemd/system/${SERVICE}"
 install -m 644 "${STAGING}/${TIMER}" "/etc/systemd/system/${TIMER}"
+install -m 644 "${STAGING}/${DESTINY_SERVICE}" "/etc/systemd/system/${DESTINY_SERVICE}"
 
 systemctl daemon-reload
 systemctl enable --now "${TIMER}"
+systemctl enable --now "${DESTINY_SERVICE}"
 systemctl start "${SERVICE}" || true
 
 echo "[install-routing-status] timer status:"
 systemctl status "${TIMER}" --no-pager -l || true
+echo "[install-routing-status] destiny watcher status:"
+systemctl status "${DESTINY_SERVICE}" --no-pager -l || true
 echo "[install-routing-status] done"

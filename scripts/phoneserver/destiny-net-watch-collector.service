@@ -1,0 +1,16 @@
+[Unit]
+Description=Publish Destiny conntrack watch logs to static-sites LXC
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/routing-status-collector.env
+ExecStart=/opt/home-server/scripts/phoneserver/destiny-net-watch-collector.sh
+Restart=always
+RestartSec=10
+User=user
+Group=user
+
+[Install]
+WantedBy=multi-user.target
