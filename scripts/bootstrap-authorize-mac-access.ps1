@@ -30,42 +30,11 @@ function Test-WindowsKeys {
 }
 
 function Invoke-WslBootstrap {
-    $encodedKey = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($PublicKey))
-    $script = @'
-set -eu
-pub="$(printf %s "__PUB_B64__" | base64 -d)"
+    $RepoRoot = Split-Path $PSScriptRoot -Parent
+    $WslRepoRoot = (wsl wslpath -a $RepoRoot).Trim()
+    $WslScript = "$WslRepoRoot/scripts/bootstrap-authorize-mac-access-wsl.sh"
 
-openwrt_key="${OPENWRT_KEY:-$HOME/.ssh/openwrt_ax300t_nopass}"
-phone_key="${PHONE_KEY:-$HOME/.ssh/phoneserver_nopass}"
-proxmox_key="${PROXMOX_KEY:-$HOME/.ssh/proxmox_pundef_nopass}"
-
-for item in "$openwrt_key" "$phone_key" "$proxmox_key"; do
-  if [ ! -f "$item" ]; then
-    echo "missing SSH key in WSL: $item" >&2
-    exit 1
-  fi
-  chmod 600 "$item" 2>/dev/null || true
-done
-
-add_key() {
-  name="$1"
-  remote="$2"
-  key="$3"
-  echo "=== $name ($remote) ==="
-  ssh -i "$key" -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$remote" \
-    "umask 077; mkdir -p ~/.ssh; touch ~/.ssh/authorized_keys; grep -qxF '$pub' ~/.ssh/authorized_keys || printf '%s\n' '$pub' >> ~/.ssh/authorized_keys; chmod 700 ~/.ssh; chmod 600 ~/.ssh/authorized_keys; echo authorized"
-}
-
-add_key "OpenWrt" "root@192.168.1.1" "$openwrt_key"
-add_key "phoneserver wlan" "user@192.168.1.227" "$phone_key"
-add_key "Proxmox" "root@192.168.50.9" "$proxmox_key"
-add_key "static-sites deploy" "deploy@192.168.50.35" "$proxmox_key"
-
-echo
-echo "Done. Mac key authorized: $pub"
-'@
-    $script = $script.Replace("__PUB_B64__", $encodedKey)
-    wsl bash -lc $script
+    wsl bash "$WslScript" --pubkey "$PublicKey"
     if ($LASTEXITCODE -ne 0) {
         throw "WSL bootstrap failed"
     }
